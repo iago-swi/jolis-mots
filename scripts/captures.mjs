@@ -7,6 +7,9 @@
  *    écran émulé de 390 × 844 px (densité 2) et mode clair imposé ;
  * 4. écrit les images dans `docs/captures/`.
  *
+ * Avant les photos, il contrôle que les filtres du Recueil tiennent sur une seule ligne
+ * d'un écran de 411 px de large (le téléphone de Philippe), et s'arrête sinon.
+ *
  * Les adresses fixent le mot (`?mot=`) et la palette (`?palette=papier`) ; le mode clair
  * imposé fixe en plus les pastilles « Comme le système » des Réglages, qui suivent le mode
  * sombre de l'appareil. Les images ne dépendent donc ni du hasard du premier mot, ni du
@@ -141,18 +144,22 @@ async function ouvrirOnglet() {
 
 const onglet = await ouvrirOnglet();
 await onglet.envoyer('Page.enable');
-await onglet.envoyer('Emulation.setDeviceMetricsOverride', {
-  width: LARGEUR,
-  height: HAUTEUR,
-  deviceScaleFactor: ECHELLE,
-  mobile: false,
-});
 await onglet.envoyer('Emulation.setEmulatedMedia', {
   features: [{ name: 'prefers-color-scheme', value: 'light' }],
 });
 
-/** Charge une adresse de l'application et rend la photo (PNG) quand la page et les polices sont prêtes. */
-async function photographier(adresse) {
+/** Émule un écran de la largeur et de la hauteur données (en px CSS). */
+async function emuler(largeur, hauteur) {
+  await onglet.envoyer('Emulation.setDeviceMetricsOverride', {
+    width: largeur,
+    height: hauteur,
+    deviceScaleFactor: ECHELLE,
+    mobile: false,
+  });
+}
+
+/** Charge une adresse de l'application et attend que la page et les polices soient prêtes. */
+async function charger(adresse) {
   const aller = async (url) => {
     const chargee = new Promise((resolu) =>
       onglet.surEvenement((e) => e.method === 'Page.loadEventFired' && resolu()),
@@ -165,36 +172,65 @@ async function photographier(adresse) {
   await aller(`http://127.0.0.1:${port}/index.html${adresse}`);
   await onglet.envoyer('Runtime.evaluate', { expression: 'document.fonts.ready', awaitPromise: true });
   await new Promise((resolu) => setTimeout(resolu, 800));
+}
+
+/** Charge une adresse de l'application et rend la photo (PNG). */
+async function photographier(adresse) {
+  await charger(adresse);
   const { data } = await onglet.envoyer('Page.captureScreenshot', { format: 'png' });
   return Buffer.from(data, 'base64');
 }
 
-try {
-  for (const e of ECRANS) {
-    const image = await photographier(e.adresse);
-    await sharp(image).png({ compressionLevel: 9 }).toFile(path.join(SORTIE, `${e.nom}.png`));
-    console.log(`écrit : docs/captures/${e.nom}.png`);
-  }
+/** Vrai si les filtres du Recueil tiennent sur une ligne, sans défilement, à 411 px de large. */
+async function filtresSurUneLigne() {
+  await emuler(411, 900);
+  await charger(`?${MOT}#recueil`);
+  const { result } = await onglet.envoyer('Runtime.evaluate', {
+    expression: `(() => {
+      const filtres = document.querySelector('.filtres');
+      if (filtres === null) return false;
+      const boutons = [...filtres.querySelectorAll('button')];
+      const haut = boutons[0]?.getBoundingClientRect().top;
+      return filtres.scrollWidth <= filtres.clientWidth && boutons.every((b) => b.getBoundingClientRect().top === haut);
+    })()`,
+    returnByValue: true,
+  });
+  return result.value === true;
+}
 
-  // Les quatre palettes de l'écran Mot, côte à côte, chacune à la moitié de la taille de prise.
-  const ECART = 24;
-  const vignettes = [];
-  for (const p of PALETTES) {
-    const image = await photographier(`?mot=ceruleen&palette=${p}`);
-    vignettes.push(await sharp(image).resize(LARGEUR, HAUTEUR).png().toBuffer());
+try {
+  if (!(await filtresSurUneLigne())) {
+    console.error('Les filtres du Recueil ne tiennent pas sur une ligne à 411 px.');
+    process.exitCode = 1;
+  } else {
+    console.log('Filtres du Recueil : une ligne à 411 px.');
+    await emuler(LARGEUR, HAUTEUR);
+    for (const e of ECRANS) {
+      const image = await photographier(e.adresse);
+      await sharp(image).png({ compressionLevel: 9 }).toFile(path.join(SORTIE, `${e.nom}.png`));
+      console.log(`écrit : docs/captures/${e.nom}.png`);
+    }
+
+    // Les quatre palettes de l'écran Mot, côte à côte, chacune à la moitié de la taille de prise.
+    const ECART = 24;
+    const vignettes = [];
+    for (const p of PALETTES) {
+      const image = await photographier(`?mot=ceruleen&palette=${p}`);
+      vignettes.push(await sharp(image).resize(LARGEUR, HAUTEUR).png().toBuffer());
+    }
+    await sharp({
+      create: {
+        width: PALETTES.length * LARGEUR + (PALETTES.length + 1) * ECART,
+        height: HAUTEUR + 2 * ECART,
+        channels: 3,
+        background: '#E4E2DA',
+      },
+    })
+      .composite(vignettes.map((input, i) => ({ input, left: ECART + i * (LARGEUR + ECART), top: ECART })))
+      .png({ compressionLevel: 9 })
+      .toFile(path.join(SORTIE, 'palettes.png'));
+    console.log('écrit : docs/captures/palettes.png');
   }
-  await sharp({
-    create: {
-      width: PALETTES.length * LARGEUR + (PALETTES.length + 1) * ECART,
-      height: HAUTEUR + 2 * ECART,
-      channels: 3,
-      background: '#E4E2DA',
-    },
-  })
-    .composite(vignettes.map((input, i) => ({ input, left: ECART + i * (LARGEUR + ECART), top: ECART })))
-    .png({ compressionLevel: 9 })
-    .toFile(path.join(SORTIE, 'palettes.png'));
-  console.log('écrit : docs/captures/palettes.png');
 } finally {
   onglet.fermer();
   const termine = new Promise((resolu) => navigateur.once('close', resolu));

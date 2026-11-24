@@ -23,6 +23,12 @@ export function auteursDe(ligne: string): string[] {
   return auteur.split(' & ').map((a) => a.trim()).filter((a) => a !== '');
 }
 
+/** Nom court d'un auteur, son dernier mot : « Nicolas Bouvier » devient « Bouvier ». */
+export function nomCourt(auteur: string): string {
+  const mots = auteur.trim().split(/\s+/);
+  return mots[mots.length - 1] ?? auteur;
+}
+
 /** « 82,319 » devient « p. 82, 319 ». */
 export function afficherPages(pages: string): string {
   return 'p. ' + pages.split(',').map((p) => p.trim()).join(', ');

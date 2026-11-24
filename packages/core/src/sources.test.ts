@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afficherPages, auteursDe, auteursParNombre, lireSource } from './sources';
+import { afficherPages, auteursDe, auteursParNombre, lireSource, nomCourt } from './sources';
 import type { Mot } from './types';
 
 const mot = (id: string, sources: string[]): Mot => ({
@@ -37,6 +37,12 @@ describe('sources', () => {
     expect(auteursDe('Alexandre Poussin & Sylvain Tesson: Himalaya (82)')).toEqual(['Alexandre Poussin', 'Sylvain Tesson']);
     expect(auteursDe('Nicolas Bouvier: Le Poisson-Scorpion (172)')).toEqual(['Nicolas Bouvier']);
     expect(auteursDe('Dictionnaire des mots savants')).toEqual([]);
+  });
+
+  it('donne le nom court d’un auteur : son dernier mot', () => {
+    expect(nomCourt('Nicolas Bouvier')).toBe('Bouvier');
+    expect(nomCourt('Anne Marie Jaton')).toBe('Jaton');
+    expect(nomCourt('Homère')).toBe('Homère');
   });
 
   it('compte un livre à deux auteurs pour chacun', () => {
