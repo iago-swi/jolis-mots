@@ -49,8 +49,9 @@ const ADRESSE_PAGE = pathToFileURL(PAGE).href;
 let fenetre: BrowserWindow | undefined;
 /** Vrai quand l'atelier tient une fiche modifiée et pas encore enregistrée. */
 let ficheModifiee = false;
-/** Vrai quand la question de fermeture est posée, ou que la réponse a été « Quitter ». */
+/** Vrai pendant qu'une question (quitter, recharger) attend sa réponse. */
 let questionPosee = false;
+/** Vrai après « Quitter » : la fermeture qui suit ne repose pas la question. */
 let quitterQuandMeme = false;
 
 interface EtatFenetre {
@@ -77,16 +78,35 @@ function lireEtatFenetre(): EtatFenetre {
   };
   try {
     const retenu = JSON.parse(readFileSync(cheminEtatFenetre(), 'utf8')) as Partial<EtatFenetre>;
-    return {
+    const etat: EtatFenetre = {
       width: borner(retenu.width ?? defaut.width, LARGEUR_MIN, maxL),
       height: borner(retenu.height ?? defaut.height, HAUTEUR_MIN, maxH),
-      x: retenu.x,
-      y: retenu.y,
       maximized: retenu.maximized,
     };
+    // Une place sur un écran débranché depuis est oubliée : la fenêtre s'ouvre centrée.
+    if (typeof retenu.x === 'number' && typeof retenu.y === 'number') {
+      const place = { x: retenu.x, y: retenu.y, width: etat.width, height: etat.height };
+      if (screen.getAllDisplays().some((e) => seCroisent(place, e.workArea))) {
+        etat.x = retenu.x;
+        etat.y = retenu.y;
+      }
+    }
+    return etat;
   } catch {
     return defaut;
   }
+}
+
+interface Rectangle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Vrai si les deux rectangles ont une surface en commun. */
+function seCroisent(a: Rectangle, b: Rectangle): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
 function retenirEtatFenetre(): void {
@@ -106,7 +126,8 @@ function poserMenu(): void {
       {
         label: 'Jolis Mots',
         submenu: [
-          { role: 'reload', label: 'Recharger' },
+          // Pas le rôle « reload » : recharger abandonne la fiche, la question passe d'abord.
+          { label: 'Recharger', accelerator: 'CmdOrCtrl+R', click: () => recharger() },
           { role: 'toggleDevTools', label: 'Outils de développement' },
           { type: 'separator' },
           { role: 'quit', label: 'Quitter' },
@@ -168,27 +189,49 @@ function brancherPont(): void {
   });
 }
 
-/** Fiche modifiée : la fenêtre ne se ferme qu'après « Quitter ». */
-function demanderAvantDeFermer(f: BrowserWindow): void {
+/**
+ * Fiche modifiée : pose la question (« Annuler » par défaut) et ne fait `action` qu'après
+ * le bouton `bouton`. Une seule question à la fois.
+ */
+function demanderPuis(f: BrowserWindow, question: string, bouton: string, action: () => void): void {
   if (questionPosee) return;
   questionPosee = true;
   void dialog
     .showMessageBox(f, {
       type: 'question',
       title: 'Jolis Mots',
-      message: 'Quitter sans enregistrer la fiche ?',
-      buttons: ['Quitter', 'Annuler'],
+      message: question,
+      buttons: [bouton, 'Annuler'],
       defaultId: 1,
       cancelId: 1,
       noLink: true,
     })
     .then(({ response }) => {
+      if (response === 0 && !f.isDestroyed()) action();
+    })
+    .catch(() => undefined)
+    .finally(() => {
       questionPosee = false;
-      if (response === 0 && !f.isDestroyed()) {
-        quitterQuandMeme = true;
-        f.close();
-      }
     });
+}
+
+/** Fiche modifiée : la fenêtre ne se ferme qu'après « Quitter ». */
+function demanderAvantDeFermer(f: BrowserWindow): void {
+  demanderPuis(f, 'Quitter sans enregistrer la fiche ?', 'Quitter', () => {
+    quitterQuandMeme = true;
+    f.close();
+  });
+}
+
+/** Recharge la page ; une fiche modifiée n'est abandonnée qu'après « Recharger ». */
+function recharger(): void {
+  const f = fenetre;
+  if (!f || f.isDestroyed()) return;
+  if (!ficheModifiee) {
+    f.webContents.reload();
+    return;
+  }
+  demanderPuis(f, 'Recharger sans enregistrer la fiche ?', 'Recharger', () => f.webContents.reload());
 }
 
 async function ouvrirFenetre(): Promise<void> {
@@ -215,9 +258,12 @@ async function ouvrirFenetre(): Promise<void> {
     },
   });
   fenetre = f;
-  if (etat.maximized) f.maximize();
 
-  f.once('ready-to-show', () => f.show());
+  // Agrandir une fenêtre encore cachée la montrerait avant que la page soit peinte.
+  f.once('ready-to-show', () => {
+    if (etat.maximized) f.maximize();
+    f.show();
+  });
   f.on('close', (e) => {
     if (ficheModifiee && !quitterQuandMeme) {
       e.preventDefault();
@@ -234,6 +280,10 @@ async function ouvrirFenetre(): Promise<void> {
   f.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   f.webContents.on('will-navigate', (e) => {
     if (!estLaPage(e.url)) e.preventDefault();
+  });
+  // Une page qui se recharge repart sans fiche ouverte : rien ne reste « modifié ».
+  f.webContents.on('did-start-navigation', (e) => {
+    if (e.isMainFrame && !e.isSameDocument) ficheModifiee = false;
   });
 
   await f.loadFile(PAGE);
