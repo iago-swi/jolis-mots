@@ -14,6 +14,7 @@
     "build": "npm run build -w @jolis-mots/web",
     "build:android": "npm run build && npm run sync -w @jolis-mots/android",
     "package:android": "npm run build:android && npm run apk -w @jolis-mots/android",
+    "cle:android": "npm run apk -w @jolis-mots/android -- --creer-cle",
     "package:android:debug": "npm run build:android && npm run apk -w @jolis-mots/android -- --debug",
     "check": "npm run typecheck && npm run build",
     "import": "python -I tools/import/extraire.py vocabulaire.xlsx tools/import/sortie/lignes.json && tsx tools/import/importer.ts",

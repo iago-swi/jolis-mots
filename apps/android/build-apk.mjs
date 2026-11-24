@@ -9,7 +9,7 @@
  * `%USERPROFILE%\.jolis-mots\jolis-mots.jks`, alias `jolismots`. Son mot de passe
  * n'est jamais écrit ni passé sur une ligne de commande : si
  * `JOLISMOTS_KEYSTORE_PASS` existe, apksigner la lit lui-même ; sinon il le
- * demande dans le terminal.
+ * demande dans le terminal. `--creer-cle` crée ce fichier (`npm run cle:android`).
  *
  * Le script sert aussi à trouver le bon JDK. Gradle refuse de démarrer sur une JVM
  * plus récente que celles qu'il connaît : sur cette machine, le Java du système est
@@ -129,38 +129,61 @@ function lancer(programme, args, options) {
     : spawnSync(programme, args, options);
 }
 
+function jdkOuArret() {
+  const jdk = trouverJdk();
+  if (!jdk) {
+    arreter(
+      `Aucun JDK entre ${JAVA_MIN} et ${JAVA_MAX}, et Gradle ne démarre sur rien de plus récent.\n\n` +
+        `  winget install EclipseAdoptium.Temurin.21.JDK\n`,
+    );
+  }
+  console.log(`JDK ${jdk.version} : ${jdk.home}`);
+  return jdk;
+}
+
+/**
+ * Crée le fichier de clé avec le keytool du JDK. keytool demande lui-même le mot
+ * de passe et le nom dans le terminal : le script n'en passe ni n'en lit aucun.
+ * Une clé existante n'est jamais écrasée.
+ */
+function creerCle(cle) {
+  if (existsSync(cle)) {
+    arreter(`Un fichier de clé existe déjà : ${cle}\nIl n’est pas remplacé.`);
+  }
+  const jdk = jdkOuArret();
+  mkdirSync(path.dirname(cle), { recursive: true });
+  const keytool = path.join(jdk.home, 'bin', WINDOWS ? 'keytool.exe' : 'keytool');
+  const args = [
+    '-genkeypair', '-v', '-keystore', cle, '-alias', ALIAS,
+    '-keyalg', 'RSA', '-keysize', '4096', '-validity', '10000',
+  ];
+  const resultat = spawnSync(keytool, args, { stdio: 'inherit' });
+  if (resultat.status !== 0 || !existsSync(cle)) arreter('La création de la clé a échoué.');
+  console.log(
+    `\nClé créée : ${cle}\n` +
+      'Garde son mot de passe et une copie de ce fichier en lieu sûr. ' +
+      'Sans eux, aucune mise à jour ne pourra plus s’installer par-dessus l’application.',
+  );
+}
+
 const debug = process.argv.includes('--debug');
+const cle = path.resolve(process.env['JOLISMOTS_KEYSTORE'] || CLE_PAR_DEFAUT);
+
+if (process.argv.includes('--creer-cle')) {
+  creerCle(cle);
+  process.exit(0);
+}
 
 if (!estDossier(PROJET)) {
   arreter('Lancer d’abord `npx cap add android` depuis `apps/android`.');
 }
 
 // La clé est cherchée avant la construction : inutile de compiler pour rien.
-const cle = process.env['JOLISMOTS_KEYSTORE'] || CLE_PAR_DEFAUT;
 if (!debug && !existsSync(cle)) {
-  const commande =
-    cle === CLE_PAR_DEFAUT
-      ? 'keytool -genkeypair -v -keystore "%USERPROFILE%\\.jolis-mots\\jolis-mots.jks" -alias jolismots -keyalg RSA -keysize 4096 -validity 10000'
-      : `keytool -genkeypair -v -keystore "${cle}" -alias ${ALIAS} -keyalg RSA -keysize 4096 -validity 10000`;
-  const dossierCle =
-    cle === CLE_PAR_DEFAUT ? '"%USERPROFILE%\\.jolis-mots"' : `"${path.dirname(cle)}"`;
-  arreter(
-    `Fichier de clé introuvable : ${cle}\n\n` +
-      `Pour le créer, dans l’invite de commandes (le mot de passe est demandé, choisis-le et garde-le) :\n\n` +
-      `  mkdir ${dossierCle}\n` +
-      `  ${commande}\n\n` +
-      `Ou indiquer un autre fichier avec la variable JOLISMOTS_KEYSTORE.\n`,
-  );
+  arreter(`Fichier de clé introuvable : ${cle}\n\nPour le créer : npm run cle:android\n`);
 }
 
-const jdk = trouverJdk();
-if (!jdk) {
-  arreter(
-    `Aucun JDK entre ${JAVA_MIN} et ${JAVA_MAX}, et Gradle ne démarre sur rien de plus récent.\n\n` +
-      `  winget install EclipseAdoptium.Temurin.21.JDK\n`,
-  );
-}
-console.log(`JDK ${jdk.version} : ${jdk.home}`);
+const jdk = jdkOuArret();
 
 const androidHome = process.env['ANDROID_HOME'];
 if (androidHome && !estDossier(androidHome)) {
