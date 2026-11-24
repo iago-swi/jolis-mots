@@ -2,6 +2,10 @@
 vocabulaire.xlsx
 ~$*
 
+# Branche des données, montée en worktree, et sorties de l'outil d'import
+donnees/
+tools/import/sortie/
+
 node_modules/
 dist/
 release/
@@ -15,3 +19,6 @@ Thumbs.db
 
 # Projet Android généré par Capacitor
 apps/android/android/
+
+# Dossier laissé par un outil de test
+.playwright-mcp/
