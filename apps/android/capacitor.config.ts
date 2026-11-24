@@ -19,6 +19,14 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
   },
+  plugins: {
+    // Bord à bord (imposé par Android 16) : la WebView s'étend sous les barres du système et
+    // reçoit leurs hauteurs dans --safe-area-inset-* ; app.css en tire --marge-haut et --marge-bas.
+    SystemBars: {
+      insetsHandling: 'css',
+      initialViewportFitValueHint: 'cover',
+    },
+  },
 };
 
 export default config;

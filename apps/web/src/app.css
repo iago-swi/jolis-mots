@@ -81,6 +81,15 @@
   }
 }
 
+/*
+ * Marges des barres du système (l'application s'affiche bord à bord sous Android).
+ * Capacitor injecte --safe-area-inset-* ; ailleurs, env(), puis zéro dans un navigateur ordinaire.
+ */
+:root {
+  --marge-haut: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --marge-bas: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
 *,
 *::before,
 *::after {

@@ -35,8 +35,9 @@
   .onglets {
     display: flex;
     flex-shrink: 0;
-    height: calc(66px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
+    /* Les onglets restent au-dessus de la barre de gestes ; le fond s'étend dessous. */
+    height: calc(66px + var(--marge-bas));
+    padding-bottom: var(--marge-bas);
     border-top: 1px solid var(--filet);
   }
 

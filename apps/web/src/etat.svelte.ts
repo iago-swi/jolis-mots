@@ -84,6 +84,19 @@ class Etat {
     this.seance.length >= this.reglages.motsParSeance && this.position === this.seance.length - 1,
   );
   readonly paletteAffichee: Palette = $derived(this.paletteForcee ?? this.reglages.palette);
+  /** L'appareil est en mode sombre ; suivi tant que l'application est ouverte (voir `demarrer`). */
+  modeSombreAppareil = $state(false);
+  /** Le fond affiché est sombre : Nuit, ou « Comme le système » quand l'appareil est en mode sombre (comme dans app.css). */
+  readonly fondSombre: boolean = $derived(
+    this.paletteAffichee === 'nuit' || (this.paletteAffichee === 'systeme' && this.modeSombreAppareil),
+  );
+
+  /** Appelle `rappel` tout de suite, puis chaque fois que le fond passe du clair au sombre ou l'inverse. */
+  suivreFondSombre(rappel: (sombre: boolean) => void): void {
+    $effect.root(() => {
+      $effect(() => rappel(this.fondSombre));
+    });
+  }
 
   /** Ajoute `m` à la séance et le marque vu. */
   private montrer(m: Mot): void {
@@ -196,6 +209,14 @@ class Etat {
     const palette = params.get('palette');
     if (estPalette(palette)) this.paletteForcee = palette;
     this.ecran = ecranDeLAdresse(adresse.hash);
+
+    if (typeof matchMedia === 'function') {
+      const sombre = matchMedia('(prefers-color-scheme: dark)');
+      this.modeSombreAppareil = sombre.matches;
+      sombre.addEventListener('change', (e) => {
+        this.modeSombreAppareil = e.matches;
+      });
+    }
 
     const voulu = params.get('mot');
     const impose = voulu === null ? undefined : this.trouver(normaliser(voulu));

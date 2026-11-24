@@ -24,7 +24,8 @@
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    padding: 30px 28px 0;
+    /* L'en-tête commence sous la barre d'état ; son fond (celui de la page) passe dessous. */
+    padding: calc(30px + var(--marge-haut)) 28px 0;
     color: var(--second);
   }
 

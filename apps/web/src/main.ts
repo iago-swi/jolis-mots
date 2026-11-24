@@ -1,5 +1,5 @@
 import { App as Appareil } from '@capacitor/app';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { mount } from 'svelte';
 import '@fontsource/eb-garamond/400.css';
 import '@fontsource/eb-garamond/500.css';
@@ -18,6 +18,11 @@ void rafraichir();
 if (Capacitor.isNativePlatform()) {
   void Appareil.addListener('backButton', () => {
     if (!etat.retour()) void Appareil.exitApp();
+  });
+  // Icônes de la barre d'état lisibles sur la palette affichée. Le style nomme l'interface, pas les icônes :
+  // DARK = icônes claires (fond sombre), LIGHT = icônes sombres (fond clair).
+  etat.suivreFondSombre((sombre) => {
+    void SystemBars.setStyle({ style: sombre ? SystemBarsStyle.Dark : SystemBarsStyle.Light });
   });
 }
 
