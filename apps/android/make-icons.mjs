@@ -20,7 +20,8 @@
  * créé (`drawable*`, `drawable-night*`) devient un fond papier avec la marque
  * « jm » au centre, large d'un quart du petit côté, aux mêmes dimensions que
  * l'image remplacée. Et le thème de lancement d'Android 12 et plus reçoit le
- * même fond papier. Le dossier `android/` étant généré, un nouveau
+ * même fond papier. Le fond de la fenêtre de l'application devient le papier
+ * de Papier le jour et celui de Nuit en mode sombre. Le dossier `android/` étant généré, un nouveau
  * `npx cap add android` suivi de ce script redonne le même résultat.
  */
 import sharp from 'sharp';
@@ -211,3 +212,30 @@ if (!theme.includes(fond)) {
 }
 
 console.log(`écran de lancement écrit : ${remplacees} images, fond ${PAPIER}`);
+
+// Fond de la fenêtre : sur une WebView d'avant Chromium 140, Capacitor décale la page sous les
+// barres du système, qui restent posées sur ce fond. Il prend le papier de Papier le jour et celui
+// de Nuit en mode sombre, comme « Comme le système ».
+const NUIT = '#14181F';
+for (const [dossier, couleur] of [
+  ['values', PAPIER],
+  ['values-night', NUIT],
+]) {
+  await mkdir(path.join(RES, dossier), { recursive: true });
+  await writeFile(
+    path.join(RES, dossier, 'fond_fenetre.xml'),
+    `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="fond_fenetre">${couleur}</color>\n</resources>\n`,
+    'utf8',
+  );
+}
+const themeApp = await readFile(styles, 'utf8');
+const fondFenetre = '<item name="android:windowBackground">@color/fond_fenetre</item>';
+if (!themeApp.includes(fondFenetre)) {
+  const application = /(<style name="AppTheme\.NoActionBar" [^>]*>)/;
+  if (!application.test(themeApp)) {
+    console.error(`Thème AppTheme.NoActionBar introuvable dans ${styles}`);
+    process.exit(1);
+  }
+  await writeFile(styles, themeApp.replace(application, `$1\n        ${fondFenetre}`), 'utf8');
+}
+console.log(`fond de la fenêtre : ${PAPIER} le jour, ${NUIT} en mode sombre`);

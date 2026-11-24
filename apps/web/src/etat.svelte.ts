@@ -91,10 +91,14 @@ class Etat {
     this.paletteAffichee === 'nuit' || (this.paletteAffichee === 'systeme' && this.modeSombreAppareil),
   );
 
-  /** Appelle `rappel` tout de suite, puis chaque fois que le fond passe du clair au sombre ou l'inverse. */
-  suivreFondSombre(rappel: (sombre: boolean) => void): void {
+  /**
+   * Appelle `rappel` tout de suite, puis chaque fois que le fond sous les barres du système passe
+   * du clair au sombre ou l'inverse. Bord à bord, ce fond est celui de la palette affichée ; sinon
+   * c'est celui de la fenêtre Android, qui suit le mode de l'appareil (voir `webViewBordABord`).
+   */
+  suivreFondDesBarres(bordABord: boolean, rappel: (sombre: boolean) => void): void {
     $effect.root(() => {
-      $effect(() => rappel(this.fondSombre));
+      $effect(() => rappel(bordABord ? this.fondSombre : this.modeSombreAppareil));
     });
   }
 
