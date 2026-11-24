@@ -5,12 +5,12 @@ import type { FichierMots } from './types';
 export const ADRESSE_LISTE = 'https://raw.githubusercontent.com/iago-swi/jolis-mots/donnees/mots.json';
 
 /**
- * La liste reçue si elle a la bonne forme, une date lisible et soit plus récente que
+ * La liste reçue si elle a la bonne forme, au moins un mot, une date lisible et soit plus récente que
  * l'actuelle, soit que l'actuelle n'a pas de date lisible ; sinon l'actuelle, telle quelle.
  */
 export function choisirListe(actuelle: FichierMots, recue: unknown): FichierMots {
   const valide = validerFichier(recue);
-  if (valide === null) return actuelle;
+  if (valide === null || valide.mots.length === 0) return actuelle;
   const date = Date.parse(valide.publie);
   if (Number.isNaN(date)) return actuelle;
   const dateActuelle = Date.parse(actuelle.publie);

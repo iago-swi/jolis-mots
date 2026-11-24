@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { creerId, ecrireFichier, validerFichier } from './fichier';
+import { creerId, creerIdUnique, ecrireFichier, validerFichier } from './fichier';
 import { importer, type LigneExcel } from './import';
 
 const ligne = (p: Partial<LigneExcel>): LigneExcel => ({ mot: '', tri: '', genre: '', definition: '', note: '', util: '', source: '', rouge: false, ...p });
@@ -28,4 +28,27 @@ it('refuse un mot dont une propriété a le mauvais type', () => {
 
 it('crée des identifiants de 6 caractères parmi [a-z0-9]', () => {
   for (let i = 0; i < 50; i++) expect(creerId()).toMatch(/^[a-z0-9]{6}$/);
+});
+
+const motValide = (id: string) => ({ id, mot: 'A', tri: 'a', genre: '', definition: '', sources: [], note: '', util: '', aCompleter: false });
+
+it('refuse deux mots de même identifiant', () => {
+  const a = motValide('aaaaaa');
+  const b = motValide('bbbbbb');
+  expect(validerFichier({ format: 1, publie: '2026-11-24T10:00:00Z', mots: [a, { ...b, id: a.id }] })).toBeNull();
+});
+
+it('refuse un identifiant vide ou fait d’espaces', () => {
+  const a = motValide('aaaaaa');
+  expect(validerFichier({ format: 1, publie: '2026-11-24T10:00:00Z', mots: [{ ...a, id: '' }] })).toBeNull();
+  expect(validerFichier({ format: 1, publie: '2026-11-24T10:00:00Z', mots: [{ ...a, id: '  ' }] })).toBeNull();
+});
+
+it('garde la bonne forme à une liste vide', () => {
+  expect(validerFichier({ format: 1, publie: '', mots: [] })).not.toBeNull();
+});
+
+it('retire un identifiant déjà pris', () => {
+  const tirages = ['aaaaaa', 'aaaaaa', 'bbbbbb'];
+  expect(creerIdUnique(new Set(['aaaaaa']), () => tirages.shift()!)).toBe('bbbbbb');
 });
