@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { composerQuiz, definitionPourQuiz, QUESTIONS_MAX } from './quiz';
 import { marquerVu } from './memoire';
+import { normaliser } from './recherche';
 import type { Mot } from './types';
 
 function mot(nom: string, genre: string, definition: string, id = nom.toLowerCase()): Mot {
@@ -64,19 +65,65 @@ it('prend les mauvaises réponses dans le même genre quand il y en a assez', ()
   }
 });
 
-it('complète avec le même premier terme, puis avec tous les mots', () => {
+it('prend d’abord le même genre exact, puis le même premier terme, puis les autres', () => {
   const mots = [
-    mot('Un', 'adj. masc.', 'Un.'),
-    mot('Deux', 'adj. fém.', 'Deux.'),
-    mot('Trois', 'adj.', 'Trois.'),
-    mot('Quatre', 'verbe', 'Quatre.'),
+    mot('Cible', 'adj. masc.', 'Cible.'),
+    mot('Exact', 'adj. masc.', 'Exact.'),
+    mot('Proche', 'adj. fém.', 'Proche.'),
+    mot('Loin1', 'verbe', 'Loin un.'),
+    mot('Loin2', 'verbe', 'Loin deux.'),
+    mot('Loin3', 'nom', 'Loin trois.'),
   ];
+  for (let graine = 1; graine <= 30; graine++) {
+    const [q] = composerQuiz({ complets: mots, seance: ['cible'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    const ids = q?.choix.map((c) => c.id) ?? [];
+    expect(ids).toHaveLength(4);
+    expect(ids).toContain('exact');
+    expect(ids).toContain('proche');
+  }
+});
+
+it('complète avec tous les mots quand le premier terme ne suffit pas', () => {
+  const mots = [mot('Un', 'adj.', 'Un.'), mot('Deux', 'adj.', 'Deux.'), mot('Trois', 'verbe', 'Trois.'), mot('Quatre', 'nom', 'Quatre.')];
   const [q] = composerQuiz({ complets: mots, seance: ['un'], progres: {}, maintenant, alea: fabriqueAlea() });
-  expect(q?.choix).toHaveLength(4);
-  const un = mots.slice(0, 3).map((m) => m.id);
-  // les deux autres adjectifs sont pris avant le verbe, mais comme il en faut trois, le verbe complète
-  expect(un.every((id) => q?.choix.some((c) => c.id === id))).toBe(true);
-  expect(q?.choix.some((c) => c.id === 'quatre')).toBe(true);
+  expect(q?.choix.map((c) => c.id).sort()).toEqual(['deux', 'quatre', 'trois', 'un']);
+});
+
+it('ne montre jamais deux choix de même texte, dans la forme définition vers mot', () => {
+  const mots = [
+    mot('Doublon', 'adj.', 'Premier sens.', 'doublon-1'),
+    mot('Doublon', 'adj.', 'Second sens.', 'doublon-2'),
+    mot('Autre', 'adj.', 'Autre.'),
+    mot('Encore', 'adj.', 'Encore.'),
+    mot('Reste', 'adj.', 'Reste.'),
+  ];
+  for (let graine = 1; graine <= 30; graine++) {
+    const [q] = composerQuiz({ complets: mots, seance: ['doublon-1'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    expect(q?.forme).toBe('definition-vers-mot');
+    const textes = q?.choix.map((c) => normaliser(c.texte)) ?? [];
+    expect(new Set(textes).size).toBe(textes.length);
+    expect(q?.choix).toHaveLength(4);
+    expect(q?.choix.map((c) => c.id)).not.toContain('doublon-2');
+  }
+});
+
+it('ne montre jamais deux choix de même texte, dans la forme mot vers définition', () => {
+  const mots = [
+    mot('Premier', 'adj.', 'Un sens.'),
+    mot('Cible', 'adj.', 'Même définition.', 'cible-1'),
+    mot('Jumeau', 'adj.', 'même définition.', 'cible-2'),
+    mot('Autre', 'adj.', 'Un autre sens.'),
+    mot('Encore', 'adj.', 'Encore un sens.'),
+    mot('Reste', 'adj.', 'Le reste.'),
+  ];
+  for (let graine = 1; graine <= 30; graine++) {
+    const [, q] = composerQuiz({ complets: mots, seance: ['premier', 'cible-1'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    expect(q?.forme).toBe('mot-vers-definition');
+    const textes = q?.choix.map((c) => normaliser(c.texte)) ?? [];
+    expect(new Set(textes).size).toBe(textes.length);
+    expect(q?.choix).toHaveLength(4);
+    expect(q?.choix.map((c) => c.id)).not.toContain('cible-2');
+  }
 });
 
 it('écarte les synonymes déclarés', () => {

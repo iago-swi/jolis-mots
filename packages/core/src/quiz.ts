@@ -83,7 +83,7 @@ function melanger<T>(liste: readonly T[], alea: () => number): T[] {
   return r;
 }
 
-function mauvaisesReponses(bonne: Mot, candidats: Mot[], alea: () => number): Mot[] {
+function mauvaisesReponses(bonne: Mot, candidats: Mot[], alea: () => number, texte: (m: Mot) => string): Mot[] {
   const synonymes = new Set(lireDefinition(bonne.definition).flatMap((s) => s.synonymes).map(normaliser));
   const possibles = candidats.filter(
     (c) => c.id !== bonne.id && !synonymes.has(normaliser(c.mot)) && !synonymes.has(normaliser(c.tri)),
@@ -93,11 +93,15 @@ function mauvaisesReponses(bonne: Mot, candidats: Mot[], alea: () => number): Mo
     possibles.filter((c) => premierTerme(c.genre) === premierTerme(bonne.genre)),
     possibles,
   ];
+  const vus = new Set([normaliser(texte(bonne))]);
   const prises: Mot[] = [];
   for (const palier of paliers) {
     for (const c of melanger(palier, alea)) {
       if (prises.length === MAUVAISES) return prises;
-      if (!prises.some((p) => p.id === c.id)) prises.push(c);
+      const t = normaliser(texte(c));
+      if (vus.has(t)) continue;
+      vus.add(t);
+      prises.push(c);
     }
   }
   return prises;
@@ -119,13 +123,11 @@ export function composerQuiz(a: {
   const questions: Question[] = [];
   for (const m of aInterroger) {
     if (questions.length === QUESTIONS_MAX) break;
-    const mauvaises = mauvaisesReponses(m, interrogeables, a.alea);
-    if (mauvaises.length === 0) continue;
     const forme: Forme = questions.length % 2 === 0 ? 'definition-vers-mot' : 'mot-vers-definition';
-    const choix = melanger([m, ...mauvaises], a.alea).map((c) => ({
-      id: c.id,
-      texte: forme === 'definition-vers-mot' ? c.mot : definitionPourQuiz(c),
-    }));
+    const texte = (c: Mot) => (forme === 'definition-vers-mot' ? c.mot : definitionPourQuiz(c));
+    const mauvaises = mauvaisesReponses(m, interrogeables, a.alea, texte);
+    if (mauvaises.length === 0) continue;
+    const choix = melanger([m, ...mauvaises], a.alea).map((c) => ({ id: c.id, texte: texte(c) }));
     questions.push({
       idMot: m.id,
       forme,
