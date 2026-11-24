@@ -15,11 +15,18 @@
  * - `ic_launcher` / `ic_launcher_round` : les anciennes icônes de 48 dp, fond
  *   compris, cadrées sur la partie visible d'une icône adaptative.
  * - la couleur de fond, que l'icône adaptative pose sous la couche.
+ *
+ * Il réécrit aussi l'écran de lancement : chaque `splash.png` que Capacitor a
+ * créé (`drawable*`, `drawable-night*`) devient un fond papier avec la marque
+ * « jm » au centre, large d'un quart du petit côté, aux mêmes dimensions que
+ * l'image remplacée. Et le thème de lancement d'Android 12 et plus reçoit le
+ * même fond papier. Le dossier `android/` étant généré, un nouveau
+ * `npx cap add android` suivi de ce script redonne le même résultat.
  */
 import sharp from 'sharp';
 import opentype from 'opentype.js';
 import { existsSync } from 'node:fs';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -109,6 +116,8 @@ async function dessiner() {
   return {
     complet: `${ouvrir}\n  <rect width="${CANEVAS}" height="${CANEVAS}" fill="${PAPIER}"/>\n  ${premierPlan}\n</svg>\n`,
     premierPlan: `${ouvrir}\n  ${premierPlan}\n</svg>\n`,
+    /** Largeur du dessin (dp), queue du j comprise. */
+    largeur: largeur * echelle,
   };
 }
 
@@ -124,17 +133,30 @@ function cadrer(svg) {
   return svg.replace(`viewBox="0 0 ${CANEVAS} ${CANEVAS}"`, `viewBox="${marge} ${marge} 72 72"`);
 }
 
-const { complet, premierPlan } = await dessiner();
+const { complet, premierPlan, largeur } = await dessiner();
 await writeFile(SVG, complet, 'utf8');
 console.log(`dessin écrit : ${path.relative(process.cwd(), SVG)}`);
 
-const apercu = process.argv.indexOf('--apercu');
-if (apercu !== -1) {
-  const cible = process.argv[apercu + 1];
+/** Écran de lancement : fond papier, la marque au centre, large d'un quart du petit côté. */
+async function ecranDeLancement(l, h) {
+  const cote = Math.round(((Math.min(l, h) / 4) * CANEVAS) / largeur);
+  return sharp({ create: { width: l, height: h, channels: 3, background: PAPIER } })
+    .composite([{ input: await rendre(premierPlan, cote), gravity: 'centre' }])
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+}
+
+/** `--apercu <fichier>` : l'icône en 512 px ; `--apercu-accueil <fichier>` : l'écran de lancement en 1080 × 1920. */
+async function apercu(option, fabriquer) {
+  const i = process.argv.indexOf(option);
+  if (i === -1) return;
+  const cible = process.argv[i + 1];
   await mkdir(path.dirname(cible), { recursive: true });
-  await writeFile(cible, await rendre(complet, 512));
+  await writeFile(cible, await fabriquer());
   console.log(`aperçu écrit : ${cible}`);
 }
+await apercu('--apercu', () => rendre(complet, 512));
+await apercu('--apercu-accueil', () => ecranDeLancement(1080, 1920));
 
 if (!existsSync(RES)) {
   console.error(`Pas de projet Android dans ${RES} : lancer d'abord « npx cap add android ».`);
@@ -159,3 +181,33 @@ await writeFile(
 console.log(
   `icônes Android écrites pour ${DENSITES.map((d) => d.dir).join(', ')} ; fond adaptatif ${PAPIER}`,
 );
+
+// Chaque image de lancement créée par Capacitor est remplacée, à ses dimensions.
+const dossiers = (await readdir(RES)).filter((d) => d.startsWith('drawable'));
+let remplacees = 0;
+for (const dossier of dossiers) {
+  const fichier = path.join(RES, dossier, 'splash.png');
+  if (!existsSync(fichier)) continue;
+  const { width, height } = await sharp(fichier).metadata();
+  await writeFile(fichier, await ecranDeLancement(width, height));
+  remplacees += 1;
+}
+if (remplacees === 0) {
+  console.error(`Aucune image de lancement (splash.png) dans ${RES}/drawable*`);
+  process.exit(1);
+}
+
+// Android 12 et plus dessinent leur propre écran de lancement : même fond papier.
+const styles = path.join(RES, 'values', 'styles.xml');
+const theme = await readFile(styles, 'utf8');
+const fond = '<item name="windowSplashScreenBackground">@color/ic_launcher_background</item>';
+if (!theme.includes(fond)) {
+  const lancement = /(<style name="AppTheme\.NoActionBarLaunch"[^>]*>)/;
+  if (!lancement.test(theme)) {
+    console.error(`Thème AppTheme.NoActionBarLaunch introuvable dans ${styles}`);
+    process.exit(1);
+  }
+  await writeFile(styles, theme.replace(lancement, `$1\n        ${fond}`), 'utf8');
+}
+
+console.log(`écran de lancement écrit : ${remplacees} images, fond ${PAPIER}`);
