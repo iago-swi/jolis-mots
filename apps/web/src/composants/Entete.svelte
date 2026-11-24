@@ -22,6 +22,8 @@
     align-items: baseline;
     /* L'en-tête commence sous la barre d'état ; son fond (celui de la page) passe dessous. */
     padding: calc(30px + var(--marge-haut)) 28px 0;
+    /* Sur bureau, la marque et les réglages s'alignent sur la colonne de l'écran (--colonne-entete, posée par App.svelte). */
+    padding-inline: max(28px, calc((100% - var(--colonne-entete, 100%)) / 2 + 28px));
     color: var(--second);
   }
 

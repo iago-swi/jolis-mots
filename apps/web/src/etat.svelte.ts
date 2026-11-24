@@ -14,16 +14,18 @@ import {
   type Progres,
 } from '@jolis-mots/core';
 import { listeEmbarquee } from './liste-embarquee';
+import { pont } from './pont';
 import { CLES, ecrire, lire } from './stockage';
 
-export type Ecran = 'mot' | 'quiz' | 'recueil' | 'reglages';
+export type Ecran = 'mot' | 'quiz' | 'recueil' | 'reglages' | 'atelier';
 export type Palette = 'systeme' | 'papier' | 'nuit' | 'ivoire' | 'ceruleen';
 export interface Reglages {
   questionsParQuiz: number;
   palette: Palette;
 }
 
-const ECRANS: readonly Ecran[] = ['mot', 'quiz', 'recueil', 'reglages'];
+/** L'Atelier n'existe que sur bureau ; ailleurs, « #atelier » mène à l'écran Mot. */
+const ECRANS: readonly Ecran[] = ['mot', 'quiz', 'recueil', 'reglages', ...(pont === null ? [] : ['atelier' as const])];
 const PALETTES: readonly Palette[] = ['systeme', 'papier', 'nuit', 'ivoire', 'ceruleen'];
 const PORTEES: readonly Portee[] = ['tous', 'vus'];
 const REGLAGES_PAR_DEFAUT: Reglages = { questionsParQuiz: QUESTIONS_PAR_DEFAUT, palette: 'systeme' };

@@ -215,6 +215,28 @@ describe('remplacerListe', () => {
     expect(Object.keys(etat.progres)).toEqual(['b1']);
   });
 
+  it('une liste encore plus récente posée pendant qu’une liste téléchargée attend : elle reste', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '' });
+    const encorePlusRecente = { ...listePlusRecente, publie: '2026-11-22T08:00:00.000Z' };
+    etat.proposerListe(listePlusRecente);
+    etat.remplacerListe(encorePlusRecente);
+    etat.suivant();
+    expect(etat.liste.publie).toBe(encorePlusRecente.publie);
+  });
+
+  it('une liste plus ancienne posée pendant qu’une liste téléchargée attend : l’attente est adoptée au mot suivant', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '' });
+    etat.proposerListe(listePlusRecente);
+    etat.remplacerListe({ ...embarquee, mots: embarquee.mots.filter((m) => m.id !== 'a3') });
+    expect(etat.liste.publie).toBe(embarquee.publie);
+    etat.suivant();
+    expect(etat.liste.publie).toBe(listePlusRecente.publie);
+  });
+
   it('ferme la fiche ouverte quand son mot disparaît, la garde sinon', async () => {
     poserStockage();
     const { etat } = await lancer();
