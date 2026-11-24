@@ -9,7 +9,7 @@ import type { Mot } from './types';
 export function prochainMot(complets: Mot[], progres: Progres, seance: string[], alea: () => number): Mot | null {
   const dejaMontres = new Set(seance);
   const hors = complets.filter((m) => !dejaMontres.has(m.id));
-  const neufs = hors.filter((m) => !(m.id in progres));
+  const neufs = hors.filter((m) => !Object.hasOwn(progres, m.id));
   if (neufs.length > 0) return neufs[Math.min(Math.floor(alea() * neufs.length), neufs.length - 1)] ?? null;
   let plusAncien: Mot | null = null;
   let dateAncien = '';
