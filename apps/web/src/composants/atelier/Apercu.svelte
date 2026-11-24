@@ -68,4 +68,15 @@
       max-width: 312px;
     }
   }
+
+  /* Plus étroite encore : la fiche, à sa largeur, garde la place de ses boutons. */
+  @media (max-width: 1100px) {
+    .cadre {
+      zoom: 0.7;
+    }
+
+    .note {
+      max-width: 273px;
+    }
+  }
 </style>

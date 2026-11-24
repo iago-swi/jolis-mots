@@ -68,71 +68,79 @@
     <p class="aucune">Choisis un mot dans la liste, ou crée-en un.</p>
   {:else}
     {@const b = atelier.brouillon}
-    <div class="rangee trois">
-      <div class="champ">
-        <label for="f-mot">Mot</label>
-        <input id="f-mot" type="text" autocomplete="off" value={b.mot} oninput={(e) => atelier.saisirMot(e.currentTarget.value)} />
+    <!-- Les champs défilent ; la case et les boutons restent en bas, toujours visibles. -->
+    <div class="champs">
+      <div class="rangee trois">
+        <div class="champ">
+          <label for="f-mot">Mot</label>
+          <input id="f-mot" type="text" autocomplete="off" value={b.mot} oninput={(e) => atelier.saisirMot(e.currentTarget.value)} />
+        </div>
+        <div class="champ">
+          <label for="f-tri">Tri</label>
+          <input id="f-tri" type="text" autocomplete="off" spellcheck="false" value={b.tri} oninput={(e) => atelier.saisirTri(e.currentTarget.value)} />
+        </div>
+        <div class="champ">
+          <label for="f-genre">Genre</label>
+          <input id="f-genre" type="text" autocomplete="off" spellcheck="false" list="f-genres" value={b.genre} oninput={(e) => poser('genre', e.currentTarget.value)} />
+          <datalist id="f-genres">
+            {#each genres as g (g)}<option value={g}></option>{/each}
+          </datalist>
+        </div>
       </div>
-      <div class="champ">
-        <label for="f-tri">Tri</label>
-        <input id="f-tri" type="text" autocomplete="off" spellcheck="false" value={b.tri} oninput={(e) => atelier.saisirTri(e.currentTarget.value)} />
+
+      {#if avertissements.length > 0}
+        <div class="avertissements" role="status">
+          {#each avertissements as phrase (phrase)}<p>{phrase}</p>{/each}
+        </div>
+      {/if}
+
+      <div class="champ definition">
+        <div class="tete">
+          <label for="f-def">Définition</label>
+          <span class="aide" id="f-def-aide">Tes balises habituelles : 1. 2. · [Litt.] · EX: · SYN: · US:</span>
+        </div>
+        <textarea id="f-def" rows="9" aria-describedby="f-def-aide" value={b.definition} oninput={(e) => poser('definition', e.currentTarget.value)}></textarea>
       </div>
+
       <div class="champ">
-        <label for="f-genre">Genre</label>
-        <input id="f-genre" type="text" autocomplete="off" spellcheck="false" list="f-genres" value={b.genre} oninput={(e) => poser('genre', e.currentTarget.value)} />
-        <datalist id="f-genres">
-          {#each genres as g (g)}<option value={g}></option>{/each}
-        </datalist>
+        <div class="tete">
+          <label for="f-source">Source</label>
+          <span class="aide" id="f-source-aide">Une ligne par livre : Auteur: Titre (page)</span>
+        </div>
+        <textarea id="f-source" rows="2" aria-describedby="f-source-aide" value={texteSources} oninput={(e) => saisirSources(e.currentTarget.value)}></textarea>
       </div>
+
+      <div class="rangee deux">
+        <div class="champ">
+          <div class="tete">
+            <label for="f-note">Note</label>
+            <span class="aide" id="f-note-aide">Pour marquer les plus intéressants</span>
+          </div>
+          <input id="f-note" type="text" autocomplete="off" aria-describedby="f-note-aide" value={b.note} oninput={(e) => poser('note', e.currentTarget.value)} />
+        </div>
+        <div class="champ">
+          <div class="tete"><label for="f-util">Utilisé dans mes livres</label></div>
+          <input id="f-util" type="text" autocomplete="off" value={b.util} oninput={(e) => poser('util', e.currentTarget.value)} />
+        </div>
+      </div>
+
     </div>
 
-    {#if avertissements.length > 0}
-      <div class="avertissements" role="status">
-        {#each avertissements as phrase (phrase)}<p>{phrase}</p>{/each}
+    <div class="pied">
+      <div class="ligne">
+        <label class="case">
+          <input type="checkbox" checked={b.aCompleter} onchange={(e) => poser('aCompleter', e.currentTarget.checked)} />
+          <span>À compléter</span>
+        </label>
+        <button class="enregistrer" disabled={b.mot.trim() === '' || !atelier.modifiee} onclick={enregistrer}>Enregistrer</button>
       </div>
-    {/if}
-
-    <div class="champ">
-      <div class="tete">
-        <label for="f-def">Définition</label>
-        <span class="aide" id="f-def-aide">Tes balises habituelles : 1. 2. · [Litt.] · EX: · SYN: · US:</span>
-      </div>
-      <textarea id="f-def" rows="9" aria-describedby="f-def-aide" value={b.definition} oninput={(e) => poser('definition', e.currentTarget.value)}></textarea>
-    </div>
-
-    <div class="champ">
-      <div class="tete">
-        <label for="f-source">Source</label>
-        <span class="aide" id="f-source-aide">Une ligne par livre : Auteur: Titre (page)</span>
-      </div>
-      <textarea id="f-source" rows="2" aria-describedby="f-source-aide" value={texteSources} oninput={(e) => saisirSources(e.currentTarget.value)}></textarea>
-    </div>
-
-    <div class="rangee deux">
-      <div class="champ">
-        <label for="f-note">Note</label>
-        <input id="f-note" type="text" autocomplete="off" placeholder="Pour marquer les plus intéressants" value={b.note} oninput={(e) => poser('note', e.currentTarget.value)} />
-      </div>
-      <div class="champ">
-        <label for="f-util">Utilisé dans mes livres</label>
-        <input id="f-util" type="text" autocomplete="off" value={b.util} oninput={(e) => poser('util', e.currentTarget.value)} />
-      </div>
-    </div>
-
-    <label class="case">
-      <input type="checkbox" checked={b.aCompleter} onchange={(e) => poser('aCompleter', e.currentTarget.checked)} />
-      <span>À compléter</span>
-    </label>
-
-    <div class="actions">
-      <div class="secondaires">
+      <div class="ligne secondaires">
         <button class="cnrtl" disabled={b.tri.trim() === ''} onclick={ouvrirCnrtl}>
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5h6v6M19 5l-8 8M10 6H6v12h12v-4"></path></svg>
           <span>Ouvrir dans le CNRTL</span>
         </button>
         <button class="supprimer" disabled={!enregistre} onclick={() => atelier.demanderSuppression()}>Supprimer ce mot</button>
       </div>
-      <button class="enregistrer" disabled={b.mot.trim() === ''} onclick={enregistrer}>Enregistrer</button>
     </div>
   {/if}
 </section>
@@ -140,18 +148,63 @@
 <style>
   .fiche-atelier {
     min-height: 0;
+    border-left: 1px solid var(--filet);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .champs {
+    flex-grow: 1;
+    min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 28px 36px;
-    border-left: 1px solid var(--filet);
+    padding: 28px 36px 24px;
     display: flex;
     flex-direction: column;
     gap: 18px;
   }
 
+  /* La définition prend la hauteur qui reste ; plus longue, elle grandit et les champs défilent. */
+  .definition {
+    flex: 1 0 auto;
+  }
+
+  .definition textarea {
+    flex-grow: 1;
+  }
+
+  /* Comme la barre d'actions de l'écran Mot : un filet, puis les boutons, hors du défilement. */
+  .pied {
+    flex-shrink: 0;
+    padding: 10px 36px 14px;
+    border-top: 1px solid var(--filet);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ligne {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px 12px;
+  }
+
+  .secondaires {
+    justify-content: flex-start;
+  }
+
+  @media (max-width: 1180px) {
+    .champs,
+    .pied {
+      padding-inline: 24px;
+    }
+  }
+
   .aucune {
     margin: 0;
-    padding-top: 12px;
+    padding: 40px 36px 0;
     font-size: 20px;
     font-style: italic;
     color: var(--second);
@@ -265,7 +318,6 @@
   }
 
   .case {
-    align-self: flex-start;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -286,20 +338,6 @@
     color: var(--encre);
   }
 
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .secondaires {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
   button {
     height: 44px;
     font-size: 18px;
@@ -312,7 +350,7 @@
   }
 
   .cnrtl {
-    padding: 0 20px;
+    padding: 0 16px;
     border: 1px solid var(--encre);
     border-radius: 22px;
     background: transparent;
@@ -323,7 +361,7 @@
   }
 
   .supprimer {
-    padding: 0 12px;
+    padding: 0 6px;
     border: none;
     background: transparent;
     color: var(--second);

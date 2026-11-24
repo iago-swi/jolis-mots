@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { untrack } from 'svelte';
   import { atelier as instance } from '../atelier.svelte';
   import Apercu from '../composants/atelier/Apercu.svelte';
   import FicheAtelier from '../composants/atelier/FicheAtelier.svelte';
@@ -15,12 +15,28 @@
     atelier.demande?.genre === 'supprimer' ? (etat.liste.mots.find((m) => m.id === atelier.brouillon?.id) ?? null) : null,
   );
 
-  /** Une fiche vide, le curseur dans le champ Mot (après la question, s'il a fallu la poser). */
-  async function nouveau(): Promise<void> {
-    atelier.nouveau();
-    if (atelier.demande !== null) return;
-    await tick();
-    document.getElementById('f-mot')?.focus();
+  /**
+   * Place le curseur sur l'élément `id`, après que la question qui se ferme a rendu le curseur
+   * à son bouton (voir `volet`) : la tâche suivante passe après ses micro-tâches.
+   */
+  function placerCurseur(id: string): void {
+    setTimeout(() => document.getElementById(id)?.focus());
+  }
+
+  // Chaque fois qu'une fiche nouvelle s'ouvre, directement ou après « Quitter la fiche » : le curseur dans Mot.
+  let ficheOuverte: string | undefined;
+  $effect(() => {
+    const id = atelier.brouillon?.id;
+    if (id === ficheOuverte) return;
+    ficheOuverte = id;
+    if (id !== undefined && untrack(() => !etat.liste.mots.some((m) => m.id === id))) placerCurseur('f-mot');
+  });
+
+  /** Oui à la question ; après une suppression faite, la fiche disparaît : le curseur va à la recherche. */
+  async function confirmer(): Promise<void> {
+    const supprimer = atelier.demande?.genre === 'supprimer';
+    await atelier.confirmer();
+    if (supprimer && atelier.brouillon === null) placerCurseur('atelier-recherche');
   }
 </script>
 
@@ -31,7 +47,7 @@
   </header>
 
   <div class="colonnes" inert={atelier.demande !== null}>
-    <ListeMots {atelier} onnouveau={nouveau} />
+    <ListeMots {atelier} onnouveau={() => atelier.nouveau()} />
     <FicheAtelier {atelier} />
     <Apercu mot={atelier.brouillon} />
   </div>
@@ -42,13 +58,13 @@
         {#if atelier.demande.genre === 'quitter'}
           <p id="question-atelier">Quitter cette fiche sans l’enregistrer ?</p>
           <div class="boutons">
-            <button class="danger" onclick={() => atelier.confirmer()}>Quitter la fiche</button>
+            <button class="danger" onclick={confirmer}>Quitter la fiche</button>
             <button data-depart onclick={() => atelier.annuler()}>Rester</button>
           </div>
         {:else}
           <p id="question-atelier">Supprimer « {aSupprimer?.mot ?? atelier.brouillon?.mot} » ?</p>
           <div class="boutons">
-            <button class="danger" onclick={() => atelier.confirmer()}>Supprimer</button>
+            <button class="danger" onclick={confirmer}>Supprimer</button>
             <button data-depart onclick={() => atelier.annuler()}>Annuler</button>
           </div>
         {/if}
@@ -85,7 +101,7 @@
     flex-grow: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: clamp(260px, 25vw, 340px) minmax(0, 1fr) auto;
+    grid-template-columns: clamp(240px, 24vw, 340px) minmax(0, 1fr) auto;
   }
 
   /* Des barres de défilement fines, aux couleurs de la palette. */

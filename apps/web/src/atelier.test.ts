@@ -602,6 +602,51 @@ describe('la fiche en cours de saisie', () => {
     expect(atelier.modifiee).toBe(false);
   });
 
+  it('une question ouverte retient le changement d’onglet et reste telle quelle', async () => {
+    const { etat, atelier } = await demarrerSur(new FauxPont(ecrireFichier(locale)));
+    etat.allerA('atelier');
+    atelier.choisir(fiche.id);
+    atelier.demanderSuppression();
+    etat.allerA('recueil');
+    expect(etat.ecran).toBe('atelier');
+    expect(atelier.demande?.genre).toBe('supprimer');
+
+    atelier.annuler();
+    atelier.saisirMot('Vénustissime');
+    atelier.demanderSuppression();
+    etat.allerA('quiz');
+    expect(etat.ecran).toBe('atelier');
+    expect(atelier.demande?.genre).toBe('supprimer');
+    atelier.annuler();
+    atelier.choisir('bbbbb1');
+    expect(atelier.demande?.genre).toBe('quitter');
+    etat.allerA('quiz');
+    atelier.confirmer();
+    expect(etat.ecran).toBe('atelier');
+    expect(atelier.brouillon!.id).toBe('bbbbb1');
+  });
+
+  it('confirmer rend une promesse tenue une fois la suppression faite', async () => {
+    const { etat, atelier } = await demarrerSur(new FauxPont(ecrireFichier(locale)));
+    atelier.choisir(fiche.id);
+    atelier.demanderSuppression();
+    await atelier.confirmer();
+    expect(etat.liste.mots.some((m) => m.id === fiche.id)).toBe(false);
+    expect(atelier.brouillon).toBeNull();
+  });
+
+  it('enregistrer une fiche que rien n’a changée n’appelle pas le pont', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    expect(await atelier.enregistrerBrouillon()).toBe(true);
+    expect(faux.appels).not.toContain('enregistrer');
+    atelier.brouillon!.note = 'XX';
+    expect(await atelier.enregistrerBrouillon()).toBe(true);
+    expect(await atelier.enregistrerBrouillon()).toBe(true);
+    expect(faux.enregistre).toHaveLength(1);
+  });
+
   it('la définition du brouillon arrive à pont.enregistrer au caractère près', async () => {
     const faux = new FauxPont(ecrireFichier(locale));
     const { etat, atelier } = await demarrerSur(faux);

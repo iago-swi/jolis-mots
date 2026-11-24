@@ -51,7 +51,8 @@ const ECHECS_D_ENVOI: Record<Exclude<RaisonDepot, 'pret'>, Avis> = {
 /** Une confirmation en attente : quitter une fiche modifiée, ou supprimer un mot. */
 export interface Demande {
   genre: 'quitter' | 'supprimer';
-  suite: () => void;
+  /** Ce que fait le oui ; une promesse quand il écrit (la suppression). */
+  suite: () => void | Promise<unknown>;
 }
 
 const AUCUNE: Modifications = { ajoutes: 0, modifies: 0, supprimes: 0, total: 0 };
@@ -297,8 +298,12 @@ export class Atelier {
     else suite();
   }
 
-  /** Pour `etat.allerA` : retient la sortie de l'écran quand la fiche est modifiée. */
+  /**
+   * Pour `etat.allerA` : retient la sortie de l'écran tant qu'une question est ouverte (elle reste
+   * telle quelle), ou quand la fiche est modifiée (la question est posée).
+   */
   private retenir(suite: () => void): boolean {
+    if (this.demande !== null) return true;
     if (!this.modifiee) return false;
     this.demande = { genre: 'quitter', suite };
     return true;
@@ -336,6 +341,8 @@ export class Atelier {
    */
   async enregistrerBrouillon(): Promise<boolean> {
     if (this.brouillon === null || this.brouillon.mot.trim() === '') return false;
+    // Rien de changé : rien à écrire.
+    if (!this.modifiee) return true;
     const envoye = ranger(this.brouillon);
     const fiche = envoye.tri.trim() === '' ? { ...envoye, tri: proposerTri(envoye.mot) } : envoye;
     if (!(await this.enregistrer(fiche))) return false;
@@ -352,7 +359,7 @@ export class Atelier {
     if (origine === null) return;
     this.demande = {
       genre: 'supprimer',
-      suite: () => {
+      suite: () =>
         this.supprimer(origine.id)
           .then((fait) => {
             if (fait && this.brouillon?.id === origine.id) {
@@ -360,21 +367,23 @@ export class Atelier {
               this.origine = null;
             }
           })
-          .catch(() => undefined);
-      },
+          .catch(() => undefined),
     };
   }
 
-  /** Répond oui à la question : la fiche modifiée est abandonnée avant de quitter. */
-  confirmer(): void {
+  /**
+   * Répond oui à la question : la fiche modifiée est abandonnée avant de quitter. La promesse est
+   * tenue quand la suite est faite (la suppression écrite, ou non).
+   */
+  confirmer(): Promise<void> {
     const d = this.demande;
-    if (d === null) return;
+    if (d === null) return Promise.resolve();
     this.demande = null;
     if (d.genre === 'quitter') {
       if (this.origine === null) this.brouillon = null;
       else this.ouvrir(this.origine, this.origine);
     }
-    d.suite();
+    return Promise.resolve(d.suite()).then(() => undefined);
   }
 
   annuler(): void {
