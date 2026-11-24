@@ -1,0 +1,9 @@
+{
+  "name": "@jolis-mots/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@jolis-mots/core": "*"
+  }
+}

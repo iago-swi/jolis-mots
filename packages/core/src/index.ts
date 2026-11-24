@@ -14,3 +14,4 @@ export * from './stockage';
 export * from './miseAJour';
 export * from './atelier';
 export * from './envoi';
+export * from './pont';
