@@ -19,3 +19,6 @@ Thumbs.db
 
 # Projet Android généré par Capacitor
 apps/android/android/
+
+# Dossier laissé par un outil de test
+.playwright-mcp/

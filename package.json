@@ -15,11 +15,13 @@
     "build:android": "npm run build && npm run sync -w @jolis-mots/android",
     "package:android": "npm run build:android && npm run apk -w @jolis-mots/android",
     "check": "npm run typecheck && npm run build",
-    "import": "python -I tools/import/extraire.py vocabulaire.xlsx tools/import/sortie/lignes.json && tsx tools/import/importer.ts"
+    "import": "python -I tools/import/extraire.py vocabulaire.xlsx tools/import/sortie/lignes.json && tsx tools/import/importer.ts",
+    "captures": "node scripts/captures.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/node": "^26.2.0",
+    "sharp": "^0.35.3",
     "svelte": "^5.56.10",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
