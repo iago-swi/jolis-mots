@@ -1,9 +1,66 @@
 {
   "name": "@jolis-mots/desktop",
   "version": "0.1.0",
+  "productName": "Jolis Mots",
   "private": true,
   "type": "module",
+  "description": "Jolis Mots — des mots français rares",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "electron .",
+    "package": "electron-builder --win --publish never",
+    "icons": "node make-icons.mjs"
+  },
   "dependencies": {
     "@jolis-mots/core": "*"
-  }
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.25.0",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.3"
+  },
+  "build": {
+    "appId": "ch.noth.jolismots",
+    "productName": "Jolis Mots",
+    "electronVersion": "45.4.1",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Jolis Mots",
+      "artifactName": "${productName}-${version}-setup.${ext}"
+    },
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    }
+  },
+  "author": "Philippe Noth"
 }
