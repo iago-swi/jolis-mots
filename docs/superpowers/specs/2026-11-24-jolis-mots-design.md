@@ -94,7 +94,7 @@ L'application a trois écrans sur le téléphone (Mot, Quiz, Recueil), reliés p
 
 L'application s'ouvre directement ici, sur un mot.
 
-La fiche montre, de haut en bas : la nature du mot en toutes lettres (section 6.6), le mot en grand, puis chaque sens avec son numéro, son indication (littéraire, figuré…), son texte, ses synonymes et son exemple en italique entre guillemets. En bas, sous le titre « Rencontré chez », la liste des sources : auteur, titre en italique, page.
+La fiche montre, de haut en bas : la nature du mot en toutes lettres (section 6.6), le mot en grand, puis chaque sens avec son numéro, son indication (littéraire, figuré…), son texte, ses synonymes et son exemple en italique entre guillemets. En bas, sous le titre « Rencontré chez », la liste des sources : auteur, titre en italique, page. Le mot est composé à une seule grande taille ; une expression passe à la ligne entre ses mots. Seul un mot d'un seul tenant trop long pour une ligne prend une seconde taille, plus petite : deux tailles, jamais un dégradé (décidé par Philippe pour la 1.0.0).
 
 - Seuls les mots **complets** apparaissent sur les écrans Mot, Quiz et Recueil. Un mot est complet quand sa définition est remplie et qu'il n'est pas marqué « à compléter » (section 6.1).
 - **Mot suivant** passe au mot suivant ; un glissement vers la gauche fait de même, vers la droite revient au mot précédent, parmi ceux montrés depuis l'ouverture de l'application.

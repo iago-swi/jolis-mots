@@ -102,7 +102,7 @@
 
   .mot {
     margin-top: -8px;
-    line-height: 1;
+    line-height: 1.08;
     font-weight: 500;
     letter-spacing: -0.01em;
     overflow-wrap: anywhere;
