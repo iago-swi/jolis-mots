@@ -5,12 +5,15 @@ import {
   ecrireFichier,
   messageDEnvoi,
   nettoyerFiche,
+  nouvelleFiche,
   poserFiche,
+  proposerTri,
   retirerFiche,
   validerFichier,
   validerPourEnvoi,
   type EtatDepot,
   type FichierMots,
+  type FiltreAtelier,
   type Modifications,
   type Mot,
   type PontBureau,
@@ -45,6 +48,12 @@ const ECHECS_D_ENVOI: Record<Exclude<RaisonDepot, 'pret'>, Avis> = {
   'sans-git': SANS_GIT,
 };
 
+/** Une confirmation en attente : quitter une fiche modifiée, ou supprimer un mot. */
+export interface Demande {
+  genre: 'quitter' | 'supprimer';
+  suite: () => void;
+}
+
 const AUCUNE: Modifications = { ajoutes: 0, modifies: 0, supprimes: 0, total: 0 };
 
 /** Le texte d'un mots.json, s'il se lit et a la bonne forme ; sinon null. */
@@ -72,6 +81,16 @@ function ranger(m: Mot): Mot {
   };
 }
 
+/** Les deux fiches portent les mêmes champs, au caractère près. */
+function memesFiches(a: Mot, b: Mot): boolean {
+  return JSON.stringify(ranger(a)) === JSON.stringify(ranger(b));
+}
+
+/** Une fiche nouvelle a du texte dans au moins un champ. */
+function aDuTexte(m: Mot): boolean {
+  return [m.mot, m.tri, m.genre, m.definition, m.note, m.util].some((t) => t !== '') || m.sources.length > 0;
+}
+
 /**
  * L'atelier, sur bureau : la copie locale des mots (lue et écrite par le pont), le compteur
  * de modifications et les avis. La liste de travail est `etat.liste`, que lisent aussi les écrans
@@ -97,10 +116,32 @@ export class Atelier {
     this.disponible ? compterModifications(this.envoyee?.mots ?? [], etat.liste.mots) : AUCUNE,
   );
 
+  /** Filtre et recherche de la liste de l'atelier. */
+  filtre = $state<FiltreAtelier>('tous');
+  requete = $state('');
+  /** La fiche en cours de saisie ; null quand aucun mot n'est choisi. */
+  brouillon = $state<Mot | null>(null);
+  /** Confirmation en attente. */
+  demande = $state<Demande | null>(null);
+  /** Le mot tel qu'il est enregistré ; null pour un mot nouveau. */
+  private origine = $state.raw<Mot | null>(null);
+  /** Le Tri suit la proposition tirée du Mot. */
+  private triSuit = false;
+
+  /** Le brouillon diffère du mot enregistré, ou c'est un mot nouveau qui a du texte. */
+  readonly modifiee: boolean = $derived.by(() => {
+    const b = this.brouillon;
+    if (b === null) return false;
+    return this.origine === null ? aDuTexte(b) : !memesFiches(b, this.origine);
+  });
+
   private file: Promise<unknown> = Promise.resolve();
   private enCours = 0;
 
-  constructor(private readonly pont: PontBureau) {}
+  constructor(private readonly pont: PontBureau) {
+    // Changer d'onglet avec une fiche modifiée pose la question de l'atelier.
+    etat.retenirSortie = (suite) => this.retenir(suite);
+  }
 
   /** Met `operation` à la suite des autres ; `occupe` reste vrai tant qu'il en reste. */
   private enFile<T>(operation: () => Promise<T>): Promise<T> {
@@ -156,7 +197,7 @@ export class Atelier {
       // Pas d'alarme pendant la première synchronisation : elle va peut-être télécharger la copie.
       this.avis = this.illisible ? ILLISIBLE : null;
     });
-    void this.reessayer();
+    this.reessayer().catch(() => undefined);
   }
 
   /** Synchronise : télécharge la copie si elle manque, sinon va voir la liste en ligne. */
@@ -179,7 +220,15 @@ export class Atelier {
 
   /** Enregistre la fiche (Mot et Tri sans espaces aux bords, le reste tel quel). */
   enregistrer(f: Mot): Promise<boolean> {
-    const fiche = ranger(nettoyerFiche(f));
+    let fiche: Mot;
+    try {
+      fiche = ranger(nettoyerFiche(f));
+    } catch {
+      return this.enFile(async () => {
+        if (this.disponible) this.avis = NON_ENREGISTREE;
+        return false;
+      });
+    }
     return this.enFile(async () => {
       if (!this.disponible) return false;
       return this.ecrire({ ...etat.liste, mots: poserFiche(etat.liste.mots, fiche) });
@@ -233,6 +282,103 @@ export class Atelier {
   /** Un identifiant que ne porte aucun mot, ni ici ni dans la liste envoyée. */
   idNeuf(): string {
     return creerIdUnique([...etat.liste.mots, ...(this.envoyee?.mots ?? [])].map((m) => m.id));
+  }
+
+  /** Ouvre une fiche : `origine` est le mot enregistré (null pour un mot nouveau), `brouillon` ce qu'on saisit. */
+  private ouvrir(origine: Mot | null, brouillon: Mot): void {
+    this.origine = origine;
+    this.brouillon = { ...brouillon, sources: [...brouillon.sources] };
+    this.triSuit = origine === null || origine.tri === proposerTri(origine.mot);
+  }
+
+  /** Fait `suite` tout de suite, ou après la question si la fiche est modifiée. */
+  private apresQuestion(suite: () => void): void {
+    if (this.modifiee) this.demande = { genre: 'quitter', suite };
+    else suite();
+  }
+
+  /** Pour `etat.allerA` : retient la sortie de l'écran quand la fiche est modifiée. */
+  private retenir(suite: () => void): boolean {
+    if (!this.modifiee) return false;
+    this.demande = { genre: 'quitter', suite };
+    return true;
+  }
+
+  /** Ouvre le mot `id` dans la fiche. */
+  choisir(id: string): void {
+    if (this.brouillon?.id === id) return;
+    this.apresQuestion(() => {
+      const m = etat.liste.mots.find((x) => x.id === id);
+      if (m !== undefined) this.ouvrir(m, m);
+    });
+  }
+
+  /** Une fiche vide, « À compléter » cochée. */
+  nouveau(): void {
+    this.apresQuestion(() => this.ouvrir(null, nouvelleFiche(this.idNeuf())));
+  }
+
+  saisirMot(texte: string): void {
+    if (this.brouillon === null) return;
+    this.brouillon.mot = texte;
+    if (this.triSuit) this.brouillon.tri = proposerTri(texte);
+  }
+
+  saisirTri(texte: string): void {
+    if (this.brouillon === null) return;
+    this.brouillon.tri = texte;
+    this.triSuit = false;
+  }
+
+  /**
+   * Enregistre le brouillon ; un Tri vide reçoit la proposition. Une fois écrit, le brouillon devient
+   * la fiche enregistrée, sauf si une frappe l'a changé entre-temps.
+   */
+  async enregistrerBrouillon(): Promise<boolean> {
+    if (this.brouillon === null || this.brouillon.mot.trim() === '') return false;
+    const envoye = ranger(this.brouillon);
+    const fiche = envoye.tri.trim() === '' ? { ...envoye, tri: proposerTri(envoye.mot) } : envoye;
+    if (!(await this.enregistrer(fiche))) return false;
+    const enregistree = etat.liste.mots.find((m) => m.id === fiche.id);
+    if (enregistree === undefined || this.brouillon?.id !== fiche.id) return true;
+    if (memesFiches(this.brouillon, envoye)) this.ouvrir(enregistree, enregistree);
+    else this.origine = enregistree;
+    return true;
+  }
+
+  /** Demande confirmation avant de supprimer le mot choisi (un mot jamais enregistré n'a rien à supprimer). */
+  demanderSuppression(): void {
+    const origine = this.origine;
+    if (origine === null) return;
+    this.demande = {
+      genre: 'supprimer',
+      suite: () => {
+        this.supprimer(origine.id)
+          .then((fait) => {
+            if (fait && this.brouillon?.id === origine.id) {
+              this.brouillon = null;
+              this.origine = null;
+            }
+          })
+          .catch(() => undefined);
+      },
+    };
+  }
+
+  /** Répond oui à la question : la fiche modifiée est abandonnée avant de quitter. */
+  confirmer(): void {
+    const d = this.demande;
+    if (d === null) return;
+    this.demande = null;
+    if (d.genre === 'quitter') {
+      if (this.origine === null) this.brouillon = null;
+      else this.ouvrir(this.origine, this.origine);
+    }
+    d.suite();
+  }
+
+  annuler(): void {
+    this.demande = null;
   }
 }
 

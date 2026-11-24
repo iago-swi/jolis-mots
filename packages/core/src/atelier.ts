@@ -68,13 +68,18 @@ export function compterFiltres(mots: Mot[]): Record<FiltreAtelier, number> {
   };
 }
 
-/** Les mots à montrer dans la liste de l'atelier, dans l'ordre du fichier (groupes entiers pour les doublons). */
+/**
+ * Les mots à montrer dans la liste de l'atelier, dans l'ordre du fichier. Pour les doublons, les groupes
+ * restent entiers : un groupe est montré dès qu'un de ses mots répond à la recherche, pour comparer ses mots.
+ */
 export function listerAtelier(mots: Mot[], a: { filtre: FiltreAtelier; requete: string }): Mot[] {
   const requete = normaliser(a.requete.trim());
   const retenu = (m: Mot) => requete === '' || normaliser(m.mot).includes(requete) || normaliser(m.tri).includes(requete);
   switch (a.filtre) {
     case 'doublons':
-      return groupesDeDoublons(mots).flat().filter(retenu);
+      return groupesDeDoublons(mots)
+        .filter((g) => g.some(retenu))
+        .flat();
     case 'complets':
       return mots.filter((m) => estComplet(m) && retenu(m)).sort(comparerMots);
     case 'aCompleter':

@@ -194,7 +194,18 @@ class Etat {
     ecrire(CLES.progres, this.progres);
   }
 
+  /**
+   * Posé par l'atelier : appelé avant de quitter son écran. Rend vrai s'il retient la sortie
+   * (une fiche modifiée : il pose la question, puis appelle `suite` si on quitte quand même).
+   */
+  retenirSortie: ((suite: () => void) => boolean) | null = null;
+
   allerA(e: Ecran): void {
+    if (this.ecran === 'atelier' && e !== 'atelier' && this.retenirSortie?.(() => this.allerA(e))) {
+      // L'adresse a pu changer (retour du navigateur) : elle revient à l'atelier.
+      if (typeof location !== 'undefined' && ecranDeLAdresse(location.hash) !== 'atelier') location.hash = 'atelier';
+      return;
+    }
     if (e === 'reglages' && this.ecran !== 'reglages') this.ecranAvantReglages = this.ecran;
     this.ecran = e;
     if (typeof location !== 'undefined' && ecranDeLAdresse(location.hash) !== e) location.hash = e;

@@ -235,6 +235,31 @@ describe('le démarrage', () => {
     expect(remplacer).not.toHaveBeenCalled();
   });
 
+  it('une synchronisation qui lève une erreur après coup ne laisse pas de rejet sans prise', async () => {
+    let lacher!: () => void;
+    const faux = new FauxPont(ecrireFichier(locale));
+    faux.retenue = new Promise((r) => (lacher = r));
+    faux.enLigne = ecrireFichier({ ...locale, publie: '2026-11-23T08:00:00Z' });
+    const { etat, Atelier } = await lancer();
+    const atelier = new Atelier(faux);
+    await atelier.demarrer();
+    const remplacer = vi.spyOn(etat, 'remplacerListe').mockImplementation(() => {
+      throw new Error('écran tombé');
+    });
+    const sansPrise = vi.fn();
+    process.on('unhandledRejection', sansPrise);
+    try {
+      lacher();
+      await laisserFinir();
+      await laisserFinir();
+    } finally {
+      process.off('unhandledRejection', sansPrise);
+    }
+    expect(remplacer).toHaveBeenCalled();
+    expect(sansPrise).not.toHaveBeenCalled();
+    expect(atelier.occupe).toBe(false);
+  });
+
   it('un pont qui rejette ne fait pas tomber le démarrage', async () => {
     const faux = new FauxPont(ecrireFichier(locale));
     faux.pannes.ouvrir = 'rejet';
@@ -323,6 +348,14 @@ describe('enregistrer et supprimer', () => {
     expect(etat.liste.mots.find((m) => m.id === fiche.id)!.definition).toBe('  1. Texte \n');
     expect(atelier.modifications.total).toBe(1);
     expect(atelier.avis).toBeNull();
+  });
+
+  it('une fiche qu’on ne peut préparer : faux et l’avis, sans lever d’erreur', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    await expect(atelier.enregistrer({ ...fiche, sources: undefined } as unknown as Mot)).resolves.toBe(false);
+    expect(faux.enregistre).toHaveLength(0);
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: ENREGISTREMENT });
   });
 
   it('les champs de la fiche sont écrits dans l’ordre du fichier, sans rien d’autre', async () => {
@@ -435,4 +468,181 @@ describe('envoyer', () => {
       expect(atelier.disponible).toBe(true);
     });
   }
+});
+
+describe('la fiche en cours de saisie', () => {
+  const ambages = mot('amb000', { mot: 'Sans ambages', tri: 'ambage', genre: 'loc. adv.' });
+  const avecAmbages: FichierMots = { ...locale, mots: [...locale.mots, ambages] };
+
+  it('nouveau : brouillon vide, à compléter ; le Tri suit le Mot tant qu’on ne le touche pas', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(locale)));
+    atelier.nouveau();
+    expect(atelier.brouillon).toMatchObject({ mot: '', tri: '', definition: '', sources: [], aCompleter: true });
+    expect(locale.mots.some((m) => m.id === atelier.brouillon!.id)).toBe(false);
+    atelier.saisirMot("S'abolir");
+    expect(atelier.brouillon!.tri).toBe('abolir');
+    atelier.saisirTri('abol');
+    atelier.saisirMot("S'abolir encore");
+    expect(atelier.brouillon!.tri).toBe('abol');
+  });
+
+  it('un mot enregistré dont le Tri n’est pas la proposition ne suit pas ; celui qui l’est suit', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAmbages)));
+    atelier.choisir(ambages.id);
+    atelier.saisirMot('Sans ambages ni détours');
+    expect(atelier.brouillon!.tri).toBe('ambage');
+
+    atelier.saisirMot('Sans ambages');
+    atelier.choisir(fiche.id);
+    expect(atelier.demande).toBeNull();
+    atelier.saisirMot('Vénustes');
+    expect(atelier.brouillon!.tri).toBe('vénustes');
+  });
+
+  it('modifiee : faux après choisir, vrai après une frappe, faux une fois le texte remis', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(locale)));
+    expect(atelier.modifiee).toBe(false);
+    atelier.choisir(fiche.id);
+    expect(atelier.brouillon).toEqual(fiche);
+    expect(atelier.modifiee).toBe(false);
+    atelier.brouillon!.definition += ' Et du charme.';
+    expect(atelier.modifiee).toBe(true);
+    atelier.brouillon!.definition = fiche.definition;
+    expect(atelier.modifiee).toBe(false);
+    atelier.brouillon!.sources = ['Sylvain Tesson: Géographie de l’instant (301)'];
+    expect(atelier.modifiee).toBe(true);
+    atelier.brouillon!.sources = [];
+    atelier.brouillon!.aCompleter = true;
+    expect(atelier.modifiee).toBe(true);
+  });
+
+  it('un mot nouveau est modifié dès qu’il a du texte, pas avant', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(locale)));
+    atelier.nouveau();
+    expect(atelier.modifiee).toBe(false);
+    atelier.brouillon!.aCompleter = false;
+    expect(atelier.modifiee).toBe(false);
+    atelier.brouillon!.note = 'XX';
+    expect(atelier.modifiee).toBe(true);
+  });
+
+  it('choisir un autre mot avec une fiche modifiée : la question, puis annuler garde le brouillon', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(locale)));
+    atelier.choisir(fiche.id);
+    atelier.saisirMot('Vénustissime');
+    atelier.choisir('bbbbb1');
+    expect(atelier.demande?.genre).toBe('quitter');
+    expect(atelier.brouillon!.mot).toBe('Vénustissime');
+    atelier.annuler();
+    expect(atelier.demande).toBeNull();
+    expect(atelier.brouillon!.mot).toBe('Vénustissime');
+    expect(atelier.modifiee).toBe(true);
+  });
+
+  it('confirmer abandonne le brouillon et ouvre l’autre mot', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { etat, atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    atelier.saisirMot('Vénustissime');
+    atelier.choisir('bbbbb1');
+    atelier.confirmer();
+    expect(atelier.demande).toBeNull();
+    expect(atelier.brouillon!.id).toBe('bbbbb1');
+    expect(atelier.modifiee).toBe(false);
+    expect(etat.liste.mots.find((m) => m.id === fiche.id)!.mot).toBe('Vénuste');
+    expect(faux.enregistre).toHaveLength(0);
+  });
+
+  it('nouveau avec une fiche modifiée pose aussi la question', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(locale)));
+    atelier.choisir(fiche.id);
+    atelier.saisirMot('Vénustissime');
+    atelier.nouveau();
+    expect(atelier.demande?.genre).toBe('quitter');
+    atelier.confirmer();
+    expect(atelier.brouillon).toMatchObject({ mot: '', aCompleter: true });
+  });
+
+  it('changer d’onglet avec une fiche modifiée pose la question ; confirmer change d’onglet', async () => {
+    const { etat, atelier } = await demarrerSur(new FauxPont(ecrireFichier(locale)));
+    etat.allerA('atelier');
+    atelier.choisir(fiche.id);
+    etat.allerA('recueil');
+    expect(etat.ecran).toBe('recueil');
+
+    etat.allerA('atelier');
+    atelier.saisirMot('Vénustissime');
+    etat.allerA('recueil');
+    expect(etat.ecran).toBe('atelier');
+    expect(atelier.demande?.genre).toBe('quitter');
+    atelier.annuler();
+    expect(etat.ecran).toBe('atelier');
+
+    etat.allerA('reglages');
+    atelier.confirmer();
+    expect(etat.ecran).toBe('reglages');
+    expect(atelier.modifiee).toBe(false);
+    expect(etat.liste.mots.find((m) => m.id === fiche.id)!.mot).toBe('Vénuste');
+  });
+
+  it('demanderSuppression puis confirmer : le mot quitte etat.liste, plus de brouillon', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { etat, atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    atelier.demanderSuppression();
+    expect(atelier.demande?.genre).toBe('supprimer');
+    atelier.annuler();
+    expect(etat.liste.mots.some((m) => m.id === fiche.id)).toBe(true);
+
+    atelier.demanderSuppression();
+    atelier.confirmer();
+    await laisserFinir();
+    expect(etat.liste.mots.some((m) => m.id === fiche.id)).toBe(false);
+    expect(atelier.brouillon).toBeNull();
+    expect(atelier.modifiee).toBe(false);
+  });
+
+  it('la définition du brouillon arrive à pont.enregistrer au caractère près', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { etat, atelier } = await demarrerSur(faux);
+    const definition = "  1. [Litt.]  Qui plaît ; EX: L'heure... \r\n2. US: rare  \n";
+    atelier.nouveau();
+    const id = atelier.brouillon!.id;
+    atelier.saisirMot(' Vénustissime ');
+    atelier.brouillon!.definition = definition;
+    atelier.brouillon!.sources = [' Auteur: Titre (3) '];
+    expect(await atelier.enregistrerBrouillon()).toBe(true);
+    const ecrite = (JSON.parse(faux.enregistre.at(-1)!) as FichierMots).mots.find((m) => m.id === id)!;
+    expect(ecrite).toMatchObject({ mot: 'Vénustissime', tri: 'vénustissime', definition, sources: [' Auteur: Titre (3) '] });
+    expect(etat.liste.mots.find((m) => m.id === id)!.definition).toBe(definition);
+    // Le brouillon devient la fiche enregistrée : plus rien à enregistrer.
+    expect(atelier.brouillon).toEqual(ecrite);
+    expect(atelier.modifiee).toBe(false);
+  });
+
+  it('un Tri vide est rempli par la proposition à l’enregistrement ; sans Mot, rien n’est enregistré', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { etat, atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    atelier.saisirTri('  ');
+    expect(await atelier.enregistrerBrouillon()).toBe(true);
+    expect(etat.liste.mots.find((m) => m.id === fiche.id)!.tri).toBe('vénuste');
+
+    atelier.nouveau();
+    atelier.saisirMot('  ');
+    expect(await atelier.enregistrerBrouillon()).toBe(false);
+    expect(faux.enregistre).toHaveLength(1);
+  });
+
+  it('une frappe pendant l’enregistrement n’est pas perdue', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    atelier.brouillon!.note = 'XX';
+    const enCours = atelier.enregistrerBrouillon();
+    atelier.brouillon!.note = 'XXY';
+    expect(await enCours).toBe(true);
+    expect(atelier.brouillon!.note).toBe('XXY');
+    expect(atelier.modifiee).toBe(true);
+  });
 });

@@ -105,6 +105,13 @@ describe('listerAtelier', () => {
   it('garde les groupes de doublons entiers et côte à côte', () => {
     expect(listerAtelier(liste, { filtre: 'doublons', requete: '' }).map((m) => m.id)).toEqual(['abo1', 'abo2', 'cave1', 'cave2']);
   });
+
+  it('dans les doublons, la recherche garde le groupe entier dès qu’un de ses mots répond', () => {
+    // « avec » n'est que dans « S'aboucher (avec) » : « Aboucher », de même tri, reste à côté.
+    expect(listerAtelier(liste, { filtre: 'doublons', requete: 'avec' }).map((m) => m.id)).toEqual(['abo1', 'abo2']);
+    expect(listerAtelier(liste, { filtre: 'tous', requete: 'avec' }).map((m) => m.id)).toEqual(['abo2']);
+    expect(listerAtelier(liste, { filtre: 'doublons', requete: 'bistre' })).toEqual([]);
+  });
 });
 
 describe('genresUtilises', () => {
