@@ -1,10 +1,10 @@
 import {
+  choisirListe,
   estComplet,
   marquerVu,
   normaliser,
   prochainMot,
   repondre,
-  validerFichier,
   type FichierMots,
   type Mot,
   type Progres,
@@ -33,9 +33,7 @@ function bornerSeance(n: unknown): number {
 
 /** La liste gardée sur l'appareil si elle est valide et plus récente que l'embarquée, sinon l'embarquée. */
 function listeDeDepart(): FichierMots {
-  const gardee = validerFichier(lire<unknown>(CLES.liste, null));
-  if (gardee !== null && Date.parse(gardee.publie) > Date.parse(listeEmbarquee.publie)) return gardee;
-  return listeEmbarquee;
+  return choisirListe(listeEmbarquee, lire<unknown>(CLES.liste, null));
 }
 
 function reglagesDeDepart(): Reglages {
@@ -63,7 +61,11 @@ class Etat {
   repondus = $state<string[]>([]);
   position = $state(0);
   ecran = $state<Ecran>('mot');
+  /** L'écran à retrouver en quittant les réglages. */
+  ecranAvantReglages: Ecran = 'mot';
   ficheOuverte = $state<string | null>(null);
+  /** Liste téléchargée, gardée de côté jusqu'au prochain mot tiré. */
+  private listeEnAttente: FichierMots | null = null;
   /** Palette imposée par l'adresse (« ?palette=nuit »), jamais enregistrée. */
   paletteForcee = $state<Palette | null>(null);
 
@@ -91,8 +93,24 @@ class Etat {
       this.position += 1;
       return;
     }
+    this.adopterListeEnAttente();
     const m = prochainMot(this.complets, this.progres, this.seance, Math.random);
     if (m !== null) this.montrer(m);
+  }
+
+  /** Retient `recue` si elle est valide et plus récente que la liste en place : gardée sur l'appareil, adoptée au prochain mot tiré. */
+  proposerListe(recue: unknown): void {
+    const enPlace = this.listeEnAttente ?? this.liste;
+    const choisie = choisirListe(enPlace, recue);
+    if (choisie === enPlace) return;
+    this.listeEnAttente = choisie;
+    ecrire(CLES.liste, choisie);
+  }
+
+  private adopterListeEnAttente(): void {
+    if (this.listeEnAttente === null) return;
+    this.liste = this.listeEnAttente;
+    this.listeEnAttente = null;
   }
 
   precedent(): void {
@@ -111,6 +129,7 @@ class Etat {
   }
 
   allerA(e: Ecran): void {
+    if (e === 'reglages' && this.ecran !== 'reglages') this.ecranAvantReglages = this.ecran;
     this.ecran = e;
     if (typeof location !== 'undefined' && ecranDeLAdresse(location.hash) !== e) location.hash = e;
   }

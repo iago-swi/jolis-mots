@@ -5,7 +5,7 @@
   import Mot from './ecrans/Mot.svelte';
   import Quiz from './ecrans/Quiz.svelte';
   import Recueil from './ecrans/Recueil.svelte';
-  import Reglages from './ecrans/Bientot.svelte';
+  import Reglages from './ecrans/Reglages.svelte';
 
   $effect(() => {
     document.documentElement.dataset.palette = etat.paletteAffichee;

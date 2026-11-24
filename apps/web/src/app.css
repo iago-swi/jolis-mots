@@ -54,6 +54,33 @@
   color-scheme: light;
 }
 
+/* Échantillons de l'écran Réglages : le papier, l'encre et l'accent de chaque palette, quelle que soit la palette affichée. */
+:root {
+  --ech-papier-papier: #f3f4ef;
+  --ech-papier-encre: #1a2230;
+  --ech-papier-accent: #b8321e;
+  --ech-nuit-papier: #14181f;
+  --ech-nuit-encre: #ece9e0;
+  --ech-nuit-accent: #e8765f;
+  --ech-ivoire-papier: #f6efe2;
+  --ech-ivoire-encre: #2b2118;
+  --ech-ivoire-accent: #8a4b14;
+  --ech-ceruleen-papier: #eef2f6;
+  --ech-ceruleen-encre: #14233b;
+  --ech-ceruleen-accent: #1f5fa8;
+  --ech-systeme-papier: var(--ech-papier-papier);
+  --ech-systeme-encre: var(--ech-papier-encre);
+  --ech-systeme-accent: var(--ech-papier-accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ech-systeme-papier: var(--ech-nuit-papier);
+    --ech-systeme-encre: var(--ech-nuit-encre);
+    --ech-systeme-accent: var(--ech-nuit-accent);
+  }
+}
+
 *,
 *::before,
 *::after {

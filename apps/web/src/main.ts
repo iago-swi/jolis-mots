@@ -7,8 +7,10 @@ import '@fontsource/eb-garamond/500-italic.css';
 import './app.css';
 import App from './App.svelte';
 import { etat } from './etat.svelte';
+import { rafraichir } from './miseAJour';
 
 etat.demarrer(location);
+void rafraichir();
 
 const cible = document.getElementById('app');
 if (!cible) throw new Error('#app introuvable');

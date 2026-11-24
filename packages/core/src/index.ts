@@ -10,3 +10,4 @@ export * from './memoire';
 export * from './selection';
 export * from './quiz';
 export * from './stockage';
+export * from './miseAJour';
