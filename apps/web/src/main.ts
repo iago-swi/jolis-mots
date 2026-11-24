@@ -1,3 +1,5 @@
+import { App as Appareil } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { mount } from 'svelte';
 import '@fontsource/eb-garamond/400.css';
 import '@fontsource/eb-garamond/500.css';
@@ -11,6 +13,13 @@ import { rafraichir } from './miseAJour';
 
 etat.demarrer(location);
 void rafraichir();
+
+// Dans l'application Android seulement : le bouton retour ferme ce qui est ouvert, puis quitte depuis l'écran Mot.
+if (Capacitor.isNativePlatform()) {
+  void Appareil.addListener('backButton', () => {
+    if (!etat.retour()) void Appareil.exitApp();
+  });
+}
 
 const cible = document.getElementById('app');
 if (!cible) throw new Error('#app introuvable');

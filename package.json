@@ -12,6 +12,8 @@
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
     "dev": "npm run dev -w @jolis-mots/web",
     "build": "npm run build -w @jolis-mots/web",
+    "build:android": "npm run build && npm run sync -w @jolis-mots/android",
+    "package:android": "npm run build:android && npm run apk -w @jolis-mots/android",
     "check": "npm run typecheck && npm run build",
     "import": "python -I tools/import/extraire.py vocabulaire.xlsx tools/import/sortie/lignes.json && tsx tools/import/importer.ts"
   },

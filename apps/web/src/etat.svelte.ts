@@ -64,6 +64,8 @@ class Etat {
   /** L'écran à retrouver en quittant les réglages. */
   ecranAvantReglages: Ecran = 'mot';
   ficheOuverte = $state<string | null>(null);
+  /** Volet « Autres auteurs » du recueil, ici pour que le bouton retour d'Android puisse le fermer. */
+  panneauAuteurs = $state(false);
   /** Liste téléchargée, gardée de côté jusqu'au prochain mot tiré. */
   private listeEnAttente: FichierMots | null = null;
   /** Palette imposée par l'adresse (« ?palette=nuit »), jamais enregistrée. */
@@ -132,6 +134,19 @@ class Etat {
     if (e === 'reglages' && this.ecran !== 'reglages') this.ecranAvantReglages = this.ecran;
     this.ecran = e;
     if (typeof location !== 'undefined' && ecranDeLAdresse(location.hash) !== e) location.hash = e;
+  }
+
+  /**
+   * Bouton retour d'Android : ferme la fiche, le volet ou les réglages ; sinon revient à l'écran Mot.
+   * Rend faux quand il n'y a plus rien à fermer : on est sur l'écran Mot, l'application peut se quitter.
+   */
+  retour(): boolean {
+    if (this.ficheOuverte !== null) this.ficheOuverte = null;
+    else if (this.panneauAuteurs) this.panneauAuteurs = false;
+    else if (this.ecran === 'reglages') this.allerA(this.ecranAvantReglages);
+    else if (this.ecran !== 'mot') this.allerA('mot');
+    else return false;
+    return true;
   }
 
   reglerPalette(p: Palette): void {

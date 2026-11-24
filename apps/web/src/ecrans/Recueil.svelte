@@ -25,7 +25,6 @@
   let requete = $state('');
   let auteur = $state<string | null>(null);
   let favorisSeuls = $state(false);
-  let panneauAuteurs = $state(false);
 
   /** Début de définition : texte du premier sens qui en a un, sinon les synonymes, sinon rien. */
   function apercuDe(m: Mot): string {
@@ -76,7 +75,7 @@
   function choisir(a: string | null, favoris = false): void {
     auteur = a;
     favorisSeuls = favoris;
-    panneauAuteurs = false;
+    etat.panneauAuteurs = false;
   }
 
   async function retour(): Promise<void> {
@@ -86,13 +85,14 @@
     document.querySelector<HTMLElement>(`[data-id="${id}"]`)?.focus({ preventScroll: true });
   }
 
-  // Quitter l'écran referme la fiche : on y revient sur la liste.
+  // Quitter l'écran referme la fiche et le volet : on y revient sur la liste.
   onDestroy(() => {
     etat.ficheOuverte = null;
+    etat.panneauAuteurs = false;
   });
 </script>
 
-<div class="recueil" inert={ouvert !== null || panneauAuteurs}>
+<div class="recueil" inert={ouvert !== null || etat.panneauAuteurs}>
   <header class="titre">
     <span class="nom">Recueil</span>
     <span class="compte" aria-live="polite">{compte(visibles.length)}</span>
@@ -109,7 +109,7 @@
       <button aria-pressed={auteur === BOUVIER} onclick={() => choisir(BOUVIER)}>Bouvier</button>
       <button aria-pressed={auteur === TESSON} onclick={() => choisir(TESSON)}>Tesson</button>
       <button aria-pressed={favorisSeuls} onclick={() => choisir(null, true)}>Favoris</button>
-      <button aria-pressed={autreChoisi !== null} aria-haspopup="dialog" onclick={() => (panneauAuteurs = true)}>
+      <button aria-pressed={autreChoisi !== null} aria-haspopup="dialog" onclick={() => (etat.panneauAuteurs = true)}>
         {autreChoisi === null ? 'Autres auteurs' : embellir(autreChoisi)}
       </button>
     </div>
@@ -156,7 +156,7 @@
   </section>
 {/if}
 
-{#if panneauAuteurs}
+{#if etat.panneauAuteurs}
   <section class="volet" role="dialog" aria-label="Autres auteurs">
     <div class="defilement">
       <h2 class="intitule">Autres auteurs</h2>
@@ -175,7 +175,7 @@
       </ul>
     </div>
     <div class="actions">
-      <button class="principal" onclick={() => (panneauAuteurs = false)}>Fermer</button>
+      <button class="principal" onclick={() => (etat.panneauAuteurs = false)}>Fermer</button>
     </div>
   </section>
 {/if}
