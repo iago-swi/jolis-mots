@@ -59,6 +59,8 @@ class Etat {
   reglages = $state<Reglages>(reglagesDeDepart());
   /** La séance vit en mémoire seulement : elle repart à zéro à chaque lancement. */
   seance = $state<string[]>([]);
+  /** Mots déjà interrogés depuis le début de la séance : le quiz ne les repose pas. Mémoire seulement. */
+  repondus = $state<string[]>([]);
   position = $state(0);
   ecran = $state<Ecran>('mot');
   ficheOuverte = $state<string | null>(null);
@@ -103,6 +105,7 @@ class Etat {
   }
 
   repondre(id: string, juste: boolean): void {
+    if (!this.repondus.includes(id)) this.repondus = [...this.repondus, id];
     this.progres = repondre(this.progres, id, juste, new Date());
     ecrire(CLES.progres, this.progres);
   }
@@ -125,6 +128,7 @@ class Etat {
 
   nouvelleSeance(): void {
     this.seance = [];
+    this.repondus = [];
     this.position = 0;
     this.allerA('mot');
     this.suivant();

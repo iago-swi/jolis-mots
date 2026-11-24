@@ -7,7 +7,7 @@
   // et le quiz en cours ne doit pas se recomposer pour autant.
   const questions: Question[] = composerQuiz({
     complets: etat.complets,
-    seance: etat.seance,
+    seance: etat.seance.filter((id) => !etat.repondus.includes(id)),
     progres: etat.progres,
     maintenant: new Date(),
     alea: Math.random,
@@ -18,6 +18,7 @@
   let choisi = $state<string | null>(null);
   let intitule: HTMLElement | undefined = $state();
   let defilement: HTMLElement | undefined = $state();
+  let retour: HTMLElement | undefined = $state();
 
   const question = $derived<Question | undefined>(questions[index]);
   const repondu = $derived(choisi !== null);
@@ -28,10 +29,13 @@
     return m === undefined ? '' : embellir(m.mot).toLocaleLowerCase('fr');
   });
 
-  function repondre(id: string): void {
+  async function repondre(id: string): Promise<void> {
     if (question === undefined || choisi !== null) return;
     choisi = id;
     etat.repondre(question.idMot, id === question.bonne);
+    // Avec de longues définitions, le message tombe sous le pli : on le ramène à l'écran.
+    await tick();
+    retour?.scrollIntoView({ block: 'nearest' });
   }
 
   async function suivante(): Promise<void> {
@@ -93,12 +97,16 @@
           {/each}
         </div>
 
-        <div class="retour" role="status">
+        <div class="retour" role="status" bind:this={retour}>
           {#if repondu}
             {#if juste}
               <p class="verdict">Juste.</p>
             {:else}
-              <p class="verdict">C’était <em>{motJuste}</em>.</p>
+              {#if question.forme === 'definition-vers-mot'}
+                <p class="verdict">C’était <em>{motJuste}</em>.</p>
+              {:else}
+                <p class="verdict">Ce n’était pas celle-là.</p>
+              {/if}
             {/if}
           {/if}
         </div>
@@ -107,7 +115,7 @@
 
     <div class="actions">
       {#if repondu}
-        <button class="principal" onclick={suivante}>Question suivante</button>
+        <button class="principal" onclick={suivante}>{index === questions.length - 1 ? 'Terminer' : 'Question suivante'}</button>
       {/if}
     </div>
   {:else}
