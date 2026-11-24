@@ -119,13 +119,28 @@ function enFile(d: Depot, operation: () => Promise<EtatDepot>): Promise<EtatDepo
   return suite;
 }
 
-function aUneCopie(d: Depot): boolean {
-  return existsSync(join(d.dossier, '.git'));
+/**
+ * Vrai si le dossier tient une copie utilisable : un `.git` dont HEAD désigne une version.
+ * Un téléchargement tué en route peut laisser un `.git` sans HEAD : ce n'est pas une copie.
+ * Le `--git-dir` explicite empêche git de chercher un autre dépôt dans les dossiers parents.
+ */
+async function aUneCopie(d: Depot): Promise<boolean> {
+  const gitDir = join(d.dossier, '.git');
+  if (!existsSync(gitDir)) return false;
+  const s = await lancer(d, d.dossier, ['--git-dir', gitDir, 'rev-parse', '--verify', '--quiet', 'HEAD']);
+  return s.code === 0;
 }
 
 /** L'état de la copie, lu sur le disque, sans réseau. */
 async function etat(d: Depot, raison: RaisonDepot, detail = '', sauvegarde: string | null = null): Promise<EtatDepot> {
-  if (!aUneCopie(d)) return { raison, detail, locale: null, envoyee: null, sauvegarde };
+  let copie: boolean;
+  try {
+    copie = await aUneCopie(d);
+  } catch {
+    // Sans git, on ne peut pas vérifier HEAD : on s'en tient au `.git`.
+    copie = existsSync(join(d.dossier, '.git'));
+  }
+  if (!copie) return { raison, detail, locale: null, envoyee: null, sauvegarde };
   let locale: string | null = null;
   let envoyee: string | null = null;
   try {
@@ -206,7 +221,7 @@ export function ouvrir(d: Depot): Promise<EtatDepot> {
 /** Télécharge la copie si elle manque, sinon va voir la liste en ligne. */
 export function synchroniser(d: Depot): Promise<EtatDepot> {
   return enFile(d, async () => {
-    if (!aUneCopie(d)) return telecharger(d);
+    if (!(await aUneCopie(d))) return telecharger(d);
     await git(d, 'fetch', 'origin', BRANCHE);
     // La liste en ligne n'a pas bougé, ou la copie a seulement une version pas encore envoyée.
     if (await estAncetre(d, DISTANTE, 'HEAD')) return etat(d, 'pret');
@@ -223,7 +238,7 @@ export function synchroniser(d: Depot): Promise<EtatDepot> {
 /** Écrit le texte dans la copie de travail. */
 export function enregistrer(d: Depot, texte: string): Promise<EtatDepot> {
   return enFile(d, async () => {
-    if (!aUneCopie(d)) return sansCopie(d);
+    if (!(await aUneCopie(d))) return sansCopie(d);
     await ecrire(d, texte);
     return etat(d, 'pret');
   });
@@ -232,10 +247,14 @@ export function enregistrer(d: Depot, texte: string): Promise<EtatDepot> {
 /** Écrit, valide si besoin, puis envoie ; n'écrase jamais la liste en ligne. */
 export function envoyer(d: Depot, texte: string, message: string): Promise<EtatDepot> {
   return enFile(d, async () => {
-    if (!aUneCopie(d)) return sansCopie(d);
+    if (!(await aUneCopie(d))) return sansCopie(d);
     await ecrire(d, texte);
     await git(d, 'fetch', 'origin', BRANCHE);
     if (!(await estAncetre(d, DISTANTE, 'HEAD'))) return etat(d, 'divergence');
+    // Une version restée ici après un envoi manqué est refaite avec le texte et le message
+    // de cet envoi : une seule version de plus en ligne. La liste en ligne étant un ancêtre
+    // de HEAD, seules des versions jamais envoyées sont défaites ; le fichier ne bouge pas.
+    await git(d, 'reset', '--soft', DISTANTE);
     await git(d, 'add', FICHIER);
     const aValider = (await lancer(d, d.dossier, ['diff', '--cached', '--quiet'])).code !== 0;
     if (aValider) await git(d, 'commit', '-m', message);
@@ -244,22 +263,32 @@ export function envoyer(d: Depot, texte: string, message: string): Promise<EtatD
   });
 }
 
-/** Met le fichier local de côté, puis reprend la liste en ligne (dans cette copie privée seulement). */
+/** Copie mots.json dans les sauvegardes, sans jamais en écraser une ; null s'il n'y a pas de fichier. */
+async function mettreDeCote(d: Depot, maintenant: Date): Promise<string | null> {
+  const local = join(d.dossier, FICHIER);
+  if (!existsSync(local)) return null;
+  await mkdir(d.sauvegardes, { recursive: true });
+  const base = join(d.sauvegardes, `mots-${horodatage(maintenant)}`);
+  let sauvegarde = `${base}.json`;
+  for (let n = 2; ; n++) {
+    try {
+      await copyFile(local, sauvegarde, constants.COPYFILE_EXCL);
+      return sauvegarde;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+      sauvegarde = `${base}-${n}.json`;
+    }
+  }
+}
+
+/**
+ * Met le fichier local de côté, puis reprend la liste en ligne (dans cette copie privée seulement).
+ * Sans fichier local, il n'y a rien à mettre de côté : `sauvegarde` reste null.
+ */
 export function reprendre(d: Depot, maintenant: Date): Promise<EtatDepot> {
   return enFile(d, async () => {
-    if (!aUneCopie(d)) return sansCopie(d);
-    await mkdir(d.sauvegardes, { recursive: true });
-    const base = join(d.sauvegardes, `mots-${horodatage(maintenant)}`);
-    let sauvegarde = `${base}.json`;
-    for (let n = 2; ; n++) {
-      try {
-        await copyFile(join(d.dossier, FICHIER), sauvegarde, constants.COPYFILE_EXCL);
-        break;
-      } catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
-        sauvegarde = `${base}-${n}.json`;
-      }
-    }
+    if (!(await aUneCopie(d))) return sansCopie(d);
+    const sauvegarde = await mettreDeCote(d, maintenant);
     try {
       await git(d, 'fetch', 'origin', BRANCHE);
       await git(d, 'reset', '--hard', DISTANTE);

@@ -170,6 +170,23 @@ describe('dépôt : parcours complet', () => {
     expect(f.dernierMessageEnLigne()).toBe('message 3 bis');
   });
 
+  it('4 ter. après un envoi refusé, un envoi d’un autre texte n’ajoute qu’une version, avec son message', { timeout: DELAI }, async () => {
+    const Ta = T3b.replace('"util":"rare"', '"util":"rare (a)"');
+    const Tb = T3b.replace('"util":"rare"', '"util":"rare (b)"');
+    const crochet = join(origine, 'hooks', 'pre-receive');
+    writeFileSync(crochet, '#!/bin/sh\nexit 1\n');
+    expect((await envoyer(d, Ta, 'message a')).raison).toBe('refus');
+    expect(f.versionsEnLigne()).toBe(4);
+    unlinkSync(crochet);
+    expect(await envoyer(d, Tb, 'message b')).toMatchObject({ raison: 'pret', locale: Tb, envoyee: Tb });
+    expect(readFileSync(join(d.dossier, 'mots.json'))).toEqual(Buffer.from(Tb, 'utf8'));
+    expect(f.versionsEnLigne()).toBe(5);
+    expect(f.dernierMessageEnLigne()).toBe('message b');
+    expect(f.contenuEnLigne()).toBe(Tb);
+    expect((await envoyer(d, Tb, 'encore')).raison).toBe('pret');
+    expect(f.versionsEnLigne()).toBe(5);
+  });
+
   it('5. la liste en ligne avance ailleurs, rien n’attend ici : reprise silencieuse', { timeout: DELAI }, async () => {
     f.pousserDepuisUnAutreClone(T4);
     expect(await synchroniser(d)).toMatchObject({ raison: 'pret', locale: T4, envoyee: T4 });
@@ -202,6 +219,37 @@ describe('dépôt : cas à part', () => {
     expect(mis[0]).toMatch(/^donnees-\d{4}-\d{2}-\d{2}-\d{6}$/);
     expect(readFileSync(join(d.sauvegardes, mis[0]!, 'reste.txt'), 'utf8')).toBe('téléchargement interrompu');
     expect(existsSync(join(d.dossier, '.git'))).toBe(true);
+  });
+
+  it('7 bis. un .git sans version (téléchargement tué) est laissé par ouvrir, mis de côté par synchroniser', { timeout: DELAI }, async () => {
+    const { d } = preparer();
+    mkdirSync(d.dossier, { recursive: true });
+    git(d.dossier, 'init');
+    expect(await ouvrir(d)).toEqual({ raison: 'pret', detail: '', locale: null, envoyee: null, sauvegarde: null });
+    expect(existsSync(join(d.dossier, '.git'))).toBe(true);
+    expect(existsSync(d.sauvegardes)).toBe(false);
+    expect(await synchroniser(d)).toMatchObject({ raison: 'pret', locale: TEXTE_ORIGINE, envoyee: TEXTE_ORIGINE });
+    const mis = readdirSync(d.sauvegardes);
+    expect(mis).toHaveLength(1);
+    expect(mis[0]).toMatch(/^donnees-\d{4}-\d{2}-\d{2}-\d{6}$/);
+    expect(existsSync(join(d.sauvegardes, mis[0]!, '.git'))).toBe(true);
+  });
+
+  it('7 ter. mots.json effacé à la main : ouvrir sans fichier, reprendre sans sauvegarde', { timeout: DELAI }, async () => {
+    const f = preparer();
+    const { d } = f;
+    await synchroniser(d);
+    f.pousserDepuisUnAutreClone(T4);
+    unlinkSync(join(d.dossier, 'mots.json'));
+    expect(await ouvrir(d)).toEqual({ raison: 'pret', detail: '', locale: null, envoyee: TEXTE_ORIGINE, sauvegarde: null });
+    expect(await reprendre(d, new Date(2026, 10, 24, 15, 30, 12))).toEqual({
+      raison: 'pret',
+      detail: '',
+      locale: T4,
+      envoyee: T4,
+      sauvegarde: null,
+    });
+    expect(existsSync(d.sauvegardes)).toBe(false);
   });
 
   it('8. git introuvable : sans-git, sans lever', { timeout: DELAI }, async () => {
