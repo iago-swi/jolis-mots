@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afficherPages, auteursParNombre, lireSource } from './sources';
+import { afficherPages, auteursDe, auteursParNombre, lireSource } from './sources';
 import type { Mot } from './types';
 
 const mot = (id: string, sources: string[]): Mot => ({
@@ -31,5 +31,19 @@ describe('sources', () => {
   it('trie à égalité par ordre alphabétique', () => {
     const mots = [mot('a', ['Zoé: T']), mot('b', ['Alice: T'])];
     expect(auteursParNombre(mots).map((x) => x.auteur)).toEqual(['Alice', 'Zoé']);
+  });
+
+  it('sépare les auteurs d’une ligne', () => {
+    expect(auteursDe('Alexandre Poussin & Sylvain Tesson: Himalaya (82)')).toEqual(['Alexandre Poussin', 'Sylvain Tesson']);
+    expect(auteursDe('Nicolas Bouvier: Le Poisson-Scorpion (172)')).toEqual(['Nicolas Bouvier']);
+    expect(auteursDe('Dictionnaire des mots savants')).toEqual([]);
+  });
+
+  it('compte un livre à deux auteurs pour chacun', () => {
+    const mots = [mot('a', ['Alexandre Poussin & Sylvain Tesson: Himalaya (82)']), mot('b', ['Sylvain Tesson: Dans les forêts'])];
+    expect(auteursParNombre(mots)).toEqual([
+      { auteur: 'Sylvain Tesson', nombre: 2 },
+      { auteur: 'Alexandre Poussin', nombre: 1 },
+    ]);
   });
 });

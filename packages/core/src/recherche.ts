@@ -1,4 +1,4 @@
-import { lireSource } from './sources';
+import { auteursDe } from './sources';
 import type { Mot } from './types';
 
 /** Forme de comparaison : minuscules, sans accents, ligatures dépliées, apostrophe courbe redressée. */
@@ -41,7 +41,7 @@ export function filtrer(mots: Mot[], f: Filtre): Mot[] {
   const favoris = f.favoris === null ? null : new Set(f.favoris);
   return mots.filter((m) => {
     if (requete !== '' && !normaliser(m.mot).includes(requete) && !normaliser(m.tri).includes(requete)) return false;
-    if (f.auteur !== null && !m.sources.some((s) => lireSource(s).auteur === f.auteur)) return false;
+    if (f.auteur !== null && !m.sources.some((s) => auteursDe(s).includes(f.auteur as string))) return false;
     if (favoris !== null && !favoris.has(m.id)) return false;
     return true;
   });

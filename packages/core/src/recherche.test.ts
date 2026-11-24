@@ -61,3 +61,10 @@ it('ordonne selon le tri normalisé, puis le mot', () => {
   expect(ordonner(egaux).map((m) => m.mot)).toEqual(['a', 'b']);
   expect(mots[0]?.mot).toBe('Écrin');
 });
+
+it('trouve un livre à deux auteurs par chacun des auteurs', () => {
+  const h = mot('Himal', 'himal', { sources: ['Alexandre Poussin & Sylvain Tesson: Himalaya (82)'] });
+  expect(filtrer([h], { requete: '', auteur: 'Sylvain Tesson', favoris: null })).toEqual([h]);
+  expect(filtrer([h], { requete: '', auteur: 'Alexandre Poussin', favoris: null })).toEqual([h]);
+  expect(filtrer([h], { requete: '', auteur: 'Alexandre', favoris: null })).toEqual([]);
+});

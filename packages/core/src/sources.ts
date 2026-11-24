@@ -16,6 +16,13 @@ export function lireSource(ligne: string): Source {
   return { auteur, titre: m[1] ?? '', pages: (m[2] ?? '').trim() };
 }
 
+/** Auteurs d'une ligne de source : un livre à deux auteurs (« A & B: … ») compte pour chacun. */
+export function auteursDe(ligne: string): string[] {
+  const { auteur } = lireSource(ligne);
+  if (!auteur) return [];
+  return auteur.split(' & ').map((a) => a.trim()).filter((a) => a !== '');
+}
+
 /** « 82,319 » devient « p. 82, 319 ». */
 export function afficherPages(pages: string): string {
   return 'p. ' + pages.split(',').map((p) => p.trim()).join(', ');
@@ -27,8 +34,7 @@ export function auteursParNombre(mots: Mot[]): { auteur: string; nombre: number 
   for (const m of mots) {
     const auteurs = new Set<string>();
     for (const ligne of m.sources) {
-      const { auteur } = lireSource(ligne);
-      if (auteur) auteurs.add(auteur);
+      for (const auteur of auteursDe(ligne)) auteurs.add(auteur);
     }
     for (const a of auteurs) comptes.set(a, (comptes.get(a) ?? 0) + 1);
   }
