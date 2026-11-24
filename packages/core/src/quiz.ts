@@ -1,5 +1,6 @@
 import { lireDefinition } from './definition';
 import { premierTerme } from './genre';
+import { melanger } from './hasard';
 import { motsDus } from './memoire';
 import type { Progres } from './memoire';
 import { normaliser } from './recherche';
@@ -75,15 +76,6 @@ export function definitionPourQuiz(m: Mot): string {
   const avecSynonymes = sens.find((s) => s.synonymes.length > 0);
   if (avecSynonymes) return `Synonymes : ${avecSynonymes.synonymes.join(', ')}`;
   return '';
-}
-
-function melanger<T>(liste: readonly T[], alea: () => number): T[] {
-  const r = [...liste];
-  for (let i = r.length - 1; i > 0; i--) {
-    const j = Math.floor(alea() * (i + 1));
-    [r[i], r[j]] = [r[j] as T, r[i] as T];
-  }
-  return r;
 }
 
 /**

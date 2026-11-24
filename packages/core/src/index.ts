@@ -6,6 +6,7 @@ export * from './typographie';
 export * from './recherche';
 export * from './fichier';
 export * from './import';
+export * from './hasard';
 export * from './memoire';
 export * from './selection';
 export * from './quiz';

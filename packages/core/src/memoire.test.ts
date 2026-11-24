@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { marquerMontre, marquerVu, motsDus, repondre } from './memoire';
+import { marquerMontre, marquerVu, motsARevoir, motsDus, repondre, validerProgres } from './memoire';
 
 const j = (n: number) => new Date(Date.UTC(2026, 0, 1 + n));
 
@@ -41,9 +41,47 @@ it('marquerVu est sans effet si le mot est déjà connu', () => {
   expect(marquerVu(p, 'a', j(9))).toEqual(p);
 });
 
-it('repondre sur un mot inconnu le crée d’abord comme vu', () => {
-  const p = repondre({}, 'a', true, j(5));
-  expect(p['a']).toMatchObject({ vu: j(5).toISOString(), case: 2, du: j(8).toISOString(), acquis: false });
+it('repondre sur un mot inconnu l’entre en case 1 sans date de vue, quelle que soit la réponse', () => {
+  const attendu = { vu: '', case: 1, du: j(6).toISOString(), acquis: false };
+  expect(repondre({}, 'a', true, j(5))['a']).toEqual(attendu);
+  expect(repondre({}, 'a', false, j(5))['a']).toEqual(attendu);
+});
+
+it('une bonne réponse sur un mot pas encore dû ne change rien', () => {
+  const vu = marquerVu({}, 'a', j(0));
+  expect(repondre(vu, 'a', true, j(0))).toBe(vu);
+});
+
+it('une bonne réponse sur un mot dû le fait monter en case 2, dû trois jours plus tard', () => {
+  const vu = marquerVu({}, 'a', j(0));
+  expect(repondre(vu, 'a', true, j(1))['a']).toMatchObject({ case: 2, du: j(4).toISOString() });
+});
+
+it('une mauvaise réponse, même sur un mot pas dû, renvoie en case 1', () => {
+  const case3 = { a: { vu: j(0).toISOString(), case: 3 as const, du: j(9).toISOString(), acquis: false } };
+  expect(repondre(case3, 'a', false, j(1))['a']).toMatchObject({ case: 1, du: j(2).toISOString(), acquis: false });
+});
+
+it('un mot acquis : juste ne change rien, faux le renvoie en case 1', () => {
+  const acquis = { a: { vu: j(0).toISOString(), case: 5 as const, du: j(0).toISOString(), acquis: true } };
+  expect(repondre(acquis, 'a', true, j(50))).toBe(acquis);
+  expect(repondre(acquis, 'a', false, j(50))['a']).toMatchObject({ case: 1, acquis: false });
+});
+
+it('motsARevoir : les dus d’abord (le plus ancien en tête), puis les autres, jamais un acquis', () => {
+  const e = (du: Date, acquis = false) => ({ vu: j(-9).toISOString(), case: 2 as const, du: du.toISOString(), acquis });
+  const p = { d1: e(j(-2)), d2: e(j(-1)), n1: e(j(5)), n2: e(j(5)), q: e(j(-3), true) };
+  expect(motsARevoir(p, j(0), () => 0).slice(0, 2)).toEqual(['d1', 'd2']);
+  expect(new Set(motsARevoir(p, j(0), () => 0))).toEqual(new Set(['d1', 'd2', 'n1', 'n2']));
+});
+
+it('validerProgres garde les entrées valides et écarte le reste', () => {
+  const a = marquerVu({}, 'a', j(0))['a'];
+  expect(validerProgres({ x: 5, a, b: { ...a, case: 9 }, c: { ...a, du: 'demain' } })).toEqual({ a });
+  expect(validerProgres({ d: { ...a, vu: 3 }, e: { ...a, acquis: 'oui' }, f: { ...a, case: 2.5 }, g: null })).toEqual({});
+  expect(validerProgres([1, 2])).toEqual({});
+  expect(validerProgres(null)).toEqual({});
+  expect(validerProgres('texte')).toEqual({});
 });
 
 it('marquerMontre crée un mot inconnu comme marquerVu', () => {
