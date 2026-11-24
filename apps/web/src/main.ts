@@ -13,6 +13,8 @@ import { etat } from './etat.svelte';
 import { rafraichir } from './miseAJour';
 
 etat.demarrer(location);
+// La palette avant le premier affichage : App.svelte ne la pose qu'une fois monté.
+document.documentElement.dataset.palette = etat.paletteAffichee;
 void rafraichir();
 
 // Dans l'application Android seulement : le bouton retour ferme ce qui est ouvert, puis quitte depuis l'écran Mot.
