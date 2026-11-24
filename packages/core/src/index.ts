@@ -8,3 +8,4 @@ export * from './fichier';
 export * from './import';
 export * from './memoire';
 export * from './selection';
+export * from './quiz';
