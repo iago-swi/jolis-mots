@@ -4,7 +4,7 @@
   import { ecranDeLAdresse, etat } from './etat.svelte';
   import Mot from './ecrans/Mot.svelte';
   import Quiz from './ecrans/Bientot.svelte';
-  import Recueil from './ecrans/Bientot.svelte';
+  import Recueil from './ecrans/Recueil.svelte';
   import Reglages from './ecrans/Bientot.svelte';
 
   $effect(() => {
@@ -44,6 +44,7 @@
   }
 
   .ecran {
+    position: relative;
     flex-grow: 1;
     min-height: 0;
     display: flex;
