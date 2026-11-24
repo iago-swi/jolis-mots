@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import type { EtatMot } from './memoire';
+import { marquerMontre, type EtatMot, type Progres } from './memoire';
 import { prochainMot } from './selection';
 import type { Mot } from './types';
 
@@ -34,6 +34,20 @@ it('exclut les mots de la séance et utilise le hasard fourni', () => {
   const [a, b, c] = [mot('A', 'a'), mot('B', 'b'), mot('C', 'c')];
   expect(prochainMot([a, b, c], {}, [a.id], () => 0)?.id).toBe(b.id);
   expect(prochainMot([a, b, c], {}, [a.id], () => 0.99)?.id).toBe(c.id);
+});
+
+it('une fois tous les mots vus, les passe tous avant d’en reprendre un', () => {
+  const [a, b, c] = [mot('A', 'a'), mot('B', 'b'), mot('C', 'c')];
+  let progres: Progres = { [a.id]: etat('2026-01-01'), [b.id]: etat('2026-01-02'), [c.id]: etat('2026-01-03') };
+  const tires: string[] = [];
+  for (let n = 0; n < 6; n++) {
+    // Chaque tirage ouvre une nouvelle séance : seule la mémoire relie les tirages.
+    const m = prochainMot([a, b, c], progres, [], () => 0);
+    if (m === null) throw new Error('aucun mot tiré');
+    tires.push(m.id);
+    progres = marquerMontre(progres, m.id, new Date(Date.UTC(2026, 1, 1 + n)));
+  }
+  expect(tires).toEqual([a.id, b.id, c.id, a.id, b.id, c.id]);
 });
 
 it('parmi les mots déjà vus, ignore ceux de la séance', () => {

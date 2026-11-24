@@ -9,6 +9,7 @@ export interface RapportImport {
   lignes: number; mots: number; complets: number; aCompleter: number;
   doublonsFusionnes: string[];   // mots dont des lignes vides ont été écartées
   doublonsGardes: string[];      // mots présents plusieurs fois après import
+  doublonsGardesPourChamps: string[]; // mots dont une ligne sans définition est gardée pour son genre, sa note ou son Util.
   lignesRouges: string[];
   aCompleterAvecTexte: string[]; // marqués « à compléter » avec du texte en définition
   genresInhabituels: string[];   // "Mot : genre"
@@ -45,6 +46,11 @@ function convertir(l: LigneExcel): Fiche {
   };
 }
 
+/** `f` porte un genre, une note ou un Util. non vide et différent de ceux de `gardee`. */
+function apporteUnChamp(f: Fiche, gardee: Fiche): boolean {
+  return (['genre', 'note', 'util'] as const).some((c) => f[c] !== '' && f[c] !== gardee[c]);
+}
+
 /** Importe les lignes de l'Excel : nettoyage, dièses, doublons, identifiants, ordre de Tri. */
 export function importer(
   lignes: LigneExcel[],
@@ -62,6 +68,7 @@ export function importer(
 
   const doublonsFusionnes: string[] = [];
   const doublonsGardes: string[] = [];
+  const doublonsGardesPourChamps: string[] = [];
   const ecartees = new Set<Fiche>();
   for (const groupe of groupes.values()) {
     if (groupe.length === 1) continue;
@@ -71,8 +78,16 @@ export function importer(
       continue;
     }
     const gardee = avecDefinition[0] ?? groupe[0]!;
-    gardee.sources = [...new Set(groupe.flatMap((f) => f.sources))];
-    groupe.filter((f) => f !== gardee).forEach((f) => ecartees.add(f));
+    const autres = groupe.filter((f) => f !== gardee);
+    // Une ligne n'est écartée que si elle n'apporte rien d'autre que ses sources.
+    const aEcarter = autres.filter((f) => !apporteUnChamp(f, gardee));
+    if (aEcarter.length < autres.length) {
+      doublonsGardes.push(gardee.mot);
+      doublonsGardesPourChamps.push(gardee.mot);
+    }
+    if (aEcarter.length === 0) continue;
+    gardee.sources = [...new Set([gardee, ...aEcarter].flatMap((f) => f.sources))];
+    aEcarter.forEach((f) => ecartees.add(f));
     doublonsFusionnes.push(gardee.mot);
   }
   const retenues = fiches.filter((f) => !ecartees.has(f));
@@ -99,6 +114,7 @@ export function importer(
     aCompleter: mots.length - complets,
     doublonsFusionnes,
     doublonsGardes,
+    doublonsGardesPourChamps,
     lignesRouges: fiches.filter((_, i) => lignes[i]!.rouge).map((f) => f.mot),
     aCompleterAvecTexte: mots.filter((m) => m.aCompleter && m.definition !== '').map((m) => m.mot),
     genresInhabituels: mots.filter((m) => !genreEstConnu(m.genre)).map((m) => `${m.mot} : ${m.genre}`),
@@ -120,7 +136,12 @@ export function rapportEnMarkdown(r: RapportImport): string {
     `- Mots complets : ${r.complets}`,
     `- Mots à compléter : ${r.aCompleter}\n`,
     section('Doublons fusionnés', 'Une seule fiche gardée ; les lignes vides ont été écartées, leurs sources réunies.', r.doublonsFusionnes),
-    section('Doublons gardés', 'Plusieurs lignes ont une définition : toutes sont gardées.', r.doublonsGardes),
+    section('Doublons gardés', 'Plusieurs lignes ont une définition, ou une ligne sans définition porte un genre, une note ou un Util. différent : toutes sont gardées.', r.doublonsGardes),
+    section(
+      "Doublons gardés parce qu'ils portent un genre, une note ou un Util. différent",
+      'Une ligne sans définition n’a pas été écartée, pour ne pas perdre ce texte : à réunir à la main.',
+      r.doublonsGardesPourChamps,
+    ),
     section('Lignes rouges', 'Importées telles quelles, à départager dans l’atelier.', r.lignesRouges),
     section('À compléter avec du texte en définition', 'Marqués ### mais la définition contient déjà du texte.', r.aCompleterAvecTexte),
     section('Genres inhabituels', 'Un terme du genre est inconnu de la table de développement.', r.genresInhabituels),

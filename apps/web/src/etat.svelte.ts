@@ -1,7 +1,7 @@
 import {
   choisirListe,
   estComplet,
-  marquerVu,
+  marquerMontre,
   normaliser,
   prochainMot,
   repondre,
@@ -102,11 +102,11 @@ class Etat {
     });
   }
 
-  /** Ajoute `m` à la séance et le marque vu. */
+  /** Ajoute `m` à la séance et note qu'il vient d'être vu. */
   private montrer(m: Mot): void {
     this.seance = [...this.seance, m.id];
     this.position = this.seance.length - 1;
-    this.progres = marquerVu(this.progres, m.id, new Date());
+    this.progres = marquerMontre(this.progres, m.id, new Date());
     ecrire(CLES.progres, this.progres);
   }
 

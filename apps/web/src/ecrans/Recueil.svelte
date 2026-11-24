@@ -244,6 +244,11 @@
     color: var(--encre);
   }
 
+  .recherche input::placeholder {
+    color: var(--second);
+    opacity: 1;
+  }
+
   .recherche:focus-within {
     outline: 2px solid var(--accent);
     outline-offset: 2px;

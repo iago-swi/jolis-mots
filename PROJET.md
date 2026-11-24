@@ -27,7 +27,7 @@ Le cœur est livré en TypeScript (`"exports": "./src/index.ts"`) : Vite le tran
 | `recherche.ts` | `normaliser`, `ordonner`, `lettrine`, `filtrer`. |
 | `typographie.ts` | `embellir` (apostrophe courbe, points de suspension), `entreGuillemets`, `tailleDuMot`. |
 | `fichier.ts` | `ecrireFichier`, `validerFichier`, `comparerMots`, `creerId`. |
-| `memoire.ts` | `marquerVu`, `repondre`, `motsDus`, `INTERVALLES`. |
+| `memoire.ts` | `marquerVu`, `marquerMontre`, `repondre`, `motsDus`, `INTERVALLES`. |
 | `selection.ts` | `prochainMot`. |
 | `quiz.ts` | `composerQuiz`, `definitionPourQuiz`. |
 | `miseAJour.ts` | `ADRESSE_LISTE`, `choisirListe`. |
@@ -65,7 +65,7 @@ Le texte saisi (`mot`, `definition`, `sources`…) n'est jamais modifié par l'a
 
 La définition est un texte brut. `lireDefinition` le découpe en sens, sans rien écarter : un texte hors conventions reste entier dans le champ `texte` d'un seul sens.
 
-- **Sens numérotés** : si la première ligne non vide commence par `1.`, chaque ligne commençant par `2.`, `3.`… ouvre un sens, et les lignes qui suivent lui appartiennent. Sinon tout le texte forme un seul sens, sans numéro.
+- **Sens numérotés** : si la première ligne non vide commence par `1.`, chaque ligne commençant par `2.`, `3.`… ouvre un sens, et les lignes qui suivent lui appartiennent. Une seule ligne faite d'une indication entre crochets peut précéder le `1.` (« [Argot] ») : elle devient l'indication du premier sens, ou, s'il a déjà la sienne, reste en tête de son texte. Sinon tout le texte forme un seul sens, sans numéro.
 - **Indication** : un sens peut commencer par une indication entre crochets, `[Litt.]` ou `[Par ext.]`. Les crochets sont retirés, et `developperIndication` développe les abréviations connues (`Litt.` devient « Littéraire », `fig.` « Figuré », `par ext.` « Par extension », `fam.`, `péj.`, `pop.`, `vulg.`, `argot.`, `poét.`, `iron.`, `par anal.`, `par méton.`, `par métaph.`). Un terme inconnu reste tel quel.
 - **Balises** : `EX:` (exemple), `SYN:` (synonymes, séparés par des virgules), `US:` (usage), `ANTON:` ou `ANT:` (antonymes). La balise est reconnue seulement au début d'un mot (pas dans « SEX: »). Plusieurs exemples sont possibles dans un même sens.
 
@@ -83,6 +83,8 @@ L'import vérifie, sur les définitions réelles, que la lecture ne perd aucun m
 - `composants/Entete.svelte`, `composants/Onglets.svelte` : l'en-tête (avec « 2 sur 5 » sur l'écran Mot) et les trois onglets.
 
 L'état de l'application est dans `etat.svelte.ts` (une classe avec les runes de Svelte 5). Les écrans n'ont pas d'état partagé ailleurs.
+
+Sur la fiche, les retours à la ligne saisis dans le texte d'un sens, un exemple ou un usage restent visibles (`white-space: pre-line`).
 
 Une seule police, EB Garamond, embarquée par `@fontsource/eb-garamond` ; aucune ressource n'est chargée d'un CDN. Les couleurs sont six variables CSS (`--papier`, `--encre`, `--second`, `--filet`, `--exemple`, `--accent`), posées selon la palette par l'attribut `data-palette` de la page. Aucun composant n'écrit de couleur en dur. Les cibles tactiles font au moins 44 px.
 
@@ -110,7 +112,7 @@ La séance en cours, les mots déjà interrogés et la position vivent en mémoi
 
 ### Mémoire et quiz
 
-**Mémoire** (`memoire.ts`). Chaque mot vu a un état : date de première vue, case (1 à 5), échéance, et « acquis ».
+**Mémoire** (`memoire.ts`). Chaque mot vu a un état : date de dernière vue sur l'écran Mot, case (1 à 5), échéance, et « acquis ».
 
 - Un mot vu entre en case 1, dû un jour plus tard.
 - Les délais par case sont 1, 3, 7, 16 et 35 jours (`INTERVALLES`).
@@ -118,14 +120,14 @@ La séance en cours, les mots déjà interrogés et la position vivent en mémoi
 - Une mauvaise réponse ramène le mot en case 1, dû un jour plus tard, et lui retire « acquis ».
 - `motsDus` rend les mots non acquis dont l'échéance est passée, du plus ancien au plus récent.
 
-**Choix du mot suivant** (`selection.ts`). Au hasard parmi les mots complets jamais vus (absents des progrès et de la séance) ; quand tous ont été vus, le mot vu le plus anciennement hors de la séance. Un mot montré est marqué vu aussitôt.
+**Choix du mot suivant** (`selection.ts`). Au hasard parmi les mots complets jamais vus (absents des progrès et de la séance) ; quand tous ont été vus, le mot vu le plus anciennement hors de la séance. Un mot montré est marqué vu aussitôt (`marquerMontre`) : un mot nouveau entre en case 1, un mot connu reçoit seulement une nouvelle date de vue, sans changer de case ni d'échéance. Les mots déjà vus reviennent ainsi chacun à son tour.
 
 **Séance.** Elle compte 5 mots par défaut (réglable). Une fois la taille atteinte, l'écran Mot propose « Encore un mot » ou « Passer au quiz ».
 
 **Quiz** (`quiz.ts`, `Quiz.svelte`). Il est composé une seule fois, à l'ouverture de l'écran, pour que répondre ne le recompose pas.
 
 - Il interroge d'abord chaque mot de la séance pas encore interrogé, puis au plus cinq mots dus (`DUS_MAX`) qui ne sont pas dans la séance. Un mot déjà interrogé dans la séance n'est pas reposé.
-- Les formes alternent, en commençant par « quel mot correspond à cette définition ? » puis « que veut dire ce mot ? ». Chaque question a quatre choix : la bonne réponse et trois mauvaises, tirées de préférence parmi les mots de même genre, sinon de même premier terme de genre, sinon de n'importe quel mot complet. Les synonymes du bon mot ne sont jamais proposés comme mauvaises réponses.
+- Les formes alternent, en commençant par « quel mot correspond à cette définition ? » puis « que veut dire ce mot ? ». Chaque question a quatre choix : la bonne réponse et trois mauvaises, tirées de préférence parmi les mots de même genre, sinon de même premier terme de genre, sinon de n'importe quel mot complet. Ne sont jamais proposés comme mauvaises réponses, puisqu'ils seraient justes eux aussi : les synonymes du bon mot, un mot de même `mot` (sans majuscules ni accents) et un mot de même texte posé au quiz. Deux choix ne montrent jamais le même texte.
 - Le texte posé est le premier texte non vide de la définition, avec le mot (et son tri) remplacé par « — ». Quand toute la définition est une liste de synonymes, le mot est interrogé par ses synonymes (« Synonymes : … »). Sans texte ni synonymes, le mot n'est pas interrogé.
 - Une réponse enregistre le résultat dans la mémoire. L'écran dit « Juste. » ou donne la bonne réponse, sans score ni série. À la fin : « C'est tout pour cette fois », ou « Rien à réviser aujourd'hui » quand il n'y avait aucune question.
 
@@ -145,7 +147,23 @@ La liste des mots est publiée sur la branche `donnees` du dépôt, fichier `mot
 - `make-icons.mjs` dessine l'icône (les lettres « jm » en EB Garamond italique, changées en tracés) dans `assets/icone.svg`, écrit les icônes du lanceur, et remplace les images de l'écran de lancement par un fond papier avec la marque au centre. Il tourne dans `npm run package:android`.
 - `build-apk.mjs` fabrique l'APK (voir plus bas). `versionName` est le numéro du `package.json` racine ; `versionCode` vaut majeure × 10 000 + mineure × 100 + correctif (0.1.0 donne 100).
 - Le dossier `apps/android/android/` est **généré** par Capacitor et ignoré par git. Après un clonage neuf : `npx cap add android`, lancé depuis `apps/android`.
-- L'APK est signé avec la clé de débogage : il convient à une installation directe, pas au Play Store.
+- L'APK est signé avec la clé de débogage : il convient à une installation directe, pas au Play Store (voir « Signature » plus bas).
+
+### Barres du système
+
+Android 16 impose l'affichage bord à bord : la page peut passer sous la barre d'état et sous la barre de gestes.
+
+- **Configuration** (`capacitor.config.ts`) : le greffon `SystemBars` de Capacitor reçoit `insetsHandling: 'css'` et `initialViewportFitValueHint: 'cover'` ; `index.html` demande aussi `viewport-fit=cover`. Capacitor donne alors à la page la hauteur des barres dans `--safe-area-inset-top` et `--safe-area-inset-bottom`.
+- **Marges** (`app.css`) : `--marge-haut` et `--marge-bas` reprennent ces valeurs, à défaut `env(safe-area-inset-*)`, sinon zéro dans un navigateur ordinaire. L'en-tête commence sous la barre d'état (`Entete.svelte`) et les onglets restent au-dessus de la barre de gestes (`Onglets.svelte`) ; le fond de la page s'étend sous les deux.
+- **Bord à bord ou non** (`apps/web/src/barres.ts`) : `webViewBordABord` lit la version de Chromium dans l'agent utilisateur. Capacitor ne met la WebView bord à bord qu'à partir de Chromium 140 ; avant, il la décale sous les barres, qui restent posées sur le fond de la fenêtre Android. Sans version lisible, la WebView est tenue pour bord à bord.
+- **Couleur des icônes** (`main.ts`, `etat.suivreFondDesBarres`) : les icônes de la barre d'état et de la barre de gestes sont claires sur un fond sombre et sombres sur un fond clair (`SystemBars.setStyle`). Sur une WebView récente (bord à bord), le fond est celui de la palette affichée : les icônes suivent la palette (Nuit, ou « Comme le système » en mode sombre). Sur une WebView d'avant Chromium 140, le fond est celui de la fenêtre : les icônes suivent le mode de l'appareil. Elles changent aussitôt quand la palette ou le mode change.
+- **Fond de la fenêtre** : `make-icons.mjs` écrit la couleur `fond_fenetre` (le papier de Papier dans `values`, celui de Nuit dans `values-night`) et l'ajoute comme `android:windowBackground` au thème `AppTheme.NoActionBar` de `styles.xml`. Sur une WebView d'avant Chromium 140, les barres sont donc posées sur le papier de Papier le jour et sur celui de Nuit en mode sombre, comme « Comme le système ».
+
+### Signature
+
+L'APK fabriqué par `npm run package:android` est un APK de débogage, signé avec la clé de débogage de la machine qui le fabrique : le fichier `%USERPROFILE%\.android\debug.keystore`, créé par les outils Android à la première fabrication.
+
+Android ne met à jour une application installée qu'avec un APK signé par la même clé. Un APK fabriqué sur une autre machine, ou après la perte de ce fichier, ne s'installe qu'après avoir désinstallé l'application, ce qui efface les progrès et les favoris gardés sur le téléphone. Ce fichier doit donc être sauvegardé.
 
 ## Import depuis l'Excel (`tools/import`)
 
@@ -158,7 +176,7 @@ Règles de l'import :
 
 - Les groupes de trois dièses ou plus (`###`) sont retirés ; leur présence, ou une définition vide, marque le mot `aCompleter`.
 - Les lignes de source sont séparées, les lignes vides et les tirets écartés.
-- Deux lignes sont des doublons quand leur mot est le même, sans majuscules ni espaces en trop ; **les accents comptent**. Si une seule a une définition (ou aucune), les lignes vides sont écartées et leurs sources réunies. Si plusieurs ont une définition, toutes sont gardées.
+- Deux lignes sont des doublons quand leur mot est le même, sans majuscules ni espaces en trop ; **les accents comptent**. Si une seule a une définition (ou aucune), les lignes vides sont écartées et leurs sources réunies, mais seulement si elles n'apportent rien d'autre : une ligne dont le genre, la note ou le Util. n'est ni vide ni identique à celui de la ligne gardée est gardée elle aussi, et le rapport la signale (« Doublons gardés parce qu'ils portent un genre, une note ou un Util. différent »). Si plusieurs ont une définition, toutes sont gardées.
 - Les lignes rouges sont importées telles quelles, sans fusion, à départager à la main.
 - Un mot retrouvé avec les mêmes `mot` et `tri` dans le `mots.json` existant garde son identifiant ; les autres en reçoivent un nouveau.
 - Le fichier est écrit dans l'ordre de `tri`. Un contrôle vérifie que `lireDefinition` ne perd aucun mot des définitions réelles.

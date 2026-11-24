@@ -32,14 +32,36 @@ describe('lireDefinition', () => {
     const brut = 'A. − Passer son temps à rêvasser.\n1. ... Pierre Brueghel avait fait le voyage.';
     expect(lireDefinition(brut)).toEqual([{ ...vide, numero: null, indication: null, texte: brut }]);
   });
+  it('lit une ligne d’indication entre crochets avant 1. comme l’indication du premier sens', () => {
+    const s = lireDefinition("[Usité seulement à l'inf.]\n1. Faire croire. EX: Il veut faire accroire.\n2. Mentir à quelqu'un.\n3. [Rare] Laisser croire.");
+    expect(s).toHaveLength(3);
+    expect(s[0]).toEqual({ ...vide, numero: '1', indication: "Usité seulement à l'inf.", texte: 'Faire croire.', exemples: ['Il veut faire accroire.'] });
+    expect(s[1]).toMatchObject({ numero: '2', indication: null, texte: "Mentir à quelqu'un.", exemples: [] });
+    expect(s[2]).toMatchObject({ numero: '3', indication: 'Rare', texte: 'Laisser croire.' });
+  });
+  it('garde la ligne entre crochets en tête du texte quand le premier sens a déjà son indication', () => {
+    const s = lireDefinition('  [Argot]  \n\n1. [Fig.] Blesser, meurtrir.\n2. Abîmer.');
+    expect(s).toHaveLength(2);
+    expect(s[0]).toMatchObject({ numero: '1', indication: 'Fig.', texte: '[Argot]\nBlesser, meurtrir.' });
+    expect(s[1]).toMatchObject({ numero: '2', texte: 'Abîmer.' });
+  });
+  it('n’accepte qu’une seule ligne entre crochets avant 1.', () => {
+    const brut = '[Argot]\n[Vieilli]\n1. Blesser.\n2. Abîmer.';
+    expect(lireDefinition(brut)).toEqual([{ ...vide, numero: null, indication: 'Argot', texte: '[Vieilli]\n1. Blesser.\n2. Abîmer.' }]);
+  });
   it('rend un tableau vide pour un texte vide', () => {
     expect(lireDefinition('  \n ')).toEqual([]);
   });
   it('ne perd aucun mot du texte', () => {
-    const brut = '1. [Fig.] Endurci. EX: Le cœur calleux.\n\nligne isolée (biere)\n2. ex: minuscule SYN:dur, sec.';
     const motsDe = (t: string) => t.replace(/\b(EX|SYN|US|ANTON|ANT) ?:/g, ' ').match(/[\p{L}\p{N}]+/gu) ?? [];
-    const sortie = lireDefinition(brut).map((s) => [s.numero, s.indication, s.texte, ...s.exemples, ...s.synonymes, ...s.antonymes, ...s.usages].join(' ')).join(' ');
-    for (const m of motsDe(brut)) expect(sortie).toContain(m);
+    for (const brut of [
+      '1. [Fig.] Endurci. EX: Le cœur calleux.\n\nligne isolée (biere)\n2. ex: minuscule SYN:dur, sec.',
+      '[En tête seule]\n1. Endurci. EX: Le cœur calleux.\n2. [Rare] Sec.',
+      '[En tête doublée]\n1. [Fig.] Endurci.\n2. Sec.',
+    ]) {
+      const sortie = lireDefinition(brut).map((s) => [s.numero, s.indication, s.texte, ...s.exemples, ...s.synonymes, ...s.antonymes, ...s.usages].join(' ')).join(' ');
+      for (const m of motsDe(brut)) expect(sortie).toContain(m);
+    }
   });
 });
 

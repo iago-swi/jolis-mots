@@ -2,9 +2,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    // Both roots: packages/* hold the pure logic, apps/server holds the API
-    // tests. A pattern covering only packages/ would silently run zero server
-    // tests and still report success.
+    // Les deux racines : packages/core porte la logique et ses tests, apps/web
+    // quelques tests de l'application (barres.test.ts). Un motif limité à
+    // packages/ ignorerait ceux-ci sans rien dire.
     include: ['{packages,apps}/**/src/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     environment: 'node',

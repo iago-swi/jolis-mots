@@ -35,7 +35,7 @@
         <p class="texte">
           {#if s.numero !== null}<span class="numero">{s.numero}.</span>{/if}
           {#if s.indication !== null}<span class="intitule">{embellir(developperIndication(s.indication))}</span>{/if}
-          {#if s.texte !== ''}<span>{embellir(s.texte)}</span>{/if}
+          {#if s.texte !== ''}<span class="lignes">{embellir(s.texte)}</span>{/if}
         </p>
       {/if}
       {#if s.usages.length > 0}
@@ -140,6 +140,13 @@
   .liste {
     font-size: 17px;
     line-height: 1.4;
+  }
+
+  /* Les retours à la ligne saisis dans un texte, un exemple ou un usage restent visibles. */
+  .lignes,
+  .valeur,
+  .exemple {
+    white-space: pre-line;
   }
 
   .exemple {

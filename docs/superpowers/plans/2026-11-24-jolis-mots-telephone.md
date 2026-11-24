@@ -1,5 +1,7 @@
 # Jolis Mots, plan 1 : l'application du téléphone
 
+Note : la conception fait foi. Depuis l'écriture de ce plan, la séance est passée à 5 mots au minimum (5, 6, 8 ou 10), le quiz pose toute la séance puis cinq mots dus au plus, et Capacitor est en 8.6.2.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Importer les mots de l'Excel et livrer l'application Android (écrans Mot, Recueil, Quiz, Réglages) en version 0.1.0, avec mise à jour de la liste en ligne.

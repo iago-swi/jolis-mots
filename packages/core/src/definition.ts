@@ -85,10 +85,23 @@ function lireSens(numero: string | null, corps: string): Sens {
   return sens;
 }
 
-/** Lit le texte brut d'une définition. Rien du texte n'est jamais écarté : hors conventions, il reste entier. */
+/** Une ligne faite seulement d'une indication entre crochets, comme « [Argot] ». */
+const LIGNE_INDICATION = /^\[[^\]]*[^\]\s][^\]]*\]$/;
+
+/**
+ * Lit le texte brut d'une définition. Rien du texte n'est jamais écarté : hors conventions, il reste entier.
+ * Une seule ligne d'indication entre crochets peut précéder le `1.` : elle devient l'indication du premier
+ * sens, ou, s'il a déjà la sienne, reste en tête de son texte.
+ */
 export function lireDefinition(texte: string): Sens[] {
   if (texte.trim() === '') return [];
-  const lignes = texte.split(/\r?\n/);
+  let lignes = texte.split(/\r?\n/);
+  const nonVides = lignes.filter((l) => l.trim() !== '');
+  let entete: string | null = null;
+  if (LIGNE_INDICATION.test(nonVides[0]?.trim() ?? '') && DEBUT_DE_SENS.exec(nonVides[1] ?? '')?.[1] === '1') {
+    entete = nonVides[0]!.trim();
+    lignes = lignes.slice(lignes.indexOf(nonVides[0]!) + 1);
+  }
   const premiere = lignes.find((l) => l.trim() !== '') ?? '';
   const debut = DEBUT_DE_SENS.exec(premiere);
   if (debut?.[1] !== '1') return [lireSens(null, texte)];
@@ -100,5 +113,11 @@ export function lireDefinition(texte: string): Sens[] {
     if (m?.[1] !== undefined) sens.push({ numero: m[1], corps: ligne.slice(m[0].length) });
     else if (courant) courant.corps += '\n' + ligne;
   }
-  return sens.map((s) => lireSens(s.numero, s.corps));
+  const lus = sens.map((s) => lireSens(s.numero, s.corps));
+  const premier = lus[0];
+  if (entete !== null && premier) {
+    if (premier.indication === null) premier.indication = entete.slice(1, -1).trim();
+    else premier.texte = premier.texte === '' ? entete : `${entete}\n${premier.texte}`;
+  }
+  return lus;
 }

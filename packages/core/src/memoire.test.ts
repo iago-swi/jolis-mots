@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { marquerVu, motsDus, repondre } from './memoire';
+import { marquerMontre, marquerVu, motsDus, repondre } from './memoire';
 
 const j = (n: number) => new Date(Date.UTC(2026, 0, 1 + n));
 
@@ -44,6 +44,17 @@ it('marquerVu est sans effet si le mot est déjà connu', () => {
 it('repondre sur un mot inconnu le crée d’abord comme vu', () => {
   const p = repondre({}, 'a', true, j(5));
   expect(p['a']).toMatchObject({ vu: j(5).toISOString(), case: 2, du: j(8).toISOString(), acquis: false });
+});
+
+it('marquerMontre crée un mot inconnu comme marquerVu', () => {
+  expect(marquerMontre({}, 'a', j(3))).toEqual(marquerVu({}, 'a', j(3)));
+});
+
+it('marquerMontre remet à jour la date de vue d’un mot connu sans toucher à sa case', () => {
+  const avant = repondre(repondre(marquerVu({}, 'a', j(0)), 'a', true, j(1)), 'a', true, j(4));
+  const apres = marquerMontre(avant, 'a', j(9));
+  expect(apres['a']).toEqual({ ...avant['a'], vu: j(9).toISOString() });
+  expect(avant['a']?.vu).toBe(j(0).toISOString());
 });
 
 it('un identifiant comme constructor n’est pas pris pour un mot connu', () => {

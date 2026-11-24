@@ -98,9 +98,9 @@ it('prend les mauvaises réponses dans le même genre quand il y en a assez', ()
 
 it('prend d’abord le même genre exact, puis le même premier terme, puis les autres', () => {
   const mots = [
-    mot('Cible', 'adj. masc.', 'Cible.'),
-    mot('Exact', 'adj. masc.', 'Exact.'),
-    mot('Proche', 'adj. fém.', 'Proche.'),
+    mot('Cible', 'adj. masc.', 'Visé.'),
+    mot('Exact', 'adj. masc.', 'Juste.'),
+    mot('Proche', 'adj. fém.', 'Voisin.'),
     mot('Loin1', 'verbe', 'Loin un.'),
     mot('Loin2', 'verbe', 'Loin deux.'),
     mot('Loin3', 'nom', 'Loin trois.'),
@@ -115,7 +115,7 @@ it('prend d’abord le même genre exact, puis le même premier terme, puis les 
 });
 
 it('complète avec tous les mots quand le premier terme ne suffit pas', () => {
-  const mots = [mot('Un', 'adj.', 'Un.'), mot('Deux', 'adj.', 'Deux.'), mot('Trois', 'verbe', 'Trois.'), mot('Quatre', 'nom', 'Quatre.')];
+  const mots = [mot('Un', 'adj.', 'Premier.'), mot('Deux', 'adj.', 'Second.'), mot('Trois', 'verbe', 'Tiers.'), mot('Quatre', 'nom', 'Quart.')];
   const [q] = composerQuiz({ complets: mots, seance: ['un'], progres: {}, maintenant, alea: fabriqueAlea() });
   expect(q?.choix.map((c) => c.id).sort()).toEqual(['deux', 'quatre', 'trois', 'un']);
 });
@@ -152,6 +152,39 @@ it('ne montre jamais deux choix de même texte, dans la forme mot vers définiti
     expect(q?.forme).toBe('mot-vers-definition');
     const textes = q?.choix.map((c) => normaliser(c.texte)) ?? [];
     expect(new Set(textes).size).toBe(textes.length);
+    expect(q?.choix).toHaveLength(4);
+    expect(q?.choix.map((c) => c.id)).not.toContain('cible-2');
+  }
+});
+
+it('ne propose pas un homographe du mot demandé, dans la forme mot vers définition', () => {
+  const mots = [
+    mot('Premier', 'adj.', 'Un sens.'),
+    mot('Doublon', 'adj.', 'Premier sens.', 'doublon-1'),
+    mot('doublon', 'adj.', 'Second sens.', 'doublon-2'),
+    mot('Autre', 'adj.', 'Un autre sens.'),
+    mot('Encore', 'adj.', 'Encore un sens.'),
+    mot('Reste', 'adj.', 'Le reste.'),
+  ];
+  for (let graine = 1; graine <= 30; graine++) {
+    const [, q] = composerQuiz({ complets: mots, seance: ['premier', 'doublon-1'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    expect(q?.forme).toBe('mot-vers-definition');
+    expect(q?.choix).toHaveLength(4);
+    expect(q?.choix.map((c) => c.id)).not.toContain('doublon-2');
+  }
+});
+
+it('ne propose pas un mot de même définition au quiz, dans la forme définition vers mot', () => {
+  const mots = [
+    mot('Cible', 'adj.', 'Même définition.', 'cible-1'),
+    mot('Autre', 'adj.', 'Un autre sens.'),
+    mot('Encore', 'adj.', 'Encore un sens.'),
+    mot('Reste', 'adj.', 'Le reste.'),
+    mot('Jumeau', 'adj.', 'même définition.', 'cible-2'),
+  ];
+  for (let graine = 1; graine <= 30; graine++) {
+    const [q] = composerQuiz({ complets: mots, seance: ['cible-1'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    expect(q?.forme).toBe('definition-vers-mot');
     expect(q?.choix).toHaveLength(4);
     expect(q?.choix.map((c) => c.id)).not.toContain('cible-2');
   }

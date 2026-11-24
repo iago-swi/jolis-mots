@@ -84,10 +84,27 @@ function melanger<T>(liste: readonly T[], alea: () => number): T[] {
   return r;
 }
 
-function mauvaisesReponses(bonne: Mot, candidats: Mot[], alea: () => number, texte: (m: Mot) => string): Mot[] {
+/**
+ * Trois mauvaises réponses au plus. Jamais un synonyme déclaré du bon mot, ni un mot qui serait lui aussi
+ * juste : même mot (un homographe), ou même texte de définition au quiz.
+ */
+function mauvaisesReponses(
+  bonne: Mot,
+  candidats: Mot[],
+  alea: () => number,
+  texte: (m: Mot) => string,
+  definitionAuQuiz: (m: Mot) => string,
+): Mot[] {
   const synonymes = new Set(lireDefinition(bonne.definition).flatMap((s) => s.synonymes).map(normaliser));
+  const motBon = normaliser(bonne.mot);
+  const definitionBonne = normaliser(definitionAuQuiz(bonne));
   const possibles = candidats.filter(
-    (c) => c.id !== bonne.id && !synonymes.has(normaliser(c.mot)) && !synonymes.has(normaliser(c.tri)),
+    (c) =>
+      c.id !== bonne.id &&
+      !synonymes.has(normaliser(c.mot)) &&
+      !synonymes.has(normaliser(c.tri)) &&
+      normaliser(c.mot) !== motBon &&
+      normaliser(definitionAuQuiz(c)) !== definitionBonne,
   );
   const paliers = [
     possibles.filter((c) => c.genre === bonne.genre),
@@ -116,7 +133,10 @@ export function composerQuiz(a: {
   maintenant: Date;
   alea: () => number;
 }): Question[] {
-  const interrogeables = a.complets.filter((m) => definitionPourQuiz(m) !== '');
+  // Texte au quiz de chaque mot, calculé une seule fois.
+  const textesAuQuiz = new Map(a.complets.map((m) => [m, definitionPourQuiz(m)]));
+  const definitionAuQuiz = (m: Mot) => textesAuQuiz.get(m) ?? definitionPourQuiz(m);
+  const interrogeables = a.complets.filter((m) => definitionAuQuiz(m) !== '');
   const parId = new Map(interrogeables.map((m) => [m.id, m]));
   const dansSeance = new Set(a.seance);
   const dus = motsDus(a.progres, a.maintenant).filter((id) => !dansSeance.has(id));
@@ -129,14 +149,14 @@ export function composerQuiz(a: {
     const estDu = !dansSeance.has(m.id);
     if (estDu && dusPoses === DUS_MAX) break;
     const forme: Forme = questions.length % 2 === 0 ? 'definition-vers-mot' : 'mot-vers-definition';
-    const texte = (c: Mot) => (forme === 'definition-vers-mot' ? c.mot : definitionPourQuiz(c));
-    const mauvaises = mauvaisesReponses(m, interrogeables, a.alea, texte);
+    const texte = (c: Mot) => (forme === 'definition-vers-mot' ? c.mot : definitionAuQuiz(c));
+    const mauvaises = mauvaisesReponses(m, interrogeables, a.alea, texte, definitionAuQuiz);
     if (mauvaises.length === 0) continue;
     const choix = melanger([m, ...mauvaises], a.alea).map((c) => ({ id: c.id, texte: texte(c) }));
     questions.push({
       idMot: m.id,
       forme,
-      enonce: forme === 'definition-vers-mot' ? definitionPourQuiz(m) : m.mot,
+      enonce: forme === 'definition-vers-mot' ? definitionAuQuiz(m) : m.mot,
       genre: m.genre,
       choix,
       bonne: m.id,

@@ -27,6 +27,17 @@ export function marquerVu(p: Progres, id: string, maintenant: Date): Progres {
   };
 }
 
+/**
+ * Un mot montré sur l'écran Mot : créé comme par `marquerVu` s'il est inconnu, sinon seule sa date
+ * de vue passe à `maintenant` (case, échéance et acquis ne bougent pas). Ainsi, une fois tous les mots
+ * vus, `prochainMot` reprend ceux vus il y a le plus longtemps.
+ */
+export function marquerMontre(p: Progres, id: string, maintenant: Date): Progres {
+  const etat = Object.hasOwn(p, id) ? p[id] : undefined;
+  if (!etat) return marquerVu(p, id, maintenant);
+  return { ...p, [id]: { ...etat, vu: maintenant.toISOString() } };
+}
+
 /** Juste : monte d'une case (acquis après la case 5). Faux : retour en case 1. */
 export function repondre(p: Progres, id: string, juste: boolean, maintenant: Date): Progres {
   const connu = marquerVu(p, id, maintenant);

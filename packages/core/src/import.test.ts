@@ -54,6 +54,38 @@ describe('importer', () => {
     expect(rapport.doublonsFusionnes).toEqual(['Quitus']);
   });
 
+  it('garde et signale un doublon vide qui porte un genre, une note ou un Util. différent', () => {
+    const { fichier, rapport } = importer([
+      ligne({ mot: 'Cacique', tri: 'cacique', genre: 'subst. masc.', definition: 'Chef.', util: 'LL', source: 'A: T' }),
+      ligne({ mot: 'cacique', tri: 'cacique', util: 'MM', source: 'B: U' }),
+      ligne({ mot: 'Quitus', tri: 'quitus', genre: 'subst. masc.', definition: 'Décharge.', note: 'n', source: 'A: T' }),
+      ligne({ mot: 'Quitus', tri: 'quitus', note: 'autre note' }),
+      ligne({ mot: 'Gabegie', tri: 'gabegie', definition: 'Désordre.' }),
+      ligne({ mot: 'Gabegie', tri: 'gabegie', genre: '### subst. fém.' }),
+    ], options());
+    const caciques = fichier.mots.filter((m) => m.tri === 'cacique');
+    expect(caciques).toHaveLength(2);
+    expect(caciques.find((m) => m.definition === 'Chef.')).toMatchObject({ util: 'LL', sources: ['A: T'] });
+    expect(caciques.find((m) => m.definition === '')).toMatchObject({ util: 'MM', sources: ['B: U'], aCompleter: true });
+    expect(fichier.mots.filter((m) => m.tri === 'quitus')).toHaveLength(2);
+    expect(fichier.mots.filter((m) => m.tri === 'gabegie')).toHaveLength(2);
+    expect(rapport.doublonsGardes).toEqual(['Cacique', 'Quitus', 'Gabegie']);
+    expect(rapport.doublonsGardesPourChamps).toEqual(['Cacique', 'Quitus', 'Gabegie']);
+    expect(rapport.doublonsFusionnes).toEqual([]);
+  });
+
+  it('fusionne encore un doublon vide dont le genre, la note et le Util. sont vides ou identiques', () => {
+    const { fichier, rapport } = importer([
+      ligne({ mot: 'Cacique', tri: 'cacique', genre: 'subst. masc.', definition: 'Chef.', note: 'n', util: 'LL', source: 'A: T' }),
+      ligne({ mot: 'cacique', tri: 'cacique', genre: '### subst. masc.', note: ' n ', util: 'LL', source: 'B: U' }),
+      ligne({ mot: 'Cacique', tri: 'cacique', source: 'C: V' }),
+    ], options());
+    expect(fichier.mots.filter((m) => m.tri === 'cacique')).toEqual([expect.objectContaining({ sources: ['A: T', 'B: U', 'C: V'] })]);
+    expect(rapport.doublonsFusionnes).toEqual(['Cacique']);
+    expect(rapport.doublonsGardes).toEqual([]);
+    expect(rapport.doublonsGardesPourChamps).toEqual([]);
+  });
+
   it('ne confond pas deux mots qui ne diffèrent que par un accent', () => {
     const { fichier, rapport } = importer([
       ligne({ mot: 'Bistre', tri: 'bistre', definition: 'Couleur brun noirâtre.' }),
@@ -88,10 +120,12 @@ describe('importer', () => {
 it('met le rapport en Markdown', () => {
   const texte = rapportEnMarkdown({
     lignes: 4, mots: 3, complets: 1, aCompleter: 2,
-    doublonsFusionnes: ['Cacique'], doublonsGardes: [], lignesRouges: ['Cave', 'Cave'],
+    doublonsFusionnes: ['Cacique'], doublonsGardes: [], doublonsGardesPourChamps: ['Quitus'], lignesRouges: ['Cave', 'Cave'],
     aCompleterAvecTexte: ['Ecluser'], genresInhabituels: ['Gabegie : subst. C2223'],
   });
   expect(texte).toContain('Lignes lues : 4');
+  expect(texte).toContain('## Doublons gardés parce qu\'ils portent un genre, une note ou un Util. différent (1)\n\n');
+  expect(texte).toContain('- Quitus');
   expect(texte).toContain('- Cacique');
   expect(texte).toContain('- Gabegie : subst. C2223');
   expect(texte).toContain('aucun');
