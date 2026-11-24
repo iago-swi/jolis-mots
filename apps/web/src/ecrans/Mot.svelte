@@ -60,12 +60,7 @@
     >
       <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill={favori ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg>
     </button>
-    {#if etat.seanceFinie}
-      <button class="secondaire" onclick={() => etat.suivant()}>Encore un mot</button>
-      <button class="principal quiz" onclick={() => etat.allerA('quiz')}>Passer au quiz</button>
-    {:else}
-      <button class="principal" onclick={() => etat.suivant()}>Mot suivant</button>
-    {/if}
+    <button class="principal" onclick={() => etat.suivant()}>Mot suivant</button>
   </div>
 {/if}
 
@@ -123,17 +118,5 @@
     background: var(--encre);
     color: var(--papier);
     font-size: 19px;
-  }
-
-  .principal.quiz {
-    background: var(--accent);
-  }
-
-  .secondaire {
-    flex: 1 1 0;
-    border: 1px solid var(--encre);
-    background: transparent;
-    color: var(--encre);
-    font-size: 17px;
   }
 </style>

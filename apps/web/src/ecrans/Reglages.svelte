@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { etat, SEANCES_POSSIBLES, type Palette } from '../etat.svelte';
+  import { QUESTIONS_POSSIBLES } from '@jolis-mots/core';
+  import { etat, type Palette } from '../etat.svelte';
 
   const PALETTES: { id: Palette; nom: string }[] = [
     { id: 'systeme', nom: 'Comme le système' },
@@ -39,11 +40,11 @@
     </header>
 
     <fieldset>
-      <legend>Mots par séance</legend>
+      <legend>Questions par quiz</legend>
       <div class="choix">
-        {#each SEANCES_POSSIBLES as n (n)}
+        {#each QUESTIONS_POSSIBLES as n (n)}
           <label class="pastille">
-            <input type="radio" name="seance" value={n} checked={etat.reglages.motsParSeance === n} onchange={() => etat.reglerSeance(n)} />
+            <input type="radio" name="questions" value={n} checked={etat.reglages.questionsParQuiz === n} onchange={() => etat.reglerQuestions(n)} />
             <span>{n}</span>
           </label>
         {/each}

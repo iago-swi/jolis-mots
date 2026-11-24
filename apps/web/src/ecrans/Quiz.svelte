@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { composerQuiz, developperGenre, embellir, QUESTIONS_PAR_DEFAUT, type Question } from '@jolis-mots/core';
+  import { composerQuiz, developperGenre, embellir, type Question } from '@jolis-mots/core';
   import { etat } from '../etat.svelte';
 
   // Composé une seule fois, à l'ouverture de l'écran : répondre change `etat.progres`,
@@ -9,7 +9,7 @@
     complets: etat.complets,
     progres: etat.progres,
     portee: 'tous',
-    nombre: QUESTIONS_PAR_DEFAUT,
+    nombre: etat.reglages.questionsParQuiz,
     maintenant: new Date(),
     alea: Math.random,
   });
@@ -129,7 +129,7 @@
       {/if}
     </div>
     <div class="actions">
-      <button class="principal" onclick={() => etat.nouvelleSeance()}>Lire d’autres mots</button>
+      <button class="principal" onclick={() => etat.reprendreLecture()}>Lire d’autres mots</button>
     </div>
   {/if}
 </div>

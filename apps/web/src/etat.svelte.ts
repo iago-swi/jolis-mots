@@ -4,9 +4,13 @@ import {
   marquerMontre,
   normaliser,
   prochainMot,
+  QUESTIONS_PAR_DEFAUT,
+  QUESTIONS_POSSIBLES,
   repondre,
+  validerProgres,
   type FichierMots,
   type Mot,
+  type Portee,
   type Progres,
 } from '@jolis-mots/core';
 import { listeEmbarquee } from './liste-embarquee';
@@ -15,24 +19,27 @@ import { CLES, ecrire, lire } from './stockage';
 export type Ecran = 'mot' | 'quiz' | 'recueil' | 'reglages';
 export type Palette = 'systeme' | 'papier' | 'nuit' | 'ivoire' | 'ceruleen';
 export interface Reglages {
-  motsParSeance: number;
+  questionsParQuiz: number;
   palette: Palette;
 }
 
 const ECRANS: readonly Ecran[] = ['mot', 'quiz', 'recueil', 'reglages'];
 const PALETTES: readonly Palette[] = ['systeme', 'papier', 'nuit', 'ivoire', 'ceruleen'];
-/** Tailles de séance proposées dans les réglages. */
-export const SEANCES_POSSIBLES: readonly number[] = [5, 6, 8, 10];
-const REGLAGES_PAR_DEFAUT: Reglages = { motsParSeance: 5, palette: 'systeme' };
+const PORTEES: readonly Portee[] = ['tous', 'vus'];
+const REGLAGES_PAR_DEFAUT: Reglages = { questionsParQuiz: QUESTIONS_PAR_DEFAUT, palette: 'systeme' };
 
 function estPalette(x: unknown): x is Palette {
   return PALETTES.includes(x as Palette);
 }
 
-function bornerSeance(n: unknown): number {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return REGLAGES_PAR_DEFAUT.motsParSeance;
+function estPortee(x: unknown): x is Portee {
+  return PORTEES.includes(x as Portee);
+}
+
+function bornerQuestions(n: unknown): number {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return REGLAGES_PAR_DEFAUT.questionsParQuiz;
   // La plus petite taille possible supérieure ou égale ; au-delà de la plus grande, la plus grande.
-  return SEANCES_POSSIBLES.find((t) => t >= n) ?? SEANCES_POSSIBLES[SEANCES_POSSIBLES.length - 1]!;
+  return QUESTIONS_POSSIBLES.find((t) => t >= n) ?? QUESTIONS_POSSIBLES[QUESTIONS_POSSIBLES.length - 1]!;
 }
 
 /** La liste gardée sur l'appareil si elle est valide et plus récente que l'embarquée, sinon l'embarquée. */
@@ -40,10 +47,11 @@ function listeDeDepart(): FichierMots {
   return choisirListe(listeEmbarquee, lire<unknown>(CLES.liste, null));
 }
 
+/** Réglages gardés ; ceux de la 0.1.0 (`motsParSeance`) n'ont pas de nombre de questions : 10 par défaut. */
 function reglagesDeDepart(): Reglages {
   const r = lire<Partial<Reglages>>(CLES.reglages, {});
   return {
-    motsParSeance: bornerSeance(r.motsParSeance),
+    questionsParQuiz: bornerQuestions(r.questionsParQuiz),
     palette: estPalette(r.palette) ? r.palette : REGLAGES_PAR_DEFAUT.palette,
   };
 }
@@ -56,14 +64,15 @@ export function ecranDeLAdresse(hash: string): Ecran {
 
 class Etat {
   liste = $state<FichierMots>(listeDeDepart());
-  progres = $state<Progres>(lire<Progres>(CLES.progres, {}));
+  progres = $state<Progres>(validerProgres(lire<unknown>(CLES.progres, {})));
   favoris = $state<string[]>(lire<unknown[]>(CLES.favoris, []).filter((x): x is string => typeof x === 'string'));
   reglages = $state<Reglages>(reglagesDeDepart());
-  /** La séance vit en mémoire seulement : elle repart à zéro à chaque lancement. */
-  seance = $state<string[]>([]);
-  /** Mots déjà interrogés depuis le début de la séance : le quiz ne les repose pas. Mémoire seulement. */
-  repondus = $state<string[]>([]);
+  /** Les mots montrés sur l'écran Mot depuis l'ouverture, dans l'ordre. Mémoire seulement. */
+  lus = $state<string[]>([]);
+  /** Rang, dans `lus`, du mot affiché. */
   position = $state(0);
+  /** Quiz demandé par l'adresse (« ?quiz=tous », « ?quiz=vus ») : l'écran Quiz saute le choix. */
+  quizDemande = $state<Portee | null>(null);
   ecran = $state<Ecran>('mot');
   /** L'écran à retrouver en quittant les réglages. */
   ecranAvantReglages: Ecran = 'mot';
@@ -77,12 +86,9 @@ class Etat {
 
   readonly complets: Mot[] = $derived(this.liste.mots.filter(estComplet));
   readonly motCourant: Mot | null = $derived.by(() => {
-    const id = this.seance[this.position];
+    const id = this.lus[this.position];
     return this.complets.find((m) => m.id === id) ?? null;
   });
-  readonly seanceFinie: boolean = $derived(
-    this.seance.length >= this.reglages.motsParSeance && this.position === this.seance.length - 1,
-  );
   readonly paletteAffichee: Palette = $derived(this.paletteForcee ?? this.reglages.palette);
   /** L'appareil est en mode sombre ; suivi tant que l'application est ouverte (voir `demarrer`). */
   modeSombreAppareil = $state(false);
@@ -102,38 +108,72 @@ class Etat {
     });
   }
 
-  /** Ajoute `m` à la séance et note qu'il vient d'être vu. */
+  /** Ajoute `m` aux mots lus et note qu'il vient d'être vu. */
   private montrer(m: Mot): void {
-    this.seance = [...this.seance, m.id];
-    this.position = this.seance.length - 1;
+    this.lus = [...this.lus, m.id];
+    this.position = this.lus.length - 1;
     this.progres = marquerMontre(this.progres, m.id, new Date());
     ecrire(CLES.progres, this.progres);
   }
 
-  /** Avance dans la séance ; au bout, tire un nouveau mot. */
+  /**
+   * Le prochain mot à montrer : un mot pas encore lu depuis l'ouverture ; quand tous l'ont été,
+   * celui vu il y a le plus longtemps, sauf le dernier montré. La lecture n'a pas de fin.
+   */
+  private tirer(): Mot | null {
+    return (
+      prochainMot(this.complets, this.progres, this.lus, Math.random) ??
+      prochainMot(this.complets, this.progres, this.lus.slice(-1), Math.random)
+    );
+  }
+
+  /** Avance parmi les mots lus ; au bout, tire un nouveau mot. */
   suivant(): void {
-    if (this.position < this.seance.length - 1) {
+    if (this.position < this.lus.length - 1) {
       this.position += 1;
       return;
     }
     this.adopterListeEnAttente();
-    const m = prochainMot(this.complets, this.progres, this.seance, Math.random);
+    const m = this.tirer();
     if (m !== null) this.montrer(m);
   }
 
-  /** Retient `recue` si elle est valide et plus récente que la liste en place : gardée sur l'appareil, adoptée au prochain mot tiré. */
+  /**
+   * Retient `recue` si elle est valide et plus récente que la liste en place : gardée sur l'appareil,
+   * adoptée au prochain mot tiré, ou tout de suite si la liste en place n'a aucun mot complet.
+   */
   proposerListe(recue: unknown): void {
     const enPlace = this.listeEnAttente ?? this.liste;
     const choisie = choisirListe(enPlace, recue);
     if (choisie === enPlace) return;
     this.listeEnAttente = choisie;
     ecrire(CLES.liste, choisie);
+    if (this.complets.length === 0) this.adopterListeEnAttente();
   }
 
   private adopterListeEnAttente(): void {
     if (this.listeEnAttente === null) return;
-    this.liste = this.listeEnAttente;
-    this.listeEnAttente = null;
+    this.remplacerListe(this.listeEnAttente);
+  }
+
+  /**
+   * Adopte `l` tout de suite et remet l'état d'aplomb : les mots qui ne sont plus complets quittent `lus`,
+   * le mot affiché reste s'il le peut, un mot est tiré s'il n'en reste aucun de lu, la fiche ouverte se
+   * ferme si son mot n'est plus complet. Une liste en attente qui n'est pas plus récente que `l` est oubliée.
+   */
+  remplacerListe(l: FichierMots): void {
+    if (this.listeEnAttente !== null && choisirListe(l, this.listeEnAttente) === l) this.listeEnAttente = null;
+    const affiche = this.lus[this.position];
+    this.liste = l;
+    const complets = new Set(this.complets.map((m) => m.id));
+    this.lus = this.lus.filter((id) => complets.has(id));
+    const rang = affiche === undefined ? -1 : this.lus.indexOf(affiche);
+    this.position = rang >= 0 ? rang : Math.max(0, Math.min(this.position, this.lus.length - 1));
+    if (this.lus.length === 0) {
+      const m = this.tirer();
+      if (m !== null) this.montrer(m);
+    }
+    if (this.ficheOuverte !== null && !complets.has(this.ficheOuverte)) this.ficheOuverte = null;
   }
 
   precedent(): void {
@@ -146,7 +186,6 @@ class Etat {
   }
 
   repondre(id: string, juste: boolean): void {
-    if (!this.repondus.includes(id)) this.repondus = [...this.repondus, id];
     this.progres = repondre(this.progres, id, juste, new Date());
     ecrire(CLES.progres, this.progres);
   }
@@ -176,25 +215,26 @@ class Etat {
     ecrire(CLES.reglages, this.reglages);
   }
 
-  reglerSeance(n: number): void {
-    this.reglages = { ...this.reglages, motsParSeance: bornerSeance(n) };
+  reglerQuestions(n: number): void {
+    this.reglages = { ...this.reglages, questionsParQuiz: bornerQuestions(n) };
     ecrire(CLES.reglages, this.reglages);
   }
 
-  nouvelleSeance(): void {
-    this.seance = [];
-    this.repondus = [];
-    this.position = 0;
+  /** Retour à l'écran Mot, sur le mot affiché ; s'il n'y en a pas, un mot est tiré. */
+  reprendreLecture(): void {
     this.allerA('mot');
-    this.suivant();
+    if (this.motCourant === null) this.suivant();
   }
 
+  /** Efface progrès et favoris, puis repart sur un mot neuf, sans historique de lecture. */
   effacerProgres(): void {
     this.progres = {};
     this.favoris = [];
     ecrire(CLES.progres, this.progres);
     ecrire(CLES.favoris, this.favoris);
-    this.nouvelleSeance();
+    this.lus = [];
+    this.position = 0;
+    this.reprendreLecture();
   }
 
   /** Mot complet dont le mot entier (« sans ambages »), sinon le tri (« ambage »), vaut `cle` normalisée. */
@@ -205,13 +245,15 @@ class Etat {
   }
 
   /**
-   * Premier affichage. L'adresse peut imposer l'écran (« #quiz »), la palette
-   * (« ?palette=nuit ») et le premier mot (« ?mot=ceruleen », comparé au tri normalisé).
+   * Premier affichage. L'adresse peut imposer l'écran (« #quiz »), la palette (« ?palette=nuit »),
+   * le quiz (« ?quiz=vus ») et le premier mot (« ?mot=ceruleen », comparé au tri normalisé).
    */
   demarrer(adresse: { search: string; hash: string }): void {
     const params = new URLSearchParams(adresse.search);
     const palette = params.get('palette');
     if (estPalette(palette)) this.paletteForcee = palette;
+    const quiz = params.get('quiz');
+    this.quizDemande = estPortee(quiz) ? quiz : null;
     this.ecran = ecranDeLAdresse(adresse.hash);
 
     if (typeof matchMedia === 'function') {

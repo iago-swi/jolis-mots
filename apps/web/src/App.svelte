@@ -10,18 +10,12 @@
   $effect(() => {
     document.documentElement.dataset.palette = etat.paletteAffichee;
   });
-
-  const position = $derived(
-    etat.ecran === 'mot' && etat.seance.length > 0
-      ? `${etat.position + 1} sur ${Math.max(etat.reglages.motsParSeance, etat.seance.length)}`
-      : null,
-  );
 </script>
 
 <svelte:window onhashchange={() => etat.allerA(ecranDeLAdresse(location.hash))} />
 
 <div class="application">
-  <Entete {position} />
+  <Entete />
   <main class="ecran">
     {#if etat.ecran === 'mot'}
       <Mot />
