@@ -64,7 +64,8 @@ describe('dater', () => {
 });
 
 it('le texte collé du CNRTL revient identique', () => {
-  const colle = 'A.\u00a0−\u202fPasser\tson temps « à rêvasser » ; l’apostrophe, "guillemets", C:\chemin\u2028suite 😀  \n\n';
+  const colle = 'A.\u00a0−\u202fPasser\tson temps « à rêvasser » ; l’apostrophe, "guillemets", C:\\chemin\u2028suite 😀  \n\n';
+  expect(colle).toContain('\\');
   const relu = validerFichier(JSON.parse(ecrireFichier(liste([{ ...a, definition: colle, sources: [' Auteur: Titre (1) '], note: ' 8 ' }]))));
   expect(relu?.mots[0]).toEqual({ ...a, definition: colle, sources: [' Auteur: Titre (1) '], note: ' 8 ' });
 });
