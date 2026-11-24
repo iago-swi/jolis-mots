@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { etat, type Palette } from '../etat.svelte';
+  import { etat, SEANCES_POSSIBLES, type Palette } from '../etat.svelte';
 
   const PALETTES: { id: Palette; nom: string }[] = [
     { id: 'systeme', nom: 'Comme le système' },
@@ -8,7 +8,6 @@
     { id: 'ivoire', nom: 'Ivoire' },
     { id: 'ceruleen', nom: 'Céruléen' },
   ];
-  const TAILLES = [2, 3, 4, 5];
 
   const dateListe = $derived.by(() => {
     const t = Date.parse(etat.liste.publie);
@@ -42,7 +41,7 @@
     <fieldset>
       <legend>Mots par séance</legend>
       <div class="choix">
-        {#each TAILLES as n (n)}
+        {#each SEANCES_POSSIBLES as n (n)}
           <label class="pastille">
             <input type="radio" name="seance" value={n} checked={etat.reglages.motsParSeance === n} onchange={() => etat.reglerSeance(n)} />
             <span>{n}</span>

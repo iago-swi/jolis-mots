@@ -8,7 +8,7 @@ Dans ce document, « décidé par Philippe » signale ce qu'il a dit lui-même. 
 
 Philippe est traducteur (français langue maternelle). Il a rassemblé dans un fichier Excel environ 2 500 mots français rares ou beaux, relevés dans des dictionnaires de mots rares et chez des écrivains comme Nicolas Bouvier et Sylvain Tesson.
 
-Il veut une application qui lui fasse **apprendre ces mots dans les moments creux** : il attend le bus, il ouvre Jolis Mots, un mot s'affiche tout de suite, il en lit deux ou trois, puis un quiz l'aide à les retenir. L'interface doit être belle : c'est un objet pour quelqu'un qui aime la langue.
+Il veut une application qui lui fasse **apprendre ces mots dans les moments creux** : il attend le bus, il ouvre Jolis Mots, un mot s'affiche tout de suite, il en lit cinq ou six, puis un quiz l'aide à les retenir. L'interface doit être belle : c'est un objet pour quelqu'un qui aime la langue.
 
 Deux formes, décidées par Philippe :
 
@@ -22,7 +22,7 @@ Le nom exact est **Jolis Mots**.
 ### Buts
 
 1. À l'ouverture, un mot est à l'écran en moins d'une seconde, sans réseau, sans menu à traverser.
-2. Une séance tient dans une attente de bus : deux ou trois mots, puis un quiz court.
+2. Une séance tient dans une attente de bus : cinq mots au moins, puis un quiz court.
 3. Le quiz fait revenir les mots jusqu'à ce qu'ils tiennent.
 4. La fiche d'un mot est une belle page typographique.
 5. L'atelier permet d'avancer vite dans les 1 396 fiches encore sans définition.
@@ -98,14 +98,14 @@ La fiche montre, de haut en bas : la nature du mot en toutes lettres (section 6.
 
 - Seuls les mots **complets** apparaissent sur les écrans Mot, Quiz et Recueil. Un mot est complet quand sa définition est remplie et qu'il n'est pas marqué « à compléter » (section 6.1).
 - **Mot suivant** passe au mot suivant ; un glissement vers la gauche fait de même, vers la droite revient au précédent de la séance.
-- Une **séance** compte 3 mots (réglable de 2 à 5). Après le dernier, le bouton principal devient **Passer au quiz** ; un bouton secondaire « Encore un mot » permet de continuer à lire.
+- Une **séance** compte 5 mots au minimum (décidé par Philippe), réglable sur 5, 6, 8 ou 10. Après le dernier, le bouton principal devient **Passer au quiz** ; un bouton secondaire « Encore un mot » permet de continuer à lire.
 - Choix du mot : au hasard parmi les mots complets jamais vus. Quand tous ont été vus, ceux vus il y a le plus longtemps.
 - L'**étoile** marque un favori. Les favoris sont gardés sur l'appareil.
 - Une fiche plus longue que l'écran défile ; les boutons restent visibles en bas.
 
 ### 5.2 Écran « Quiz »
 
-Le quiz porte d'abord sur les mots de la séance en cours, puis sur les mots vus auparavant qui sont dus pour une révision. Dix questions au plus par quiz.
+Le quiz porte d'abord sur les mots de la séance en cours, puis sur les mots vus auparavant qui sont dus pour une révision. Le quiz pose tous les mots de la séance auxquels on n'a pas encore répondu, puis cinq mots dus au plus : dix questions pour une séance de cinq mots. Un mot déjà répondu dans la séance n'est pas reposé.
 
 Deux formes de question, quatre réponses au choix :
 
@@ -306,7 +306,9 @@ Pour avoir vite quelque chose sur le téléphone :
 - L'étoile du téléphone est propre à l'appareil. La colonne Note reste un champ de l'atelier et n'apparaît pas sur le téléphone.
 - La colonne Util. n'apparaît que dans l'atelier.
 - Après l'import, l'atelier devient la référence et l'Excel une archive.
-- Séance de 3 mots ; quiz de 10 questions au plus ; révisions à 1, 3, 7, 16 et 35 jours.
+- Séance réglable sur 5, 6, 8 ou 10 mots (5 par défaut) ; au quiz, cinq mots dus au plus en sus de ceux de la séance ; révisions à 1, 3, 7, 16 et 35 jours.
+- Un mot dont toute la définition est une liste de synonymes est interrogé par ses synonymes (« Synonymes : as, chef… »).
+- Un livre à deux auteurs compte pour chacun dans le filtre par auteur.
 - Les progrès ne sont pas partagés entre le téléphone et Windows.
 - La ponctuation haute est laissée telle que saisie, sans espace ajoutée.
 - Les abréviations entre crochets et celles du Genre sont développées à l'affichage (`subst. masc.` devient « nom masculin »).

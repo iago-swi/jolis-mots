@@ -19,7 +19,8 @@ export interface Question {
   bonne: string;
 }
 
-export const QUESTIONS_MAX = 10;
+/** Nombre de mots dus (hors séance) ajoutés au quiz, au plus. */
+export const DUS_MAX = 5;
 const MAUVAISES = 3;
 const MASQUE = '—';
 
@@ -107,7 +108,7 @@ function mauvaisesReponses(bonne: Mot, candidats: Mot[], alea: () => number, tex
   return prises;
 }
 
-/** Compose les questions : mots de la séance d'abord, puis mots dus, dix au plus. */
+/** Compose les questions : tous les mots de la séance d'abord, puis cinq mots dus au plus (hors séance). */
 export function composerQuiz(a: {
   complets: Mot[];
   seance: string[];
@@ -117,12 +118,16 @@ export function composerQuiz(a: {
 }): Question[] {
   const interrogeables = a.complets.filter((m) => definitionPourQuiz(m) !== '');
   const parId = new Map(interrogeables.map((m) => [m.id, m]));
-  const ordre = [...new Set([...a.seance, ...motsDus(a.progres, a.maintenant)])];
+  const dansSeance = new Set(a.seance);
+  const dus = motsDus(a.progres, a.maintenant).filter((id) => !dansSeance.has(id));
+  const ordre = [...dansSeance, ...dus];
   const aInterroger = ordre.map((id) => parId.get(id)).filter((m): m is Mot => m !== undefined);
 
   const questions: Question[] = [];
+  let dusPoses = 0;
   for (const m of aInterroger) {
-    if (questions.length === QUESTIONS_MAX) break;
+    const estDu = !dansSeance.has(m.id);
+    if (estDu && dusPoses === DUS_MAX) break;
     const forme: Forme = questions.length % 2 === 0 ? 'definition-vers-mot' : 'mot-vers-definition';
     const texte = (c: Mot) => (forme === 'definition-vers-mot' ? c.mot : definitionPourQuiz(c));
     const mauvaises = mauvaisesReponses(m, interrogeables, a.alea, texte);
@@ -136,6 +141,7 @@ export function composerQuiz(a: {
       choix,
       bonne: m.id,
     });
+    if (estDu) dusPoses++;
   }
   return questions;
 }

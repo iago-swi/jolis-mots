@@ -21,14 +21,18 @@ export interface Reglages {
 
 const ECRANS: readonly Ecran[] = ['mot', 'quiz', 'recueil', 'reglages'];
 const PALETTES: readonly Palette[] = ['systeme', 'papier', 'nuit', 'ivoire', 'ceruleen'];
-const REGLAGES_PAR_DEFAUT: Reglages = { motsParSeance: 3, palette: 'systeme' };
+/** Tailles de séance proposées dans les réglages. */
+export const SEANCES_POSSIBLES: readonly number[] = [5, 6, 8, 10];
+const REGLAGES_PAR_DEFAUT: Reglages = { motsParSeance: 5, palette: 'systeme' };
 
 function estPalette(x: unknown): x is Palette {
   return PALETTES.includes(x as Palette);
 }
 
 function bornerSeance(n: unknown): number {
-  return typeof n === 'number' && Number.isInteger(n) ? Math.min(5, Math.max(2, n)) : REGLAGES_PAR_DEFAUT.motsParSeance;
+  if (typeof n !== 'number' || !Number.isFinite(n)) return REGLAGES_PAR_DEFAUT.motsParSeance;
+  // La plus petite taille possible supérieure ou égale ; au-delà de la plus grande, la plus grande.
+  return SEANCES_POSSIBLES.find((t) => t >= n) ?? SEANCES_POSSIBLES[SEANCES_POSSIBLES.length - 1]!;
 }
 
 /** La liste gardée sur l'appareil si elle est valide et plus récente que l'embarquée, sinon l'embarquée. */

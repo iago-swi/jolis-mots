@@ -1,6 +1,6 @@
 # Jolis Mots
 
-Un recueil de mots français rares ou beaux, à apprendre dans les moments creux. On ouvre l'application, un mot s'affiche tout de suite avec sa définition ; on en lit deux ou trois, puis un quiz aide à les retenir.
+Un recueil de mots français rares ou beaux, à apprendre dans les moments creux. On ouvre l'application, un mot s'affiche tout de suite avec sa définition ; on en lit cinq ou six, puis un quiz aide à les retenir.
 
 *In English: Jolis Mots is a personal Android and Windows app for learning rare and beautiful French words, collected from dictionaries of rare words and from writers such as Nicolas Bouvier and Sylvain Tesson. The app and its documentation are in French.*
 

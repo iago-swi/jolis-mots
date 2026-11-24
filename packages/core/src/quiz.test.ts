@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { composerQuiz, definitionPourQuiz, QUESTIONS_MAX } from './quiz';
+import { composerQuiz, definitionPourQuiz, DUS_MAX } from './quiz';
 import { marquerVu } from './memoire';
 import { normaliser } from './recherche';
 import type { Mot } from './types';
@@ -22,18 +22,49 @@ const genres = ['adj.', 'adj.', 'adj.', 'adj.', 'adj.', 'verbe', 'verbe', 'verbe
 const noms = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India', 'Juliet'];
 const complets: Mot[] = noms.map((n, i) => mot(n, genres[i] ?? 'adj.', `Définition de ${n.toLowerCase()} numéro ${i}.`));
 
-it('interroge la séance d’abord, puis les mots dus, dix au plus', () => {
+it('interroge la séance d’abord, puis les mots dus', () => {
   const [a, b, c] = complets as [Mot, Mot, Mot];
   const progres = marquerVu({}, b.id, new Date(Date.UTC(2026, 0, 1)));
   const qs = composerQuiz({ complets, seance: [c.id, a.id], progres, maintenant, alea: fabriqueAlea() });
   expect(qs.map((q) => q.idMot)).toEqual([c.id, a.id, b.id]);
+});
 
-  const douze = Array.from({ length: 12 }, (_, i) => mot(`Mot${String.fromCharCode(97 + i)}`, 'adj.', `Sens ${i}.`));
+it('limite les mots dus à DUS_MAX, soit cinq', () => {
+  expect(DUS_MAX).toBe(5);
+});
+
+function motsNumerotes(n: number): Mot[] {
+  return Array.from({ length: n }, (_, i) => mot(`Mot${String.fromCharCode(97 + i)}`, 'adj.', `Sens ${i}.`));
+}
+function dusDepuis(mots: Mot[]) {
   let p = {};
-  for (const m of douze) p = marquerVu(p, m.id, new Date(Date.UTC(2026, 0, 1)));
-  const dix = composerQuiz({ complets: douze, seance: [], progres: p, maintenant, alea: fabriqueAlea() });
-  expect(dix).toHaveLength(QUESTIONS_MAX);
-  expect(new Set(dix.map((q) => q.idMot)).size).toBe(QUESTIONS_MAX);
+  for (const m of mots) p = marquerVu(p, m.id, new Date(Date.UTC(2026, 0, 1)));
+  return p;
+}
+
+it('pose toute la séance, puis cinq mots dus au plus', () => {
+  const tous = motsNumerotes(20);
+  const seance = tous.slice(0, 7).map((m) => m.id);
+  const progres = dusDepuis(tous.slice(7, 19));
+  const qs = composerQuiz({ complets: tous, seance, progres, maintenant, alea: fabriqueAlea() });
+  expect(qs).toHaveLength(12);
+  expect(qs.slice(0, 7).map((q) => q.idMot)).toEqual(seance);
+  const dus = qs.slice(7).map((q) => q.idMot);
+  expect(new Set(dus).size).toBe(5);
+  expect(dus.every((id) => !seance.includes(id))).toBe(true);
+});
+
+it('sans séance, pose cinq mots dus au plus', () => {
+  const douze = motsNumerotes(12);
+  const qs = composerQuiz({ complets: douze, seance: [], progres: dusDepuis(douze), maintenant, alea: fabriqueAlea() });
+  expect(qs).toHaveLength(5);
+  expect(new Set(qs.map((q) => q.idMot)).size).toBe(5);
+});
+
+it('ne compte pas deux fois un mot à la fois dans la séance et dû', () => {
+  const [a, b, c] = motsNumerotes(3) as [Mot, Mot, Mot];
+  const qs = composerQuiz({ complets: [a, b, c], seance: [a.id, b.id], progres: dusDepuis([a, c]), maintenant, alea: fabriqueAlea() });
+  expect(qs.map((q) => q.idMot)).toEqual([a.id, b.id, c.id]);
 });
 
 it('alterne les formes et remplit énoncé, genre et choix selon la forme', () => {
