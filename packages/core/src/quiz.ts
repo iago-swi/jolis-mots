@@ -63,12 +63,14 @@ function masquer(texte: string, termes: string[]): string {
 }
 
 /**
- * Texte de définition présenté au quiz : le premier texte non vide, mot masqué ;
+ * Texte de définition présenté au quiz : le premier texte non vide (celui d'un sens numéroté, s'il en existe), mot masqué ;
  * à défaut, les synonymes du premier sens qui en a ; sinon une chaîne vide (le mot n'est alors pas interrogé).
  */
 export function definitionPourQuiz(m: Mot): string {
   const sens = lireDefinition(m.definition);
-  const avecTexte = sens.find((s) => s.texte !== '');
+  // Un chapeau (sens sans numéro) précède les sens numérotés : le quiz interroge sur le premier d'entre eux.
+  const numerotes = sens.filter((s) => s.numero !== null);
+  const avecTexte = numerotes.find((s) => s.texte !== '') ?? sens.find((s) => s.texte !== '');
   if (avecTexte) return masquer(avecTexte.texte, [m.mot, m.tri]);
   const avecSynonymes = sens.find((s) => s.synonymes.length > 0);
   if (avecSynonymes) return `Synonymes : ${avecSynonymes.synonymes.join(', ')}`;

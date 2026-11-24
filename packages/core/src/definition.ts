@@ -88,10 +88,19 @@ function lireSens(numero: string | null, corps: string): Sens {
 /** Une ligne faite seulement d'une indication entre crochets, comme « [Argot] ». */
 const LIGNE_INDICATION = /^\[[^\]]*[^\]\s][^\]]*\]$/;
 
+/** Longueur au-delà de laquelle une indication est composée en italique courant. */
+export const INDICATION_LONGUE = 30;
+
+/** Une indication de plus de 30 caractères est lue comme une courte note, non comme une étiquette. */
+export function indicationEstLongue(indication: string): boolean {
+  return [...indication].length > INDICATION_LONGUE;
+}
+
 /**
  * Lit le texte brut d'une définition. Rien du texte n'est jamais écarté : hors conventions, il reste entier.
  * Une seule ligne d'indication entre crochets peut précéder le `1.` : elle devient l'indication du premier
- * sens, ou, s'il a déjà la sienne, reste en tête de son texte.
+ * sens, ou, s'il a déjà la sienne, reste en tête de son texte. Tout autre texte placé avant le `1.` forme
+ * le chapeau, un premier sens sans numéro.
  */
 export function lireDefinition(texte: string): Sens[] {
   if (texte.trim() === '') return [];
@@ -102,9 +111,10 @@ export function lireDefinition(texte: string): Sens[] {
     entete = nonVides[0]!.trim();
     lignes = lignes.slice(lignes.indexOf(nonVides[0]!) + 1);
   }
-  const premiere = lignes.find((l) => l.trim() !== '') ?? '';
-  const debut = DEBUT_DE_SENS.exec(premiere);
-  if (debut?.[1] !== '1') return [lireSens(null, texte)];
+  const premier1 = lignes.findIndex((l) => DEBUT_DE_SENS.exec(l)?.[1] === '1');
+  if (premier1 === -1) return [lireSens(null, texte)];
+  const chapeau = lignes.slice(0, premier1).join('\n');
+  lignes = lignes.slice(premier1);
 
   const sens: { numero: string; corps: string }[] = [];
   for (const ligne of lignes) {
@@ -119,5 +129,5 @@ export function lireDefinition(texte: string): Sens[] {
     if (premier.indication === null) premier.indication = entete.slice(1, -1).trim();
     else premier.texte = premier.texte === '' ? entete : `${entete}\n${premier.texte}`;
   }
-  return lus;
+  return chapeau.trim() === '' ? lus : [lireSens(null, chapeau), ...lus];
 }

@@ -244,6 +244,11 @@ it('prend le texte du premier sens qui en a un, avant les synonymes', () => {
   expect(definitionPourQuiz(mot('Xyz', 'subst.', '1. SYN: as.\n2. Une chose.'))).toBe('Une chose.');
 });
 
+it('interroge sur le premier sens numéroté quand un chapeau le précède', () => {
+  const eployer = "Synon. littér. de déployer.\n1. [En parlant des ailes d'un oiseau] Étendre ce qui est replié. EX: Le vautour éploie ses ailes.\n2. S'étendre, s'ouvrir.";
+  expect(definitionPourQuiz({ ...mot('Éployer', 'verbe', eployer), tri: 'éployer' })).toBe('Étendre ce qui est replié.');
+});
+
 it('rend une chaîne vide sans texte ni synonymes', () => {
   expect(definitionPourQuiz(mot('Xyz', 'subst.', 'EX: un exemple.'))).toBe('');
   expect(definitionPourQuiz(mot('Xyz', 'subst.', ''))).toBe('');
