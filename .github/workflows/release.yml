@@ -1,0 +1,67 @@
+# Publie une version sur GitHub pour une étiquette vX.Y.Z, avec la section
+# correspondante de CHANGELOG.md comme notes. Voir VERSIONING.md.
+# Adapté de iago-swi/capitales.
+#
+#   v1.2.0  ->  CHANGELOG.md, section "## [1.2.0]", titre "Jolis Mots 1.2.0"
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Étiquette existante à publier ou à rafraîchir, par exemple v1.2.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publier les notes de version tirées du journal
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]] \
+            || fail "L'étiquette '$TAG' n'est pas de la forme vX.Y.Z"
+          version="${BASH_REMATCH[1]}"
+          log="CHANGELOG.md"
+          [[ -f "$log" ]] || fail "$log n'existe pas"
+
+          # Notes : tout ce qui suit "## [version]" jusqu'au titre "## " suivant,
+          # sans les définitions de liens gardées en bas du fichier.
+          awk -v v="$version" '
+            /^## /          { on = (index($0, "## [" v "]") == 1); next }
+            /^\[[^]]+\]: /  { next }
+            on              { print }
+          ' "$log" | sed -e '/./,$!d' > notes.md
+          grep -q '[^[:space:]]' notes.md || fail "$log n'a pas de section '## [$version]'"
+
+          # La version du package.json doit être celle qu'on publie. Vérifié
+          # seulement pour une étiquette envoyée, où les fichiers sont ceux du commit.
+          if [[ "$GITHUB_EVENT_NAME" == "push" && -f package.json ]]; then
+            declared="$(jq -r '.version // empty' package.json)"
+            if [[ -n "$declared" && "$declared" != "$version" ]]; then
+              fail "package.json déclare la version $declared, mais l'étiquette dit $version"
+            fi
+          fi
+
+          title="Jolis Mots $version"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --title "$title" --notes-file notes.md
+            echo "Notes de $title mises à jour"
+          else
+            gh release create "$TAG" --verify-tag --title "$title" --notes-file notes.md
+            echo "$title publiée"
+          fi

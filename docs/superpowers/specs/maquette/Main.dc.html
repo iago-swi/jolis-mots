@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Jolis Mots – le mot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap">
+<style>
+body{margin:0}
+a{color:#566070}a:hover{color:#1A2230}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F4EF; color: #1A2230; font-family: 'EB Garamond', Georgia, serif; display: flex; flex-direction: column">
+
+<header style="display: flex; justify-content: space-between; align-items: baseline; padding: 30px 28px 0">
+<span style="font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: #566070">Jolis Mots</span>
+<span style="font-size: 16px; font-style: italic; color: #566070">{{position}}</span>
+</header>
+
+<main style="flex-grow: 1; min-height: 0; overflow: hidden; padding: 46px 28px 0; display: flex; flex-direction: column; gap: 20px">
+<p style="margin: 0; font-size: 18px; font-style: italic; color: #566070">{{w.genre}}</p>
+<h1 style="margin: -8px 0 0; font-size: 62px; line-height: 1; font-weight: 500; letter-spacing: -0.01em">{{w.mot}}</h1>
+<div style="width: 44px; height: 2px; background: {{accent}}"></div>
+
+<sc-for list="{{w.sens}}" as="s" hint-placeholder-count="1">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<p style="margin: 0; font-size: 20px; line-height: 1.4">
+<sc-if value="{{s.hasNum}}" hint-placeholder-val="{{ false }}"><span style="margin-right: 8px; font-weight: 600; color: {{accent}}">{{s.num}}</span></sc-if>
+<sc-if value="{{s.hasReg}}" hint-placeholder-val="{{ true }}"><span style="margin-right: 8px; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #566070">{{s.reg}}</span></sc-if>
+<span>{{s.def}}</span>
+</p>
+<sc-if value="{{s.hasSyn}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 17px; line-height: 1.4; color: #566070"><span style="font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; margin-right: 8px">Synonyme</span><span style="color: #1A2230">{{s.syn}}</span></p>
+</sc-if>
+<sc-if value="{{s.hasEx}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0; padding-left: 16px; border-left: 1px solid #C3C8BE; font-size: 18px; line-height: 1.42; font-style: italic; color: #3A4352">{{s.ex}}</p>
+</sc-if>
+</div>
+</sc-for>
+
+<section style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-size: 12px; font-weight: 400; letter-spacing: 0.18em; text-transform: uppercase; color: #566070">Rencontré chez</h2>
+<sc-for list="{{w.sources}}" as="src" hint-placeholder-count="2">
+<p style="margin: 0; font-size: 17px; line-height: 1.35">{{src.auteur}}, <span style="font-style: italic">{{src.titre}}</span><span style="color: #566070">{{src.page}}</span></p>
+</sc-for>
+</section>
+</main>
+
+<div style="display: flex; gap: 12px; align-items: center; padding: 14px 28px 18px">
+<button aria-label="Marquer ce mot comme favori" onClick="{{toggleFav}}" style="flex-shrink: 0; width: 52px; height: 52px; border: 1px solid #1A2230; border-radius: 26px; background: transparent; color: #1A2230; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0">
+<sc-if value="{{isFav}}" hint-placeholder-val="{{ false }}">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="{{accent}}" stroke="{{accent}}" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg>
+</sc-if>
+<sc-if value="{{notFav}}" hint-placeholder-val="{{ true }}">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg>
+</sc-if>
+</button>
+<sc-if value="{{hasNext}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{next}}" style="flex-grow: 1; height: 52px; border: none; border-radius: 26px; background: #1A2230; color: #F3F4EF; font-family: inherit; font-size: 19px; cursor: pointer">Mot suivant</button>
+</sc-if>
+<sc-if value="{{isLast}}" hint-placeholder-val="{{ false }}">
+<a href="Quiz.dc.html" style="flex-grow: 1; height: 52px; border-radius: 26px; background: {{accent}}; color: #FFFFFF; font-size: 19px; text-decoration: none; display: flex; align-items: center; justify-content: center">Passer au quiz</a>
+</sc-if>
+</div>
+
+<nav aria-label="Navigation principale" style="display: flex; border-top: 1px solid #D5D8D0; height: 66px; flex-shrink: 0">
+<a href="Main.dc.html" aria-current="page" style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #1A2230; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; box-shadow: inset 0 2px 0 {{accent}}">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 5.5c2.5-1 5.5-1 8 .5 2.5-1.5 5.5-1.5 8-.5v13c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"></path><path d="M12 6v13"></path></svg>
+<span>Mot</span>
+</a>
+<a href="Quiz.dc.html" style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #566070; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M8.5 12.2l2.4 2.4 4.6-5"></path></svg>
+<span>Quiz</span>
+</a>
+<a href="Recueil.dc.html" style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #566070; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"></path></svg>
+<span>Recueil</span>
+</a>
+</nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#B8321E","options":["#B8321E","#1F4E79","#2F5D50","#6B3A5B"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const st = this.state || {};
+const i = st.i ?? 0;
+const favs = st.favs || {};
+const mots = [
+{
+mot: "Céruléen", genre: "adjectif",
+sens: [
+{ num: "", reg: "Littéraire", def: "D’un bleu intense ou d’un bleu sombre.", syn: "", ex: "« Nuit céruléenne. »" }
+],
+sources: [
+{ auteur: "Nicolas Bouvier", titre: "L’Usage du monde", page: ", p. 334" },
+{ auteur: "Sylvain Tesson", titre: "S’abandonner à vivre", page: ", p. 106" }
+]
+},
+{
+mot: "Baguenauder", genre: "verbe",
+sens: [
+{ num: "1.", reg: "", def: "Passer son temps à des choses frivoles et sans importance.", syn: "muser", ex: "" },
+{ num: "2.", reg: "Par extension", def: "Se promener sans but précis, flâner.", syn: "", ex: "« À mes pieds est ma ville, que l’Yonne paresseuse et le Bouvron baguenaudant ceignent de leurs rubans. »" }
+],
+sources: [
+{ auteur: "Sylvain Tesson", titre: "Sur les chemins noirs", page: "" }
+]
+},
+{
+mot: "Accore", genre: "adjectif",
+sens: [
+{ num: "", reg: "D’une côte, d’un littoral", def: "Qui présente une brusque dénivellation au-dessus et au-dessous des eaux.", syn: "", ex: "« Il était maintenant une frange accore de côte rocheuse, à deux journées de mer d’Orsenna. »" }
+],
+sources: [
+{ auteur: "A. Poussin et S. Tesson", titre: "Himalaya, visions de marcheurs des cimes", page: ", p. 82" },
+{ auteur: "Sylvain Tesson", titre: "Dans les forêts de Sibérie", page: ", p. 241" }
+]
+}
+];
+const brut = mots[i];
+const w = {
+mot: brut.mot,
+genre: brut.genre,
+sources: brut.sources,
+sens: brut.sens.map((s) => ({
+num: s.num, reg: s.reg, def: s.def, syn: s.syn, ex: s.ex,
+hasNum: s.num !== "", hasReg: s.reg !== "", hasSyn: s.syn !== "", hasEx: s.ex !== ""
+}))
+};
+const isFav = !!favs[i];
+return {
+accent: this.props.accent ?? "#B8321E",
+w: w,
+position: (i + 1) + " sur " + mots.length,
+hasNext: i < mots.length - 1,
+isLast: i === mots.length - 1,
+isFav: isFav,
+notFav: !isFav,
+next: () => this.setState({ i: Math.min(i + 1, mots.length - 1) }),
+toggleFav: () => {
+const copie = Object.assign({}, favs);
+copie[i] = !favs[i];
+this.setState({ favs: copie });
+}
+};
+}
+}
+</script>
+</body>
+</html>

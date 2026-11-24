@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jolis Mots – palettes et autres designs</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Bodoni+Moda:ital,opsz,wght@1,6..96,500&family=Courier+Prime:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:ital,wght@0,400;0,500;0,600;1,400&family=Spectral:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 24px 64px; background: #DADBD6; color: #1A2230; font-family: 'EB Garamond', Georgia, serif; }
+h1 { margin: 0 0 4px; font-size: 34px; font-weight: 500; }
+h2 { margin: 56px 0 4px; font-size: 30px; font-weight: 500; }
+.intro { margin: 0 0 24px; font-size: 19px; font-style: italic; color: #3F4855; max-width: 760px; }
+.rangee { display: flex; flex-wrap: wrap; gap: 40px; }
+.colonne { width: 390px; max-width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.nom { margin: 0; font-size: 26px; font-weight: 500; }
+.note { margin: 0; min-height: 52px; font-size: 18px; line-height: 1.35; font-style: italic; color: #3F4855; }
+.tel { width: 390px; max-width: 100%; height: 844px; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; }
+.tel p, .tel h3 { margin: 0; }
+svg { flex-shrink: 0; }
+
+/* ---------- Design actuel, décliné en palettes ---------- */
+.papier { background: var(--papier); color: var(--encre); font-family: 'EB Garamond', Georgia, serif; }
+.papier .entete { display: flex; justify-content: space-between; align-items: baseline; padding: 30px 28px 0; color: var(--second); }
+.papier .marque { font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; }
+.papier .rang { font-size: 16px; font-style: italic; }
+.papier .corps { flex-grow: 1; padding: 46px 28px 0; display: flex; flex-direction: column; gap: 20px; }
+.papier .genre { font-size: 18px; font-style: italic; color: var(--second); }
+.papier .mot { margin-top: -8px; font-size: 62px; line-height: 1; font-weight: 500; letter-spacing: -0.01em; }
+.papier .trait { width: 44px; height: 2px; background: var(--accent); }
+.papier .def { font-size: 20px; line-height: 1.4; }
+.papier .registre { margin-right: 8px; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--second); }
+.papier .ex { padding-left: 16px; border-left: 1px solid var(--filet); font-size: 18px; line-height: 1.42; font-style: italic; color: var(--exemple); }
+.papier .sources { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 17px; line-height: 1.35; }
+.papier .titre { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--second); }
+.papier .page { color: var(--second); }
+.papier .actions { display: flex; gap: 12px; align-items: center; padding: 14px 28px 18px; }
+.papier .etoile { width: 52px; height: 52px; border: 1px solid var(--encre); border-radius: 26px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
+.papier .suivant { flex-grow: 1; height: 52px; border-radius: 26px; background: var(--encre); color: var(--papier); font-size: 19px; display: flex; align-items: center; justify-content: center; }
+.papier .onglets { display: flex; height: 66px; border-top: 1px solid var(--filet); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--second); }
+.papier .onglets span { flex: 1 1 0; display: flex; align-items: center; justify-content: center; }
+.papier .onglets .actif { color: var(--encre); box-shadow: inset 0 2px 0 var(--accent); }
+
+.p-papier { --papier: #F3F4EF; --encre: #1A2230; --second: #566070; --filet: #D5D8D0; --exemple: #3A4352; --accent: #B8321E; }
+.p-nuit { --papier: #14181F; --encre: #ECE9E0; --second: #A3A9B3; --filet: #2F3641; --exemple: #C9CCD2; --accent: #E8765F; }
+.p-ivoire { --papier: #F6EFE2; --encre: #2B2118; --second: #6B5B4B; --filet: #DDD2BF; --exemple: #4A3B2D; --accent: #8A4B14; }
+.p-ceruleen { --papier: #EEF2F6; --encre: #14233B; --second: #51607A; --filet: #CFD8E3; --exemple: #33435C; --accent: #1F5FA8; }
+
+/* ---------- Design 2 : Affiche ---------- */
+.affiche { background: #FFFFFF; color: #111111; font-family: 'Inter', system-ui, sans-serif; }
+.affiche .bloc { height: 372px; padding: 28px; background: #1F5FA8; color: #FFFFFF; display: flex; flex-direction: column; justify-content: space-between; }
+.affiche .entete { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; }
+.affiche .genre { font-size: 15px; font-weight: 500; color: #DCE8F5; margin-bottom: 10px; }
+.affiche .mot { font-family: 'Archivo', sans-serif; font-size: 70px; line-height: 0.95; font-weight: 800; letter-spacing: -0.03em; }
+.affiche .corps { flex-grow: 1; padding: 28px 28px 0; display: flex; flex-direction: column; gap: 20px; }
+.affiche .def { font-size: 23px; line-height: 1.3; font-weight: 500; letter-spacing: -0.01em; }
+.affiche .ex { font-size: 18px; line-height: 1.4; font-style: italic; color: #444444; }
+.affiche .sources { margin-top: 6px; padding-top: 18px; border-top: 2px solid #111111; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.4; }
+.affiche .titre { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.affiche b { font-weight: 600; }
+.affiche .actions { display: flex; gap: 10px; padding: 14px 28px 18px; }
+.affiche .etoile { width: 54px; height: 54px; border: 2px solid #111111; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+.affiche .suivant { flex-grow: 1; height: 54px; border-radius: 4px; background: #111111; color: #FFFFFF; font-family: 'Archivo', sans-serif; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+.affiche .onglets { display: flex; height: 62px; border-top: 2px solid #111111; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.affiche .onglets span { flex: 1 1 0; display: flex; align-items: center; justify-content: center; }
+.affiche .onglets .actif { background: #111111; color: #FFFFFF; }
+
+/* ---------- Design 3 : Carnet ---------- */
+.carnet { position: relative; background-color: #EFE9DB; background-image: repeating-linear-gradient(to bottom, transparent 0px, transparent 31px, #D6CDB8 31px, #D6CDB8 32px); color: #1B2A4A; font-family: 'Spectral', Georgia, serif; }
+.carnet .marge { position: absolute; top: 0; bottom: 0; left: 44px; width: 1px; background: #B5452E; }
+.carnet .machine { font-family: 'Courier Prime', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: #4E5565; }
+.carnet .entete { display: flex; justify-content: space-between; align-items: baseline; height: 64px; padding: 34px 26px 0 60px; font-size: 13px; }
+.carnet .corps { flex-grow: 1; padding: 32px 26px 0 60px; display: flex; flex-direction: column; }
+.carnet .genre { height: 32px; font-family: 'Courier Prime', monospace; font-size: 14px; line-height: 32px; color: #4E5565; }
+.carnet .mot { height: 64px; font-size: 56px; line-height: 64px; font-weight: 600; font-style: italic; letter-spacing: -0.01em; }
+.carnet .vague { height: 32px; }
+.carnet .def { font-size: 21px; line-height: 32px; }
+.carnet .ex { margin-top: 32px; font-size: 19px; line-height: 32px; font-style: italic; color: #33405C; }
+.carnet .titre { margin-top: 32px; height: 32px; font-size: 13px; line-height: 32px; }
+.carnet .etiquettes { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 6px; }
+.carnet .etiquette { padding: 7px 12px 5px; border: 1px dashed #1B2A4A; background: #F6F1E5; font-family: 'Courier Prime', monospace; font-size: 13px; line-height: 1.35; letter-spacing: 0.04em; text-transform: uppercase; transform: rotate(-1.5deg); }
+.carnet .etiquette + .etiquette { margin-left: 14px; transform: rotate(1deg); }
+.carnet .actions { display: flex; gap: 12px; padding: 14px 26px 18px 60px; }
+.carnet .etoile { width: 52px; height: 52px; border: 1.5px solid #1B2A4A; border-radius: 26px; background: #EFE9DB; display: flex; align-items: center; justify-content: center; }
+.carnet .suivant { flex-grow: 1; height: 52px; border-radius: 3px; background: #1B2A4A; color: #EFE9DB; font-family: 'Courier Prime', monospace; font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
+.carnet .onglets { display: flex; height: 64px; padding-left: 44px; background: #EFE9DB; border-top: 1px solid #1B2A4A; font-size: 13px; }
+.carnet .onglets span { flex: 1 1 0; display: flex; align-items: center; justify-content: center; }
+.carnet .onglets .actif { color: #1B2A4A; font-weight: 700; text-decoration: underline; text-decoration-color: #B5452E; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+
+/* ---------- Design 4 : Frontispice ---------- */
+.frontispice { --or: #D2B15A; background: #10281F; color: #EFE9DA; font-family: 'EB Garamond', Georgia, serif; text-align: center; }
+.frontispice .entete { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 34px 28px 0; }
+.frontispice .marque { font-size: 13px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--or); }
+.frontispice .filet { display: flex; align-items: center; gap: 10px; }
+.frontispice .filet i { display: block; width: 64px; height: 1px; background: var(--or); }
+.frontispice .losange { display: block; width: 7px; height: 7px; transform: rotate(45deg); background: var(--or); }
+.frontispice .losange.creux { background: none; border: 1px solid var(--or); }
+.frontispice .corps { flex-grow: 1; padding: 0 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+.frontispice .genre { font-size: 18px; font-style: italic; color: #A9B8AE; }
+.frontispice .mot { margin-top: -6px; font-family: 'Bodoni Moda', 'Didot', serif; font-size: 64px; line-height: 1.05; font-weight: 500; font-style: italic; }
+.frontispice .def { max-width: 290px; font-size: 22px; line-height: 1.4; }
+.frontispice .ex { font-size: 20px; line-height: 1.4; font-style: italic; color: #C9D2C8; }
+.frontispice .sources { display: flex; flex-direction: column; gap: 6px; font-size: 17px; line-height: 1.35; }
+.frontispice .titre { margin-bottom: 4px; font-size: 12px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--or); }
+.frontispice .page { color: #A9B8AE; }
+.frontispice .actions { display: flex; gap: 12px; padding: 14px 28px 18px; }
+.frontispice .etoile { width: 52px; height: 52px; border: 1px solid var(--or); border-radius: 26px; color: var(--or); display: flex; align-items: center; justify-content: center; }
+.frontispice .suivant { flex-grow: 1; height: 52px; border: 1px solid var(--or); border-radius: 26px; color: var(--or); font-size: 15px; letter-spacing: 0.22em; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
+.frontispice .onglets { display: flex; height: 64px; border-top: 1px solid #2B4A3D; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: #A9B8AE; }
+.frontispice .onglets span { flex: 1 1 0; display: flex; align-items: center; justify-content: center; }
+.frontispice .onglets .actif { color: var(--or); }
+</style>
+</head>
+<body>
+
+<h1>Même design, quatre palettes</h1>
+<p class="intro">Le thème se choisirait dans les réglages de l’application. « Papier » est la palette de la maquette ; les trois autres sont nouvelles.</p>
+<div class="rangee" id="palettes"></div>
+
+<template id="modele">
+<div class="tel papier">
+<div class="entete"><span class="marque">Jolis Mots</span><span class="rang">1 sur 3</span></div>
+<div class="corps">
+<p class="genre">adjectif</p>
+<h3 class="mot">Céruléen</h3>
+<div class="trait"></div>
+<p class="def"><span class="registre">Littéraire</span>D’un bleu intense ou d’un bleu sombre.</p>
+<p class="ex">« Nuit céruléenne. »</p>
+<div class="sources">
+<p class="titre">Rencontré chez</p>
+<p>Nicolas Bouvier, <em>L’Usage du monde</em><span class="page">, p. 334</span></p>
+<p>Sylvain Tesson, <em>S’abandonner à vivre</em><span class="page">, p. 106</span></p>
+</div>
+</div>
+<div class="actions">
+<div class="etoile"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg></div>
+<div class="suivant">Mot suivant</div>
+</div>
+<div class="onglets"><span class="actif">Mot</span><span>Quiz</span><span>Recueil</span></div>
+</div>
+</template>
+
+<h2>Trois autres designs</h2>
+<p class="intro">Le même mot, trois partis pris différents. Chacun se déclinerait ensuite pour le quiz, le recueil et l’atelier.</p>
+<div class="rangee">
+
+<div class="colonne">
+<p class="nom">2. Affiche</p>
+<p class="note">Graphique et contemporain : un bloc de couleur, un mot en très gras, sans empattements.</p>
+<div class="tel affiche">
+<div class="bloc">
+<div class="entete"><span>Jolis Mots</span><span>1 / 3</span></div>
+<div>
+<p class="genre">adjectif · littéraire</p>
+<h3 class="mot">Céruléen</h3>
+</div>
+</div>
+<div class="corps">
+<p class="def">D’un bleu intense ou d’un bleu sombre.</p>
+<p class="ex">« Nuit céruléenne. »</p>
+<div class="sources">
+<p class="titre">Rencontré chez</p>
+<p><b>Nicolas Bouvier</b> · <em>L’Usage du monde</em>, p. 334</p>
+<p><b>Sylvain Tesson</b> · <em>S’abandonner à vivre</em>, p. 106</p>
+</div>
+</div>
+<div class="actions">
+<div class="etoile"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg></div>
+<div class="suivant"><span>Mot suivant</span><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"></path></svg></div>
+</div>
+<div class="onglets"><span class="actif">Mot</span><span>Quiz</span><span>Recueil</span></div>
+</div>
+</div>
+
+<div class="colonne">
+<p class="nom">3. Carnet</p>
+<p class="note">Le carnet de route de Bouvier : papier ligné, marge rouge, machine à écrire, sources en étiquettes.</p>
+<div class="tel carnet">
+<div class="marge"></div>
+<div class="entete machine"><span>Jolis Mots</span><span>n° 1 / 3</span></div>
+<div class="corps">
+<p class="genre">adj. — littéraire</p>
+<h3 class="mot">Céruléen</h3>
+<svg class="vague" aria-hidden="true" width="210" height="16" viewBox="0 0 210 16" fill="none" stroke="#B5452E" stroke-width="2" stroke-linecap="round"><path d="M2 9c18-6 30 5 48 0s30-6 48 0 30 5 48 0 32-6 62-1"></path></svg>
+<p class="def">D’un bleu intense ou d’un bleu sombre.</p>
+<p class="ex">« Nuit céruléenne. »</p>
+<p class="titre machine">Rencontré chez</p>
+<div class="etiquettes">
+<p class="etiquette">Bouvier · L’Usage du monde · p. 334</p>
+<p class="etiquette">Tesson · S’abandonner à vivre · p. 106</p>
+</div>
+</div>
+<div class="actions">
+<div class="etoile"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg></div>
+<div class="suivant">Tourner la page</div>
+</div>
+<div class="onglets machine"><span class="actif">Mot</span><span>Quiz</span><span>Recueil</span></div>
+</div>
+</div>
+
+<div class="colonne">
+<p class="nom">4. Frontispice</p>
+<p class="note">Sombre et précieux : tout est centré, italique à forts contrastes, filets et or sur vert profond.</p>
+<div class="tel frontispice">
+<div class="entete">
+<span class="marque">Jolis Mots</span>
+<div class="filet" aria-hidden="true"><i></i><span class="losange"></span><i></i></div>
+</div>
+<div class="corps">
+<p class="genre">adjectif, littéraire</p>
+<h3 class="mot">Céruléen</h3>
+<p class="def">D’un bleu intense ou d’un bleu sombre.</p>
+<p class="ex">« Nuit céruléenne. »</p>
+<span class="losange creux" aria-hidden="true"></span>
+<div class="sources">
+<p class="titre">Rencontré chez</p>
+<p>Nicolas Bouvier, <em>L’Usage du monde</em><span class="page">, p. 334</span></p>
+<p>Sylvain Tesson, <em>S’abandonner à vivre</em><span class="page">, p. 106</span></p>
+</div>
+</div>
+<div class="actions">
+<div class="etoile"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg></div>
+<div class="suivant">Mot suivant</div>
+</div>
+<div class="onglets"><span class="actif">Mot</span><span>Quiz</span><span>Recueil</span></div>
+</div>
+</div>
+
+</div>
+
+<script>
+const palettes = [
+  ["p-papier", "Papier", "La palette actuelle : papier froid, encre, vermillon."],
+  ["p-nuit", "Nuit", "Thème sombre, pour lire le soir."],
+  ["p-ivoire", "Ivoire", "Papier chaud de vieux livre, encre brune."],
+  ["p-ceruleen", "Céruléen", "Papier bleuté, encre marine, accent bleu."]
+];
+const rangee = document.getElementById("palettes");
+const modele = document.getElementById("modele");
+for (const [classe, nom, note] of palettes) {
+  const colonne = document.createElement("div");
+  colonne.className = "colonne";
+  const titre = document.createElement("p");
+  titre.className = "nom";
+  titre.textContent = nom;
+  const texte = document.createElement("p");
+  texte.className = "note";
+  texte.textContent = note;
+  const tel = modele.content.firstElementChild.cloneNode(true);
+  tel.classList.add(classe);
+  colonne.append(titre, texte, tel);
+  rangee.append(colonne);
+}
+</script>
+</body>
+</html>

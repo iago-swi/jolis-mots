@@ -1,0 +1,17 @@
+# Archive personnelle des mots : reste sur la machine
+vocabulaire.xlsx
+~$*
+
+node_modules/
+dist/
+release/
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+.env
+.env.*
+*.log
+.claude/settings.local.json
+
+# Projet Android généré par Capacitor
+apps/android/android/

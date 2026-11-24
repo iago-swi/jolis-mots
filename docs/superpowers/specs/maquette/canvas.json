@@ -1,0 +1,16 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-24T10:00:00Z" },
+  "title": "Jolis Mots – maquette",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "Le mot (écran d’ouverture)", "is_interactive": true, "radius": 28 },
+    "Quiz.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "Quiz", "is_interactive": true, "radius": 28 },
+    "Recueil.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "Recueil", "radius": 28 },
+    "Atelier.dc.html": { "x": 0, "y": 964, "w": 1330, "h": 860, "title": "Atelier (Windows)", "expand": "fill" }
+  },
+  "order": ["Main.dc.html", "Quiz.dc.html", "Recueil.dc.html", "Atelier.dc.html"],
+  "notes": {},
+  "designSystems": []
+}
