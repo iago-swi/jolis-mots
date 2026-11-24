@@ -1,14 +1,15 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { composerQuiz, developperGenre, embellir, type Question } from '@jolis-mots/core';
+  import { composerQuiz, developperGenre, embellir, QUESTIONS_PAR_DEFAUT, type Question } from '@jolis-mots/core';
   import { etat } from '../etat.svelte';
 
   // Composé une seule fois, à l'ouverture de l'écran : répondre change `etat.progres`,
   // et le quiz en cours ne doit pas se recomposer pour autant.
   const questions: Question[] = composerQuiz({
     complets: etat.complets,
-    seance: etat.seance.filter((id) => !etat.repondus.includes(id)),
     progres: etat.progres,
+    portee: 'tous',
+    nombre: QUESTIONS_PAR_DEFAUT,
     maintenant: new Date(),
     alea: Math.random,
   });

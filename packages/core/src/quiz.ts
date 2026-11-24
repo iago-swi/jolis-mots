@@ -1,7 +1,7 @@
 import { lireDefinition } from './definition';
 import { premierTerme } from './genre';
 import { melanger } from './hasard';
-import { motsDus } from './memoire';
+import { motsARevoir } from './memoire';
 import type { Progres } from './memoire';
 import { normaliser } from './recherche';
 import type { Mot } from './types';
@@ -20,8 +20,11 @@ export interface Question {
   bonne: string;
 }
 
-/** Nombre de mots dus (hors séance) ajoutés au quiz, au plus. */
-export const DUS_MAX = 5;
+/** Sur quels mots porte un quiz : tous les mots, ou ceux déjà vus et pas encore acquis. */
+export type Portee = 'tous' | 'vus';
+/** Nombres de questions proposés. */
+export const QUESTIONS_POSSIBLES: readonly number[] = [5, 10, 15, 20];
+export const QUESTIONS_PAR_DEFAUT = 10;
 const MAUVAISES = 3;
 const MASQUE = '—';
 
@@ -119,29 +122,46 @@ function mauvaisesReponses(
   return prises;
 }
 
-/** Compose les questions : tous les mots de la séance d'abord, puis cinq mots dus au plus (hors séance). */
+/** Mots complets dont le texte au quiz n'est pas vide, avec ce texte calculé une seule fois. */
+function interrogeablesDe(complets: Mot[]): { interrogeables: Mot[]; definitionAuQuiz: (m: Mot) => string } {
+  const textes = new Map(complets.map((m) => [m, definitionPourQuiz(m)]));
+  const definitionAuQuiz = (m: Mot) => textes.get(m) ?? definitionPourQuiz(m);
+  return { interrogeables: complets.filter((m) => definitionAuQuiz(m) !== ''), definitionAuQuiz };
+}
+
+/** Nombre de mots que chaque portée permet d'interroger ; un progrès qui cite un mot absent de la liste est ignoré. */
+export function compterPortees(complets: Mot[], progres: Progres): Record<Portee, number> {
+  const { interrogeables } = interrogeablesDe(complets);
+  const vus = interrogeables.filter((m) => Object.hasOwn(progres, m.id) && !progres[m.id]?.acquis).length;
+  return { tous: interrogeables.length, vus };
+}
+
+/**
+ * Compose les questions : les `nombre` premiers mots de la portée choisie pour lesquels une mauvaise réponse existe.
+ * « tous » : les mots interrogeables, mélangés. « vus » : les mots à revoir (les dus d'abord), interrogeables.
+ */
 export function composerQuiz(a: {
   complets: Mot[];
-  seance: string[];
   progres: Progres;
+  portee: Portee;
+  nombre: number;
   maintenant: Date;
   alea: () => number;
 }): Question[] {
-  // Texte au quiz de chaque mot, calculé une seule fois.
-  const textesAuQuiz = new Map(a.complets.map((m) => [m, definitionPourQuiz(m)]));
-  const definitionAuQuiz = (m: Mot) => textesAuQuiz.get(m) ?? definitionPourQuiz(m);
-  const interrogeables = a.complets.filter((m) => definitionAuQuiz(m) !== '');
-  const parId = new Map(interrogeables.map((m) => [m.id, m]));
-  const dansSeance = new Set(a.seance);
-  const dus = motsDus(a.progres, a.maintenant).filter((id) => !dansSeance.has(id));
-  const ordre = [...dansSeance, ...dus];
-  const aInterroger = ordre.map((id) => parId.get(id)).filter((m): m is Mot => m !== undefined);
+  const { interrogeables, definitionAuQuiz } = interrogeablesDe(a.complets);
+  let aInterroger: Mot[];
+  if (a.portee === 'tous') {
+    aInterroger = melanger(interrogeables, a.alea);
+  } else {
+    const parId = new Map(interrogeables.map((m) => [m.id, m]));
+    aInterroger = motsARevoir(a.progres, a.maintenant, a.alea)
+      .map((id) => parId.get(id))
+      .filter((m): m is Mot => m !== undefined);
+  }
 
   const questions: Question[] = [];
-  let dusPoses = 0;
   for (const m of aInterroger) {
-    const estDu = !dansSeance.has(m.id);
-    if (estDu && dusPoses === DUS_MAX) break;
+    if (questions.length === a.nombre) break;
     const forme: Forme = questions.length % 2 === 0 ? 'definition-vers-mot' : 'mot-vers-definition';
     const texte = (c: Mot) => (forme === 'definition-vers-mot' ? c.mot : definitionAuQuiz(c));
     const mauvaises = mauvaisesReponses(m, interrogeables, a.alea, texte, definitionAuQuiz);
@@ -155,7 +175,6 @@ export function composerQuiz(a: {
       choix,
       bonne: m.id,
     });
-    if (estDu) dusPoses++;
   }
   return questions;
 }

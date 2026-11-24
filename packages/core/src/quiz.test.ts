@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { composerQuiz, definitionPourQuiz, DUS_MAX } from './quiz';
-import { marquerVu } from './memoire';
+import { compterPortees, composerQuiz, definitionPourQuiz, QUESTIONS_PAR_DEFAUT, QUESTIONS_POSSIBLES } from './quiz';
+import type { Progres } from './memoire';
 import { normaliser } from './recherche';
 import type { Mot } from './types';
 
@@ -22,54 +22,86 @@ const genres = ['adj.', 'adj.', 'adj.', 'adj.', 'adj.', 'verbe', 'verbe', 'verbe
 const noms = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India', 'Juliet'];
 const complets: Mot[] = noms.map((n, i) => mot(n, genres[i] ?? 'adj.', `Définition de ${n.toLowerCase()} numéro ${i}.`));
 
-it('interroge la séance d’abord, puis les mots dus', () => {
-  const [a, b, c] = complets as [Mot, Mot, Mot];
-  const progres = marquerVu({}, b.id, new Date(Date.UTC(2026, 0, 1)));
-  const qs = composerQuiz({ complets, seance: [c.id, a.id], progres, maintenant, alea: fabriqueAlea() });
-  expect(qs.map((q) => q.idMot)).toEqual([c.id, a.id, b.id]);
-});
+/** Date relative à 2026-11-24 (J(0)), en jours. */
+const J = (n: number) => new Date(Date.UTC(2026, 10, 24 + n));
 
-it('limite les mots dus à DUS_MAX, soit cinq', () => {
-  expect(DUS_MAX).toBe(5);
-});
-
-function motsNumerotes(n: number): Mot[] {
-  return Array.from({ length: n }, (_, i) => mot(`Mot${String.fromCharCode(97 + i)}`, 'adj.', `Sens ${i}.`));
-}
-function dusDepuis(mots: Mot[]) {
-  let p = {};
-  for (const m of mots) p = marquerVu(p, m.id, new Date(Date.UTC(2026, 0, 1)));
+/** Progrès où les mots donnés sont dus dans l'ordre donné (tous passés par rapport à `maintenant`). */
+function vus(ids: string[]) {
+  const p: Progres = {};
+  ids.forEach((id, i) => {
+    const du = new Date(Date.UTC(2026, 0, 1 + i)).toISOString();
+    p[id] = { vu: du, case: 1, du, acquis: false };
+  });
   return p;
 }
 
-it('pose toute la séance, puis cinq mots dus au plus', () => {
-  const tous = motsNumerotes(20);
-  const seance = tous.slice(0, 7).map((m) => m.id);
-  const progres = dusDepuis(tous.slice(7, 19));
-  const qs = composerQuiz({ complets: tous, seance, progres, maintenant, alea: fabriqueAlea() });
-  expect(qs).toHaveLength(12);
-  expect(qs.slice(0, 7).map((q) => q.idMot)).toEqual(seance);
-  const dus = qs.slice(7).map((q) => q.idMot);
-  expect(new Set(dus).size).toBe(5);
-  expect(dus.every((id) => !seance.includes(id))).toBe(true);
+function etatMot(du: Date, acquis = false): Progres[string] {
+  return { vu: J(-10).toISOString(), case: 1, du: du.toISOString(), acquis };
+}
+
+// 12 mots interrogeables m1…m12 (définitions et textes distincts)
+const douze: Mot[] = Array.from({ length: 12 }, (_, i) => mot(`Mot${String.fromCharCode(97 + i)}`, 'adj.', `Sens numéro ${i + 1}.`, `m${i + 1}`));
+// progrès : m1 dû J(-2), m2 dû J(-1), m3 dû J(0), m4…m7 dus J(5), m8 acquis
+const progresDouze: Progres = {
+  m1: etatMot(J(-2)),
+  m2: etatMot(J(-1)),
+  m3: etatMot(J(0)),
+  m4: etatMot(J(5)),
+  m5: etatMot(J(5)),
+  m6: etatMot(J(5)),
+  m7: etatMot(J(5)),
+  m8: etatMot(J(5), true),
+};
+
+it('portée « vus » : les dus d’abord, puis les autres mots vus mélangés, jamais un mot acquis', () => {
+  const q = composerQuiz({ complets: douze, progres: progresDouze, portee: 'vus', nombre: 5, maintenant: J(0), alea: () => 0 });
+  expect(q.map((x) => x.idMot).slice(0, 3)).toEqual(['m1', 'm2', 'm3']);
+  expect(q).toHaveLength(5);
+  expect(q.map((x) => x.idMot)).not.toContain('m8');
+  expect(q.every((x) => ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7'].includes(x.idMot))).toBe(true);
 });
 
-it('sans séance, pose cinq mots dus au plus', () => {
-  const douze = motsNumerotes(12);
-  const qs = composerQuiz({ complets: douze, seance: [], progres: dusDepuis(douze), maintenant, alea: fabriqueAlea() });
-  expect(qs).toHaveLength(5);
-  expect(new Set(qs.map((q) => q.idMot)).size).toBe(5);
+it('portée « tous » : jamais deux fois le même mot, au plus ce que la liste contient', () => {
+  const tous = composerQuiz({ complets: douze.slice(0, 6), progres: {}, portee: 'tous', nombre: 10, maintenant: J(0), alea: Math.random });
+  expect(new Set(tous.map((x) => x.idMot)).size).toBe(tous.length);
+  expect(tous).toHaveLength(6);
 });
 
-it('ne compte pas deux fois un mot à la fois dans la séance et dû', () => {
-  const [a, b, c] = motsNumerotes(3) as [Mot, Mot, Mot];
-  const qs = composerQuiz({ complets: [a, b, c], seance: [a.id, b.id], progres: dusDepuis([a, c]), maintenant, alea: fabriqueAlea() });
-  expect(qs.map((q) => q.idMot)).toEqual([a.id, b.id, c.id]);
+it('portée « tous » : respecte le nombre demandé', () => {
+  expect(composerQuiz({ complets: douze, progres: {}, portee: 'tous', nombre: 5, maintenant: J(0), alea: fabriqueAlea() })).toHaveLength(5);
+});
+
+it('rien de vu : pas de quiz sur les mots vus', () => {
+  expect(composerQuiz({ complets: douze, progres: {}, portee: 'vus', nombre: 10, maintenant: J(0), alea: () => 0 })).toEqual([]);
+});
+
+it('compte les portées et ignore un progrès qui cite un mot disparu', () => {
+  expect(compterPortees(douze, { ...progresDouze, fantome: progresDouze.m1! })).toEqual({ tous: 12, vus: 7 });
+  expect(compterPortees(douze, {})).toEqual({ tous: 12, vus: 0 });
+});
+
+it('ne compte pas un mot sans définition utilisable', () => {
+  const avecVide = [...douze.slice(0, 3), mot('Vide', 'adj.', 'EX: rien.', 'vide')];
+  expect(compterPortees(avecVide, { ...vus(['m1', 'vide']) })).toEqual({ tous: 3, vus: 1 });
+});
+
+it('moins de quatre mots : le quiz se compose quand même, avec moins de choix', () => {
+  const [q] = composerQuiz({ complets: douze.slice(0, 2), progres: {}, portee: 'tous', nombre: 5, maintenant: J(0), alea: () => 0 });
+  expect(q?.choix).toHaveLength(2);
+});
+
+it('un seul mot : pas de question possible', () => {
+  expect(composerQuiz({ complets: douze.slice(0, 1), progres: {}, portee: 'tous', nombre: 5, maintenant: J(0), alea: () => 0 })).toEqual([]);
+});
+
+it('propose 5, 10, 15 ou 20 questions, 10 par défaut', () => {
+  expect(QUESTIONS_POSSIBLES).toEqual([5, 10, 15, 20]);
+  expect(QUESTIONS_PAR_DEFAUT).toBe(10);
 });
 
 it('alterne les formes et remplit énoncé, genre et choix selon la forme', () => {
   const ids = complets.slice(0, 3).map((m) => m.id);
-  const [q0, q1] = composerQuiz({ complets, seance: ids, progres: {}, maintenant, alea: fabriqueAlea() });
+  const [q0, q1] = composerQuiz({ complets, portee: 'vus', nombre: 10, progres: vus(ids), maintenant, alea: fabriqueAlea() });
   const m0 = complets[0] as Mot;
   const m1 = complets[1] as Mot;
   expect(q0?.forme).toBe('definition-vers-mot');
@@ -82,7 +114,7 @@ it('alterne les formes et remplit énoncé, genre et choix selon la forme', () =
 });
 
 it('donne quatre choix distincts dont la bonne réponse', () => {
-  const [q] = composerQuiz({ complets, seance: [complets[0]!.id], progres: {}, maintenant, alea: fabriqueAlea() });
+  const [q] = composerQuiz({ complets, portee: 'vus', nombre: 10, progres: vus([complets[0]!.id]), maintenant, alea: fabriqueAlea() });
   expect(q?.choix).toHaveLength(4);
   expect(new Set(q?.choix.map((c) => c.id)).size).toBe(4);
   expect(q?.choix.some((c) => c.id === q.bonne)).toBe(true);
@@ -91,7 +123,7 @@ it('donne quatre choix distincts dont la bonne réponse', () => {
 it('prend les mauvaises réponses dans le même genre quand il y en a assez', () => {
   const adjectifs = new Set(complets.slice(0, 5).map((m) => m.id));
   for (let graine = 1; graine <= 20; graine++) {
-    const [q] = composerQuiz({ complets, seance: [complets[0]!.id], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    const [q] = composerQuiz({ complets, portee: 'vus', nombre: 10, progres: vus([complets[0]!.id]), maintenant, alea: fabriqueAlea(graine) });
     expect(q?.choix.every((c) => adjectifs.has(c.id))).toBe(true);
   }
 });
@@ -106,7 +138,7 @@ it('prend d’abord le même genre exact, puis le même premier terme, puis les 
     mot('Loin3', 'nom', 'Loin trois.'),
   ];
   for (let graine = 1; graine <= 30; graine++) {
-    const [q] = composerQuiz({ complets: mots, seance: ['cible'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    const [q] = composerQuiz({ complets: mots, portee: 'vus', nombre: 10, progres: vus(['cible']), maintenant, alea: fabriqueAlea(graine) });
     const ids = q?.choix.map((c) => c.id) ?? [];
     expect(ids).toHaveLength(4);
     expect(ids).toContain('exact');
@@ -116,7 +148,7 @@ it('prend d’abord le même genre exact, puis le même premier terme, puis les 
 
 it('complète avec tous les mots quand le premier terme ne suffit pas', () => {
   const mots = [mot('Un', 'adj.', 'Premier.'), mot('Deux', 'adj.', 'Second.'), mot('Trois', 'verbe', 'Tiers.'), mot('Quatre', 'nom', 'Quart.')];
-  const [q] = composerQuiz({ complets: mots, seance: ['un'], progres: {}, maintenant, alea: fabriqueAlea() });
+  const [q] = composerQuiz({ complets: mots, portee: 'vus', nombre: 10, progres: vus(['un']), maintenant, alea: fabriqueAlea() });
   expect(q?.choix.map((c) => c.id).sort()).toEqual(['deux', 'quatre', 'trois', 'un']);
 });
 
@@ -129,7 +161,7 @@ it('ne montre jamais deux choix de même texte, dans la forme définition vers m
     mot('Reste', 'adj.', 'Reste.'),
   ];
   for (let graine = 1; graine <= 30; graine++) {
-    const [q] = composerQuiz({ complets: mots, seance: ['doublon-1'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    const [q] = composerQuiz({ complets: mots, portee: 'vus', nombre: 10, progres: vus(['doublon-1']), maintenant, alea: fabriqueAlea(graine) });
     expect(q?.forme).toBe('definition-vers-mot');
     const textes = q?.choix.map((c) => normaliser(c.texte)) ?? [];
     expect(new Set(textes).size).toBe(textes.length);
@@ -148,7 +180,7 @@ it('ne montre jamais deux choix de même texte, dans la forme mot vers définiti
     mot('Reste', 'adj.', 'Le reste.'),
   ];
   for (let graine = 1; graine <= 30; graine++) {
-    const [, q] = composerQuiz({ complets: mots, seance: ['premier', 'cible-1'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    const [, q] = composerQuiz({ complets: mots, portee: 'vus', nombre: 10, progres: vus(['premier', 'cible-1']), maintenant, alea: fabriqueAlea(graine) });
     expect(q?.forme).toBe('mot-vers-definition');
     const textes = q?.choix.map((c) => normaliser(c.texte)) ?? [];
     expect(new Set(textes).size).toBe(textes.length);
@@ -167,7 +199,7 @@ it('ne propose pas un homographe du mot demandé, dans la forme mot vers défini
     mot('Reste', 'adj.', 'Le reste.'),
   ];
   for (let graine = 1; graine <= 30; graine++) {
-    const [, q] = composerQuiz({ complets: mots, seance: ['premier', 'doublon-1'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    const [, q] = composerQuiz({ complets: mots, portee: 'vus', nombre: 10, progres: vus(['premier', 'doublon-1']), maintenant, alea: fabriqueAlea(graine) });
     expect(q?.forme).toBe('mot-vers-definition');
     expect(q?.choix).toHaveLength(4);
     expect(q?.choix.map((c) => c.id)).not.toContain('doublon-2');
@@ -183,7 +215,7 @@ it('ne propose pas un mot de même définition au quiz, dans la forme définitio
     mot('Jumeau', 'adj.', 'même définition.', 'cible-2'),
   ];
   for (let graine = 1; graine <= 30; graine++) {
-    const [q] = composerQuiz({ complets: mots, seance: ['cible-1'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    const [q] = composerQuiz({ complets: mots, portee: 'vus', nombre: 10, progres: vus(['cible-1']), maintenant, alea: fabriqueAlea(graine) });
     expect(q?.forme).toBe('definition-vers-mot');
     expect(q?.choix).toHaveLength(4);
     expect(q?.choix.map((c) => c.id)).not.toContain('cible-2');
@@ -199,7 +231,7 @@ it('écarte les synonymes déclarés', () => {
     mot('Hanter', 'verbe', 'Fréquenter.'),
   ];
   for (let graine = 1; graine <= 50; graine++) {
-    const [q] = composerQuiz({ complets: mots, seance: ['baguenauder'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    const [q] = composerQuiz({ complets: mots, portee: 'vus', nombre: 10, progres: vus(['baguenauder']), maintenant, alea: fabriqueAlea(graine) });
     expect(q?.choix.map((c) => c.id)).not.toContain('muser');
     expect(q?.choix).toHaveLength(4);
   }
@@ -215,7 +247,7 @@ it('écarte aussi les synonymes de tous les sens', () => {
     mot('Rimer', 'verbe', 'Versifier.'),
   ];
   for (let graine = 1; graine <= 30; graine++) {
-    const [q] = composerQuiz({ complets: mots, seance: ['baguenauder'], progres: {}, maintenant, alea: fabriqueAlea(graine) });
+    const [q] = composerQuiz({ complets: mots, portee: 'vus', nombre: 10, progres: vus(['baguenauder']), maintenant, alea: fabriqueAlea(graine) });
     const ids = q?.choix.map((c) => c.id) ?? [];
     expect(ids).not.toContain('muser');
     expect(ids).not.toContain('chiner');
@@ -260,18 +292,13 @@ it('n’interroge ni ne propose un mot sans définition utilisable', () => {
     mot('Bb', 'adj.', 'Second.'),
     mot('Vide', 'adj.', 'EX: rien.'),
   ];
-  const qs = composerQuiz({ complets: mots, seance: ['vide', 'aa'], progres: {}, maintenant, alea: fabriqueAlea() });
+  const qs = composerQuiz({ complets: mots, portee: 'vus', nombre: 10, progres: vus(['vide', 'aa']), maintenant, alea: fabriqueAlea() });
   expect(qs.map((q) => q.idMot)).toEqual(['aa']);
   expect(qs[0]?.choix.map((c) => c.id).sort()).toEqual(['aa', 'bb']);
 });
 
-it('se compose avec peu de mots et ignore les mots disparus', () => {
-  expect(composerQuiz({ complets: complets.slice(0, 2), seance: [complets[0]!.id, 'disparu'], progres: {}, maintenant, alea: fabriqueAlea() })[0]?.choix).toHaveLength(2);
-  expect(composerQuiz({ complets: complets.slice(0, 1), seance: [complets[0]!.id], progres: {}, maintenant, alea: fabriqueAlea() })).toEqual([]);
-});
-
 it('ne dépend que de alea', () => {
-  const a = composerQuiz({ complets, seance: complets.map((m) => m.id), progres: {}, maintenant, alea: fabriqueAlea(7) });
-  const b = composerQuiz({ complets, seance: complets.map((m) => m.id), progres: {}, maintenant, alea: fabriqueAlea(7) });
+  const a = composerQuiz({ complets, portee: 'tous', nombre: 10, progres: {}, maintenant, alea: fabriqueAlea(7) });
+  const b = composerQuiz({ complets, portee: 'tous', nombre: 10, progres: {}, maintenant, alea: fabriqueAlea(7) });
   expect(a).toEqual(b);
 });
