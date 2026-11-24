@@ -39,7 +39,7 @@ const ENREGISTREMENT = "La fiche n'a pas pu être enregistrée.";
 const VERIFICATION = "L'atelier n'a pas pu vérifier la liste en ligne. Tu peux continuer à travailler.";
 const RECEPTION = "L'atelier n'a pas pu recevoir la liste.";
 const REPRISE = "La liste en ligne n'a pas pu être reprise. Rien n'a changé ici.";
-const SANS_RESEAU ="Pas de réseau : la liste n'est pas partie. Tes modifications restent en attente.";
+const SANS_RESEAU = "Pas de réseau : la liste n'est pas partie. Tes modifications restent en attente.";
 
 // La vraie liste embarquée n'est jamais chargée (voir etat.test.ts).
 vi.mock('./liste-embarquee', () => ({ listeEmbarquee: embarquee }));
@@ -450,8 +450,18 @@ describe('la copie illisible', () => {
     expect(etat.liste.publie).toBe(locale.publie);
     expect(atelier.avis).toEqual({
       ton: 'calme',
-      texte: `La liste en ligne est reprise. Ta version est gardée ici : ${faux.sauvegarde}`,
+      texte: 'La liste en ligne est reprise. Ta version est gardée ici :',
+      chemin: faux.sauvegarde,
     });
+  });
+
+  it('le chemin du fichier mis de côté est gardé tel quel, apostrophe et points compris', async () => {
+    const faux = new FauxPont('{"format":1,"publie":', ecrireFichier(locale));
+    faux.sauvegarde = "C:\\Users\\O'Brien\\...\\mots-2026-11-24-153012.json";
+    const { atelier } = await demarrerSur(faux);
+    await atelier.reprendre();
+    expect(atelier.avis?.chemin).toBe("C:\\Users\\O'Brien\\...\\mots-2026-11-24-153012.json");
+    expect(atelier.avis?.texte).not.toContain('Brien');
   });
 
   it('reprendre sans fichier à mettre de côté : pas de chemin', async () => {

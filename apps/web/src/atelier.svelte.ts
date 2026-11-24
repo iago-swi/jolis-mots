@@ -25,6 +25,8 @@ import { pont } from './pont';
 export interface Avis {
   ton: 'calme' | 'alerte';
   texte: string;
+  /** Un chemin de fichier, montré tel quel sous le texte (jamais retouché à l'affichage). */
+  chemin?: string;
 }
 
 const alerte = (texte: string): Avis => ({ ton: 'alerte', texte });
@@ -40,7 +42,7 @@ const ILLISIBLE = alerte(
   "Le fichier des mots de l'atelier est illisible. Tu peux reprendre la liste en ligne ; ta version sera mise de côté.",
 );
 const REPRISE_ECHOUEE = alerte("La liste en ligne n'a pas pu être reprise. Rien n'a changé ici.");
-const NON_ENREGISTREE =alerte("La fiche n'a pas pu être enregistrée.");
+const NON_ENREGISTREE = alerte("La fiche n'a pas pu être enregistrée.");
 const ENVOI_ECHOUE = alerte("L'envoi a échoué. Tes modifications restent en attente.");
 
 const ECHECS_D_ENVOI: Record<Exclude<RaisonDepot, 'pret'>, Avis> = {
@@ -315,11 +317,10 @@ export class Atelier {
       this.poser(r);
       if (r.raison === 'pret' && this.disponible) {
         this.divergence = false;
-        this.avis = calme(
+        this.avis =
           r.sauvegarde === null
-            ? 'La liste en ligne est reprise.'
-            : `La liste en ligne est reprise. Ta version est gardée ici : ${r.sauvegarde}`,
-        );
+            ? calme('La liste en ligne est reprise.')
+            : { ...calme('La liste en ligne est reprise. Ta version est gardée ici :'), chemin: r.sauvegarde };
       } else if (r.raison !== 'pret') {
         // La copie et la divergence restent telles quelles ; l'échec est dit.
         this.avis = REPRISE_ECHOUEE;

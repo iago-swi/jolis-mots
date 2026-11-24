@@ -61,6 +61,9 @@
   {#if atelier.avis !== null}
     <!-- Apostrophes typographiques à l'affichage ; le message de git, lui, reste brut. -->
     <p class="avis {atelier.avis.ton}">{embellir(atelier.avis.texte)}</p>
+    {#if atelier.avis.chemin !== undefined}
+      <p class="brut">{atelier.avis.chemin}</p>
+    {/if}
   {/if}
   {#if detail !== ''}
     <p class="git" lang="en">{detail}</p>
@@ -205,8 +208,9 @@
     color: var(--second);
   }
 
-  /* Le message de git, en anglais, à copier au besoin. */
-  .git {
+  /* Le message de git, en anglais, et le chemin d'un fichier : montrés tels quels, à copier au besoin. */
+  .git,
+  .brut {
     margin: 0;
     max-height: 3lh;
     overflow-y: auto;

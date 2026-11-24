@@ -61,7 +61,8 @@ export function creerPontDemo(depart: FichierMots, params: URLSearchParams): Pon
     reprendre: async () => {
       if (params.get('reprise') === 'echec') return etat('sans-reseau');
       locale = envoyee;
-      return etat('pret', 'mots-demonstration.json');
+      // Un chemin avec une apostrophe : il doit s'afficher tel quel.
+      return etat('pret', "C:\\Users\\O'Brien\\AppData\\Roaming\\Jolis Mots\\sauvegardes\\mots-2026-11-24-153012.json");
     },
     ouvrirCnrtl: async (adresse) => {
       window.open(adresse, '_blank', 'noopener');
