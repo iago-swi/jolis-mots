@@ -161,7 +161,7 @@ describe('dépôt : parcours complet', () => {
     const crochet = join(origine, 'hooks', 'pre-receive');
     writeFileSync(crochet, '#!/bin/sh\nexit 1\n');
     const refuse = await envoyer(d, T3b, 'message 3 bis');
-    expect(refuse.raison).not.toBe('pret');
+    expect(refuse.raison).toBe('refus');
     expect(refuse).toMatchObject({ locale: T3b, envoyee: T3 });
     expect(f.versionsEnLigne()).toBe(3);
     unlinkSync(crochet);
@@ -229,6 +229,7 @@ describe('dépôt : cas à part', () => {
     expect(classer("fatal: Authentication failed for 'https://github.com/x/'")).toBe('refus');
     expect(classer("fatal: unable to access 'https://github.com/x/': The requested URL returned error: 403")).toBe('refus');
     expect(classer(' ! [rejected]        donnees -> donnees (fetch first)')).toBe('divergence');
+    expect(classer(' ! [remote rejected] donnees -> donnees (pre-receive hook declined)')).toBe('refus');
     expect(classer('fatal: quelque chose')).toBe('erreur');
   });
 });

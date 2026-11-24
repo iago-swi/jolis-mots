@@ -96,6 +96,8 @@ export function classer(stderr: string): RaisonDepot {
     return 'refus';
   }
   if (/\[rejected\]|non-fast-forward|fetch first/i.test(stderr)) return 'divergence';
+  // Le serveur lui-même décline l'envoi (crochet, branche protégée).
+  if (/\[remote rejected\]/i.test(stderr)) return 'refus';
   return 'erreur';
 }
 
