@@ -2,6 +2,10 @@
 vocabulaire.xlsx
 ~$*
 
+# Branche des données, montée en worktree, et sorties de l'outil d'import
+donnees/
+tools/import/sortie/
+
 node_modules/
 dist/
 release/

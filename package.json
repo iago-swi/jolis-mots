@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.base.json --noEmit"
+    "typecheck": "tsc -p tsconfig.base.json --noEmit",
+    "import": "python -I tools/import/extraire.py vocabulaire.xlsx tools/import/sortie/lignes.json && tsx tools/import/importer.ts"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",

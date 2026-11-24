@@ -3,3 +3,6 @@ export * from './definition';
 export * from './genre';
 export * from './sources';
 export * from './typographie';
+export * from './recherche';
+export * from './fichier';
+export * from './import';
