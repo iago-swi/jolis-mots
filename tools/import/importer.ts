@@ -8,7 +8,7 @@ const DONNEES = 'donnees';
 const MOTS = `${DONNEES}/mots.json`;
 
 if (!existsSync(DONNEES)) {
-  console.error(`Le dossier « ${DONNEES}/ » n'existe pas. Montez d'abord la branche des données :\n  git worktree add --orphan -b donnees donnees`);
+  console.error(`Le dossier « ${DONNEES}/ » n'existe pas. Montez la branche des données :\n  git worktree add donnees donnees`);
   process.exit(1);
 }
 

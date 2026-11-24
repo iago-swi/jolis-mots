@@ -3,16 +3,15 @@
  *
  * 1. fabrique l'application (`npm run build`) ;
  * 2. la sert depuis `apps/web/dist` sur un port local libre, le temps du script ;
- * 3. photographie chaque écran avec Edge sans fenêtre ;
+ * 3. la photographie avec Edge sans fenêtre, piloté par son protocole de débogage :
+ *    écran émulé de 390 × 844 px (densité 2) et mode clair imposé ;
  * 4. écrit les images dans `docs/captures/`.
  *
- * Edge sans fenêtre ne descend pas sous 500 px de large environ. L'application est donc
- * placée dans un cadre de 390 × 844 px (une page d'appoint servie par ce script), puis
- * la photo est rognée à la taille du cadre.
- *
- * Les adresses fixent le mot (`?mot=`) et la palette (`?palette=papier`) pour que les images
- * ne dépendent ni du hasard ni du mode sombre de la machine. Le quiz s'ouvre sur la séance
- * en cours : avec `?mot=baguenauder#quiz`, il pose la question de ce mot.
+ * Les adresses fixent le mot (`?mot=`) et la palette (`?palette=papier`) ; le mode clair
+ * imposé fixe en plus les pastilles « Comme le système » des Réglages, qui suivent le mode
+ * sombre de l'appareil. Les images ne dépendent donc ni du hasard du premier mot, ni du
+ * mode sombre de la machine. Seul le quiz garde un hasard : ses trois mauvaises réponses.
+ * Il s'ouvre sur la séance en cours : avec `?mot=baguenauder#quiz`, il pose la question de ce mot.
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -65,21 +64,8 @@ console.log('Fabrication de l’application…');
 const fabrication = spawnSync('npm run build', { cwd: RACINE, stdio: 'inherit', shell: true });
 if (fabrication.status !== 0) process.exit(fabrication.status ?? 1);
 
-/** Page d'appoint : l'application dans un cadre de la taille d'un téléphone. */
-function pageDuCadre(adresse) {
-  return `<!doctype html><html><head><meta charset='utf-8'><style>
-html,body{margin:0;padding:0;background:#888}
-iframe{display:block;width:${LARGEUR}px;height:${HAUTEUR}px;border:0}
-</style></head><body><iframe src='/index.html${adresse}'></iframe></body></html>`;
-}
-
 const serveur = createServer((requete, reponse) => {
   const url = new URL(requete.url ?? '/', 'http://localhost');
-  if (url.pathname === '/cadre') {
-    reponse.writeHead(200, { 'content-type': TYPES['.html'] });
-    reponse.end(pageDuCadre(url.searchParams.get('a') ?? ''));
-    return;
-  }
   const relatif = decodeURIComponent(url.pathname).replace(/^\/+/, '') || 'index.html';
   const fichier = path.join(DIST, relatif);
   if (!fichier.startsWith(DIST) || !existsSync(fichier)) {
@@ -96,67 +82,129 @@ console.log(`Application servie sur http://127.0.0.1:${port}`);
 const profil = mkdtempSync(path.join(tmpdir(), 'jolis-mots-captures-'));
 mkdirSync(SORTIE, { recursive: true });
 
-/** Photographie une adresse de l'application et rend l'image rognée à la taille du téléphone. */
-async function photographier(adresse) {
-  const brut = path.join(profil, `brut-${Date.now()}.png`);
-  const cadre = `http://127.0.0.1:${port}/cadre?a=${encodeURIComponent(adresse)}`;
-  // Edge tourne dans un processus à part, sans bloquer ce script : celui-ci doit rester libre de servir la page.
-  const stderr = await new Promise((resolu, rejete) => {
-    const edgeProcess = spawn(edge, [
-      '--headless=new',
-      '--hide-scrollbars',
-      `--user-data-dir=${profil}`,
-      `--force-device-scale-factor=${ECHELLE}`,
-      '--virtual-time-budget=6000',
-      '--window-size=700,1000',
-      `--screenshot=${brut}`,
-      cadre,
-    ]);
-    let erreurs = '';
-    edgeProcess.stderr.on('data', (d) => (erreurs += d));
-    const minuterie = setTimeout(() => edgeProcess.kill(), 60000);
-    edgeProcess.on('error', rejete);
-    edgeProcess.on('close', () => {
+// Edge sans fenêtre, dans un processus à part (ce script doit rester libre de servir la page).
+const navigateur = spawn(edge, [
+  '--headless=new',
+  '--hide-scrollbars',
+  `--user-data-dir=${profil}`,
+  '--remote-debugging-port=0',
+  'about:blank',
+]);
+const portDebogage = await new Promise((resolu, rejete) => {
+  const minuterie = setTimeout(() => rejete(new Error('Edge ne répond pas')), 30000);
+  let texte = '';
+  navigateur.stderr.on('data', (d) => {
+    texte += d;
+    const m = /DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//.exec(texte);
+    if (m) {
       clearTimeout(minuterie);
-      resolu(erreurs);
-    });
+      resolu(m[1]);
+    }
   });
-  if (!existsSync(brut)) throw new Error(`Pas d'image pour ${adresse} : ${stderr}`);
-  return sharp(brut)
-    .extract({ left: 0, top: 0, width: LARGEUR * ECHELLE, height: HAUTEUR * ECHELLE })
-    .png({ compressionLevel: 9 })
-    .toBuffer();
+  navigateur.on('error', rejete);
+});
+
+/** Ouvre un onglet et rend une fonction `envoyer(méthode, paramètres)` du protocole de débogage. */
+async function ouvrirOnglet() {
+  const reponse = await fetch(`http://127.0.0.1:${portDebogage}/json/new?about:blank`, { method: 'PUT' });
+  const onglet = await reponse.json();
+  const socket = new WebSocket(onglet.webSocketDebuggerUrl);
+  await new Promise((resolu, rejete) => {
+    socket.onopen = resolu;
+    socket.onerror = rejete;
+  });
+  let compteur = 0;
+  const attentes = new Map();
+  const ecouteurs = [];
+  socket.onmessage = (message) => {
+    const donnees = JSON.parse(message.data);
+    if (donnees.id !== undefined) {
+      const attente = attentes.get(donnees.id);
+      attentes.delete(donnees.id);
+      if (donnees.error) attente?.rejete(new Error(donnees.error.message));
+      else attente?.resolu(donnees.result);
+    } else {
+      ecouteurs.forEach((f) => f(donnees));
+    }
+  };
+  return {
+    envoyer: (methode, params = {}) =>
+      new Promise((resolu, rejete) => {
+        const id = ++compteur;
+        attentes.set(id, { resolu, rejete });
+        socket.send(JSON.stringify({ id, method: methode, params }));
+      }),
+    surEvenement: (f) => ecouteurs.push(f),
+    fermer: () => socket.close(),
+  };
+}
+
+const onglet = await ouvrirOnglet();
+await onglet.envoyer('Page.enable');
+await onglet.envoyer('Emulation.setDeviceMetricsOverride', {
+  width: LARGEUR,
+  height: HAUTEUR,
+  deviceScaleFactor: ECHELLE,
+  mobile: false,
+});
+await onglet.envoyer('Emulation.setEmulatedMedia', {
+  features: [{ name: 'prefers-color-scheme', value: 'light' }],
+});
+
+/** Charge une adresse de l'application et rend la photo (PNG) quand la page et les polices sont prêtes. */
+async function photographier(adresse) {
+  const aller = async (url) => {
+    const chargee = new Promise((resolu) =>
+      onglet.surEvenement((e) => e.method === 'Page.loadEventFired' && resolu()),
+    );
+    await onglet.envoyer('Page.navigate', { url });
+    await chargee;
+  };
+  // Une adresse qui ne change que le « # » ne recharge pas la page : on passe par about:blank.
+  await aller('about:blank');
+  await aller(`http://127.0.0.1:${port}/index.html${adresse}`);
+  await onglet.envoyer('Runtime.evaluate', { expression: 'document.fonts.ready', awaitPromise: true });
+  await new Promise((resolu) => setTimeout(resolu, 800));
+  const { data } = await onglet.envoyer('Page.captureScreenshot', { format: 'png' });
+  return Buffer.from(data, 'base64');
 }
 
 try {
   for (const e of ECRANS) {
     const image = await photographier(e.adresse);
-    await sharp(image).toFile(path.join(SORTIE, `${e.nom}.png`));
+    await sharp(image).png({ compressionLevel: 9 }).toFile(path.join(SORTIE, `${e.nom}.png`));
     console.log(`écrit : docs/captures/${e.nom}.png`);
   }
 
   // Les quatre palettes de l'écran Mot, côte à côte, chacune à la moitié de la taille de prise.
   const ECART = 24;
-  const l = LARGEUR;
-  const h = HAUTEUR;
   const vignettes = [];
   for (const p of PALETTES) {
     const image = await photographier(`?mot=ceruleen&palette=${p}`);
-    vignettes.push(await sharp(image).resize(l, h).png().toBuffer());
+    vignettes.push(await sharp(image).resize(LARGEUR, HAUTEUR).png().toBuffer());
   }
   await sharp({
     create: {
-      width: PALETTES.length * l + (PALETTES.length + 1) * ECART,
-      height: h + 2 * ECART,
+      width: PALETTES.length * LARGEUR + (PALETTES.length + 1) * ECART,
+      height: HAUTEUR + 2 * ECART,
       channels: 3,
       background: '#E4E2DA',
     },
   })
-    .composite(vignettes.map((input, i) => ({ input, left: ECART + i * (l + ECART), top: ECART })))
+    .composite(vignettes.map((input, i) => ({ input, left: ECART + i * (LARGEUR + ECART), top: ECART })))
     .png({ compressionLevel: 9 })
     .toFile(path.join(SORTIE, 'palettes.png'));
   console.log('écrit : docs/captures/palettes.png');
 } finally {
+  onglet.fermer();
+  const termine = new Promise((resolu) => navigateur.once('close', resolu));
+  navigateur.kill();
+  await Promise.race([termine, new Promise((resolu) => setTimeout(resolu, 5000))]);
   serveur.close();
-  rmSync(profil, { recursive: true, force: true });
+  // Edge peut tenir son profil quelques instants encore : un dossier temporaire resté en place n'est pas une erreur.
+  try {
+    rmSync(profil, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+  } catch {
+    console.warn(`Dossier temporaire non supprimé : ${profil}`);
+  }
 }

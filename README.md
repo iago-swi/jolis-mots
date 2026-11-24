@@ -56,13 +56,13 @@ Tous les mots qui ont une définition, par ordre alphabétique. On peut chercher
 
 ### Comment la mémoire ramène les mots
 
-Chaque mot vu entre dans la case 1 et revient dans le quiz un jour plus tard. Une bonne réponse le fait monter d'une case, et il revient de plus en plus tard : après 1, 3, 7, 16 puis 35 jours. Réussi une dernière fois depuis la case 5, il est acquis et ne revient plus. Une mauvaise réponse le renvoie en case 1.
+Chaque mot vu entre dans la case 1 et devient à revoir un jour plus tard : le quiz le pose alors, parmi cinq mots à revoir au plus. Une bonne réponse le fait monter d'une case, et il revient de plus en plus tard : après 1, 3, 7, 16 puis 35 jours. Réussi une dernière fois depuis la case 5, il est acquis et ne revient plus. Une mauvaise réponse le renvoie en case 1.
 
 Les progrès, les favoris et les réglages restent sur le téléphone. Ils ne sont pas envoyés ailleurs.
 
 ### La liste en ligne
 
-La liste des mots est dans l'application : elle fonctionne sans réseau. Quand le téléphone est connecté, l'application regarde au démarrage si une liste plus récente est publiée ici même, sur la branche `donnees`. Si oui, elle la garde et l'utilise à partir du mot suivant. Sans réseau, rien ne change et rien n'est signalé.
+La liste des mots est dans l'application : elle fonctionne sans réseau. Quand le téléphone est connecté, l'application regarde au démarrage si une liste plus récente est publiée ici même, sur la branche `donnees`. Si oui, elle la garde et l'adopte au prochain mot qu'elle tire. Sans réseau, rien ne change et rien n'est signalé.
 
 ## D'où viennent les mots
 

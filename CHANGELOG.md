@@ -15,7 +15,7 @@ Première version : l'application Android. La version Windows et l'atelier pour 
 - Le recueil : tous les mots qui ont une définition, par ordre alphabétique, avec une recherche sans accents, un filtre par auteur (Bouvier, Tesson, ou un autre auteur de la liste) et un filtre des favoris.
 - Les réglages : le nombre de mots par séance, la palette, la version, la date de la liste des mots, et un bouton pour effacer ses progrès.
 - Quatre palettes, Papier, Nuit, Ivoire et Céruléen, et un choix « Comme le système » qui suit le mode sombre du téléphone.
-- La mise à jour de la liste en ligne : quand le téléphone a du réseau, l'application récupère au démarrage la dernière liste des mots et l'utilise à partir du mot suivant. Sans réseau, elle fonctionne avec la liste qu'elle a.
+- La mise à jour de la liste en ligne : quand le téléphone a du réseau, l'application récupère au démarrage la dernière liste des mots et l'adopte au prochain mot qu'elle tire. Sans réseau, elle fonctionne avec la liste qu'elle a.
 - Un fichier à installer sur Android (`Jolis-Mots-0.1.0.apk`), avec une icône et un écran de lancement.
 
 [0.1.0]: https://github.com/iago-swi/jolis-mots/releases/tag/v0.1.0

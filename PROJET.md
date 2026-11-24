@@ -90,7 +90,7 @@ Une seule police, EB Garamond, embarquée par `@fontsource/eb-garamond` ; aucune
 
 Cinq choix : `systeme` (Papier le jour, Nuit quand l'appareil est en mode sombre), `papier`, `nuit`, `ivoire`, `ceruleen`. Le choix `systeme` est celui de départ.
 
-Les réglages sont deux valeurs : `motsParSeance` (5, 6, 8 ou 10, 5 par défaut ; une autre valeur est ramenée à la plus petite taille permise qui la contient, ou à 10) et `palette`.
+Les réglages sont deux valeurs : `motsParSeance` (5, 6, 8 ou 10, 5 par défaut ; une valeur qui n'est pas un nombre est ramenée à 5, un nombre à la plus petite taille permise qui le contient, ou à 10 au-delà) et `palette`.
 
 ### Adresses de développement
 
@@ -204,7 +204,7 @@ L'APK fabriqué est un APK de débogage (`assembleDebug`). `node apps/android/bu
 
 ## Captures d'écran
 
-`npm run captures` fabrique l'application, la sert sur un port local libre, la photographie avec Edge sans fenêtre, puis écrit `mot.png`, `quiz.png`, `recueil.png`, `reglages.png` et `palettes.png` dans `docs/captures/`. Edge sans fenêtre ne descend pas sous 500 px de large : l'application est donc photographiée dans un cadre de 390 × 844 px, puis rognée. Les adresses fixent le mot (`?mot=baguenauder`) et la palette (`?palette=papier`). L'écran Quiz montre la question du seul mot de la séance ; les trois mauvaises réponses sont tirées au hasard, elles changent d'une exécution à l'autre.
+`npm run captures` fabrique l'application, la sert sur un port local libre, la photographie avec Edge sans fenêtre (piloté par son protocole de débogage), puis écrit `mot.png`, `quiz.png`, `recueil.png`, `reglages.png` et `palettes.png` dans `docs/captures/`. Edge sans fenêtre ne descend pas sous 500 px de large : le script émule donc un écran de 390 × 844 px, et impose le mode clair, car les pastilles « Comme le système » des Réglages suivent le mode sombre de la machine. Les adresses fixent le mot (`?mot=baguenauder`) et la palette (`?palette=papier`). L'écran Quiz montre la question du seul mot de la séance ; les trois mauvaises réponses sont tirées au hasard, elles changent d'une exécution à l'autre.
 
 ## Versions et publication
 
