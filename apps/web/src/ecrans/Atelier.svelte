@@ -1,14 +1,28 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
-  import { atelier as instance } from '../atelier.svelte';
+  import { onDestroy, untrack } from 'svelte';
+  import { atelier as instance, TEXTE_DIVERGENCE } from '../atelier.svelte';
   import Apercu from '../composants/atelier/Apercu.svelte';
+  import BarreEnvoi from '../composants/atelier/BarreEnvoi.svelte';
   import FicheAtelier from '../composants/atelier/FicheAtelier.svelte';
   import ListeMots from '../composants/atelier/ListeMots.svelte';
   import { etat } from '../etat.svelte';
+  import { pont } from '../pont';
   import { volet } from '../volet';
 
   // L'écran Atelier n'existe que sur bureau, où l'atelier existe.
   const atelier = instance!;
+
+  // Le bureau demande avant de fermer la fenêtre quand une fiche est modifiée.
+  $effect(() => {
+    pont?.signalerFicheModifiee(atelier.modifiee);
+  });
+  // Quitter l'écran abandonne la fiche ; l'effet ne repasse pas après le retrait de l'écran.
+  onDestroy(() => pont?.signalerFicheModifiee(atelier.modifiee));
+
+  /** Le message de git, en anglais, quand la dernière opération a échoué. */
+  const detail = $derived(atelier.depot !== null && atelier.depot.raison !== 'pret' ? atelier.depot.detail.trim() : '');
+  /** La divergence reste dite tant qu'elle n'est pas réglée, même quand un autre avis a pris la place. */
+  const divergenceADire = $derived(atelier.divergence && atelier.avis?.texte !== TEXTE_DIVERGENCE);
 
   /** Le mot à supprimer, tel qu'il est enregistré. */
   const aSupprimer = $derived(
@@ -34,22 +48,65 @@
 
   /** Oui à la question ; après une suppression faite, la fiche disparaît : le curseur va à la recherche. */
   async function confirmer(): Promise<void> {
-    const supprimer = atelier.demande?.genre === 'supprimer';
+    const genre = atelier.demande?.genre;
     await atelier.confirmer();
-    if (supprimer && atelier.brouillon === null) placerCurseur('atelier-recherche');
+    if (genre === 'supprimer' && atelier.brouillon === null) placerCurseur('atelier-recherche');
+    // Une fois la liste reprise, le bouton qui l'a demandée n'est plus là.
+    if (genre === 'reprendre' && atelier.disponible && !atelier.divergence) placerCurseur('atelier-recherche');
   }
 </script>
 
-<section class="atelier">
-  <header class="barre">
-    <h1>Atelier</h1>
-    <!-- Tâche 15 : ici, le compteur des modifications, « Envoyer au téléphone », puis l'avis sous la barre. -->
-  </header>
+{#snippet avisEtDetail()}
+  {#if atelier.avis !== null}
+    <p class="avis {atelier.avis.ton}">{atelier.avis.texte}</p>
+  {/if}
+  {#if detail !== ''}
+    <p class="git" lang="en">{detail}</p>
+  {/if}
+{/snippet}
 
-  <div class="colonnes" inert={atelier.demande !== null}>
-    <ListeMots {atelier} onnouveau={() => atelier.nouveau()} />
-    <FicheAtelier {atelier} />
-    <Apercu mot={atelier.brouillon} />
+<section class="atelier">
+  <div class="corps" inert={atelier.demande !== null}>
+    <BarreEnvoi {atelier} />
+
+    {#if atelier.disponible}
+      <div class="annonces" role="status">
+        {#if atelier.avis !== null || atelier.divergence}
+          <div class="annonce">
+            <div class="textes">
+              {@render avisEtDetail()}
+              {#if divergenceADire}
+                <p class="avis alerte">{TEXTE_DIVERGENCE}</p>
+              {/if}
+            </div>
+            {#if atelier.divergence}
+              <button class="reprendre" disabled={atelier.occupe} onclick={() => atelier.demanderReprise()}>Reprendre la liste en ligne</button>
+            {/if}
+          </div>
+        {/if}
+      </div>
+
+      <div class="colonnes">
+        <ListeMots {atelier} onnouveau={() => atelier.nouveau()} />
+        <FicheAtelier {atelier} />
+        <Apercu mot={atelier.brouillon} />
+      </div>
+    {:else}
+      <!-- Sans copie lisible, pas de colonnes : ce qui manque, et comment en sortir. -->
+      <div class="indisponible" role="status">
+        {#if atelier.avis !== null}
+          {@render avisEtDetail()}
+        {:else if atelier.occupe}
+          <p class="avis calme attente">L’atelier va chercher la liste…</p>
+        {/if}
+        <div class="sorties">
+          <button class:principal={!atelier.illisible} disabled={atelier.occupe} onclick={() => atelier.reessayer().catch(() => undefined)}>Réessayer</button>
+          {#if atelier.illisible}
+            <button class="principal" disabled={atelier.occupe} onclick={() => atelier.demanderReprise()}>Reprendre la liste en ligne</button>
+          {/if}
+        </div>
+      </div>
+    {/if}
   </div>
 
   {#if atelier.demande !== null}
@@ -61,10 +118,16 @@
             <button class="danger" onclick={confirmer}>Quitter la fiche</button>
             <button data-depart onclick={() => atelier.annuler()}>Rester</button>
           </div>
-        {:else}
+        {:else if atelier.demande.genre === 'supprimer'}
           <p id="question-atelier">Supprimer « {aSupprimer?.mot ?? atelier.brouillon?.mot} » ?</p>
           <div class="boutons">
             <button class="danger" onclick={confirmer}>Supprimer</button>
+            <button data-depart onclick={() => atelier.annuler()}>Annuler</button>
+          </div>
+        {:else}
+          <p id="question-atelier">Ta version sera mise de côté dans un fichier daté, puis remplacée par la liste en ligne.</p>
+          <div class="boutons">
+            <button class="danger" onclick={confirmer}>Reprendre</button>
             <button data-depart onclick={() => atelier.annuler()}>Annuler</button>
           </div>
         {/if}
@@ -82,18 +145,117 @@
     flex-direction: column;
   }
 
-  .barre {
+  .corps {
+    flex-grow: 1;
+    min-height: 0;
     display: flex;
+    flex-direction: column;
+  }
+
+  /* L'avis sous la barre : une ligne ou deux, puis les colonnes. */
+  .annonces {
     flex-shrink: 0;
-    align-items: baseline;
-    padding: 4px 32px 14px;
+  }
+
+  /* Les phrases à gauche ; « Reprendre la liste en ligne » à leur droite, sous elles si la place manque. */
+  .annonce {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px 24px;
+    padding: 10px 32px;
     border-bottom: 1px solid var(--filet);
   }
 
-  h1 {
+  .textes {
+    flex: 1 1 420px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .avis {
     margin: 0;
-    font-size: 28px;
-    font-weight: 500;
+    font-size: 18px;
+    line-height: 1.35;
+    color: var(--encre);
+  }
+
+  /* Une alerte se distingue par un filet à la marge, sans couleur criarde. */
+  .avis.alerte {
+    padding-left: 12px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .attente {
+    font-style: italic;
+    color: var(--second);
+  }
+
+  /* Le message de git, en anglais, à copier au besoin. */
+  .git {
+    margin: 0;
+    max-height: 4.5lh;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.35;
+    color: var(--second);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
+  }
+
+  .avis.alerte + .git {
+    padding-left: 15px;
+  }
+
+  .reprendre,
+  .sorties button {
+    height: 44px;
+    padding: 0 20px;
+    border: 1px solid var(--encre);
+    border-radius: 22px;
+    background: transparent;
+    color: var(--encre);
+    font-size: 18px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .sorties .principal {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--papier);
+  }
+
+  .reprendre:disabled,
+  .sorties button:disabled {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  /* Sans copie lisible : l'avis et les sorties, au centre de la page. */
+  .indisponible {
+    flex-grow: 1;
+    align-self: center;
+    width: min(100%, 620px);
+    padding: 56px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .indisponible .avis {
+    font-size: 21px;
+  }
+
+  .sorties {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
   /* Trois colonnes : la liste, la fiche, l'aperçu ; chacune défile pour elle-même. */

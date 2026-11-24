@@ -36,6 +36,9 @@ const CONNEXION = "L'atelier a besoin d'une connexion une première fois, pour r
 const SANS_GIT = "Git est introuvable sur cette machine. L'atelier en a besoin pour recevoir et envoyer la liste.";
 const DIVERGENCE = "La liste en ligne a changé ailleurs. Rien n'a été envoyé.";
 const ENREGISTREMENT = "La fiche n'a pas pu être enregistrée.";
+const VERIFICATION = "L'atelier n'a pas pu vérifier la liste en ligne. Tu peux continuer à travailler.";
+const RECEPTION = "L'atelier n'a pas pu recevoir la liste.";
+const SANS_RESEAU = "Pas de réseau : la liste n'est pas partie. Tes modifications restent en attente.";
 
 // La vraie liste embarquée n'est jamais chargée (voir etat.test.ts).
 vi.mock('./liste-embarquee', () => ({ listeEmbarquee: embarquee }));
@@ -270,8 +273,134 @@ describe('le démarrage', () => {
     await laisserFinir();
     expect(atelier.disponible).toBe(false);
     expect(atelier.depot?.raison).toBe('erreur');
-    expect(atelier.avis).toEqual({ ton: 'alerte', texte: CONNEXION });
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: RECEPTION });
     expect(etat.liste.publie).toBe(embarquee.publie);
+  });
+
+  for (const panne of ['erreur', 'refus', 'rejet'] as const) {
+    it(`pas de copie et le téléchargement échoue (${panne}) : la liste n'a pas pu être reçue`, async () => {
+      const faux = new FauxPont(null, null);
+      faux.pannes.synchroniser = panne;
+      const { atelier } = await demarrerSur(faux);
+      expect(atelier.disponible).toBe(false);
+      expect(atelier.avis).toEqual({ ton: 'alerte', texte: RECEPTION });
+    });
+  }
+
+  it('l’ouverture rejetée, puis pas de réseau : la liste n’a pas pu être reçue, pas « une première fois »', async () => {
+    const faux = new FauxPont(null, null);
+    faux.pannes.ouvrir = 'rejet';
+    faux.pannes.synchroniser = 'sans-reseau';
+    const { atelier } = await demarrerSur(faux);
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: RECEPTION });
+  });
+
+  for (const panne of ['refus', 'erreur', 'rejet'] as const) {
+    it(`une copie et la liste en ligne pas vérifiée (${panne}) : l’avis le dit, l’atelier reste ouvert`, async () => {
+      const faux = new FauxPont(ecrireFichier(locale));
+      faux.pannes.synchroniser = panne;
+      const { atelier } = await demarrerSur(faux);
+      expect(atelier.disponible).toBe(true);
+      expect(atelier.avis).toEqual({ ton: 'alerte', texte: VERIFICATION });
+    });
+  }
+});
+
+describe('réessayer', () => {
+  it('un réessai sans réseau garde l’avis d’un envoi échoué', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    await atelier.enregistrer({ ...fiche, definition: 'Autre définition.' });
+    faux.pannes.envoyer = 'sans-reseau';
+    await atelier.envoyer();
+    faux.pannes.synchroniser = 'sans-reseau';
+    await atelier.reessayer();
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: SANS_RESEAU });
+    delete faux.pannes.synchroniser;
+    await atelier.reessayer();
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: SANS_RESEAU });
+  });
+
+  it('un réessai réussi efface l’avis d’une synchronisation ratée', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    faux.pannes.synchroniser = 'refus';
+    const { atelier } = await demarrerSur(faux);
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: VERIFICATION });
+    delete faux.pannes.synchroniser;
+    await atelier.reessayer();
+    expect(atelier.avis).toBeNull();
+  });
+
+  it('pas de copie, puis la copie reçue au réessai : l’avis s’efface', async () => {
+    const faux = new FauxPont(null, null);
+    faux.pannes.synchroniser = 'sans-reseau';
+    const { atelier } = await demarrerSur(faux);
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: CONNEXION });
+    delete faux.pannes.synchroniser;
+    faux.enLigne = ecrireFichier(locale);
+    await atelier.reessayer();
+    expect(atelier.disponible).toBe(true);
+    expect(atelier.avis).toBeNull();
+  });
+});
+
+describe('la liste en ligne changée ailleurs', () => {
+  async function enDivergence() {
+    const faux = new FauxPont(ecrireFichier(locale));
+    faux.pannes.synchroniser = 'divergence';
+    const demarre = await demarrerSur(faux);
+    expect(demarre.atelier.divergence).toBe(true);
+    return { faux, ...demarre };
+  }
+
+  it('un enregistrement réussi ne fait pas oublier la divergence', async () => {
+    const { atelier } = await enDivergence();
+    expect(await atelier.enregistrer({ ...fiche, definition: 'Autre définition.' })).toBe(true);
+    expect(atelier.depot?.raison).toBe('pret');
+    expect(atelier.divergence).toBe(true);
+  });
+
+  it('un réessai sans réseau la garde ; un réessai prêt l’efface', async () => {
+    const { faux, atelier } = await enDivergence();
+    faux.pannes.synchroniser = 'sans-reseau';
+    await atelier.reessayer();
+    expect(atelier.divergence).toBe(true);
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: DIVERGENCE });
+    delete faux.pannes.synchroniser;
+    await atelier.reessayer();
+    expect(atelier.divergence).toBe(false);
+  });
+
+  it('un envoi réussi l’efface ; un envoi refusé pour divergence la pose', async () => {
+    const { faux, atelier } = await enDivergence();
+    await atelier.enregistrer({ ...fiche, definition: 'Autre définition.' });
+    await atelier.envoyer();
+    expect(atelier.divergence).toBe(false);
+    await atelier.enregistrer({ ...fiche, definition: 'Encore une autre.' });
+    faux.pannes.envoyer = 'divergence';
+    await atelier.envoyer();
+    expect(atelier.divergence).toBe(true);
+  });
+
+  it('reprendre demande confirmation ; annuler ne reprend rien, confirmer reprend et efface la divergence', async () => {
+    const { faux, atelier } = await enDivergence();
+    atelier.demanderReprise();
+    expect(atelier.demande?.genre).toBe('reprendre');
+    atelier.annuler();
+    expect(faux.appels).not.toContain('reprendre');
+
+    atelier.demanderReprise();
+    await atelier.confirmer();
+    expect(faux.appels).toContain('reprendre');
+    expect(atelier.divergence).toBe(false);
+    expect(atelier.avis?.ton).toBe('calme');
+  });
+
+  it('une reprise qui échoue garde la divergence', async () => {
+    const { faux, atelier } = await enDivergence();
+    faux.pannes.reprendre = 'sans-reseau';
+    await atelier.reprendre();
+    expect(atelier.divergence).toBe(true);
   });
 });
 
@@ -290,6 +419,7 @@ describe('la copie illisible', () => {
       const faux = creer();
       const { etat, atelier } = await demarrerSur(faux);
       expect(atelier.disponible).toBe(false);
+      expect(atelier.illisible).toBe(true);
       expect(atelier.avis).toEqual({ ton: 'alerte', texte: ILLISIBLE });
       expect(etat.liste.publie).toBe(embarquee.publie);
 
@@ -445,6 +575,17 @@ describe('envoyer', () => {
     expect(etat.liste.publie).toBe('2026-11-24T10:00:00Z');
     expect(atelier.modifications.total).toBe(0);
     expect(atelier.avis).toEqual({ ton: 'calme', texte: 'Liste envoyée. Le téléphone la verra dans quelques minutes.' });
+  });
+
+  it('envoi est vrai dès la demande et jusqu’à la réponse', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    await atelier.enregistrer({ ...fiche, definition: 'Autre définition.' });
+    expect(atelier.envoi).toBe(false);
+    const enCours = atelier.envoyer();
+    expect(atelier.envoi).toBe(true);
+    await enCours;
+    expect(atelier.envoi).toBe(false);
   });
 
   const pannes: [RaisonDepot | 'rejet', string][] = [

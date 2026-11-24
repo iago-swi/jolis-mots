@@ -34,6 +34,8 @@ const ENVOYEE = calme('Liste envoyée. Le téléphone la verra dans quelques min
 const SANS_GIT = alerte("Git est introuvable sur cette machine. L'atelier en a besoin pour recevoir et envoyer la liste.");
 const DIVERGENCE = alerte("La liste en ligne a changé ailleurs. Rien n'a été envoyé.");
 const CONNEXION = alerte("L'atelier a besoin d'une connexion une première fois, pour recevoir la liste.");
+const RECEPTION = alerte("L'atelier n'a pas pu recevoir la liste.");
+const VERIFICATION = alerte("L'atelier n'a pas pu vérifier la liste en ligne. Tu peux continuer à travailler.");
 const ILLISIBLE = alerte(
   "Le fichier des mots de l'atelier est illisible. Tu peux reprendre la liste en ligne ; ta version sera mise de côté.",
 );
@@ -48,9 +50,15 @@ const ECHECS_D_ENVOI: Record<Exclude<RaisonDepot, 'pret'>, Avis> = {
   'sans-git': SANS_GIT,
 };
 
-/** Une confirmation en attente : quitter une fiche modifiée, ou supprimer un mot. */
+/** Les avis sur l'état de la copie : une synchronisation réussie les rend caducs. */
+const AVIS_DE_LA_COPIE: readonly Avis[] = [SANS_GIT, DIVERGENCE, CONNEXION, RECEPTION, VERIFICATION, ILLISIBLE];
+
+/** Le texte de l'avis de divergence, que l'écran garde affiché tant qu'elle n'est pas réglée. */
+export const TEXTE_DIVERGENCE = DIVERGENCE.texte;
+
+/** Une confirmation en attente : quitter une fiche modifiée, supprimer un mot, ou reprendre la liste en ligne. */
 export interface Demande {
-  genre: 'quitter' | 'supprimer';
+  genre: 'quitter' | 'supprimer' | 'reprendre';
   /** Ce que fait le oui ; une promesse quand il écrit (la suppression). */
   suite: () => void | Promise<unknown>;
 }
@@ -101,6 +109,15 @@ export class Atelier {
   depot = $state<EtatDepot | null>(null);
   occupe = $state(false);
   avis = $state<Avis | null>(null);
+  /**
+   * La liste en ligne a changé ailleurs, et ce n'est pas réglé : posé par toute réponse
+   * « divergence », levé par une reprise, un envoi ou une synchronisation réussis.
+   */
+  divergence = $state(false);
+  /** Un envoi est demandé et n'a pas encore sa réponse. */
+  envoi = $state(false);
+  /** L'ouverture de la copie a échoué : son absence ne tient peut-être pas au réseau. */
+  private ouvertureRatee = false;
   /** La liste locale lue dans `depot.locale`, null si elle manque ou ne se lit pas. */
   private locale = $state.raw<FichierMots | null>(null);
   /** La dernière liste envoyée ou reçue, lue dans `depot.envoyee`. */
@@ -109,7 +126,7 @@ export class Atelier {
   /** Une copie locale existe et se lit. */
   readonly disponible: boolean = $derived(this.locale !== null);
   /** Une copie existe mais son fichier des mots manque ou ne se lit pas : rien ne doit l'écraser. */
-  private readonly illisible: boolean = $derived(
+  readonly illisible: boolean = $derived(
     !this.disponible && this.depot !== null && (this.depot.locale !== null || this.depot.envoyee !== null),
   );
   /** Entre la liste envoyée et `etat.liste`. */
@@ -175,6 +192,7 @@ export class Atelier {
   private poser(r: EtatDepot): void {
     const avant = this.depot;
     this.depot = r;
+    if (r.raison === 'divergence') this.divergence = true;
     if (avant === null || r.envoyee !== avant.envoyee) this.envoyee = lireListe(r.envoyee);
     if (avant === null || r.locale !== avant.locale) {
       this.locale = lireListe(r.locale);
@@ -182,31 +200,46 @@ export class Atelier {
     }
   }
 
-  /** L'avis après avoir reçu ou repris la liste ; null quand il n'y a rien à dire. */
+  /** L'avis sur la copie après l'avoir reçue, vérifiée ou reprise ; null quand il n'y a rien à dire. */
   private avisDeLaCopie(raison: RaisonDepot): Avis | null {
     if (raison === 'sans-git') return SANS_GIT;
     if (this.illisible) return ILLISIBLE;
-    if (!this.disponible) return raison === 'pret' ? null : CONNEXION;
-    // Avec une copie, une panne de réseau ne se dit pas : l'atelier travaille hors ligne.
+    if (!this.disponible) {
+      if (raison === 'pret') return null;
+      // « Une première fois » seulement quand c'est le réseau qui manque, pas quand l'ouverture a raté.
+      return raison === 'sans-reseau' && !this.ouvertureRatee ? CONNEXION : RECEPTION;
+    }
     return raison === 'divergence' ? DIVERGENCE : null;
   }
 
   /** Ouvre la copie locale et pose sa liste ; puis va voir la liste en ligne, sans attendre. */
   async demarrer(): Promise<void> {
     await this.enFile(async () => {
-      this.poser(await this.appeler(() => this.pont.ouvrir()));
+      const r = await this.appeler(() => this.pont.ouvrir());
+      this.ouvertureRatee = r.raison !== 'pret';
+      this.poser(r);
       // Pas d'alarme pendant la première synchronisation : elle va peut-être télécharger la copie.
       this.avis = this.illisible ? ILLISIBLE : null;
     });
     this.reessayer().catch(() => undefined);
   }
 
-  /** Synchronise : télécharge la copie si elle manque, sinon va voir la liste en ligne. */
+  /**
+   * Synchronise : télécharge la copie si elle manque, sinon va voir la liste en ligne. Sans rien
+   * à dire, l'avis en place reste (un envoi échoué le reste), sauf un avis sur la copie que
+   * la réussite rend caduc.
+   */
   reessayer(): Promise<void> {
     return this.enFile(async () => {
       const r = await this.appeler(() => this.pont.synchroniser());
       this.poser(r);
-      this.avis = this.avisDeLaCopie(r.raison);
+      if (r.raison === 'pret') this.divergence = false;
+      const nouveau =
+        this.avisDeLaCopie(r.raison) ??
+        // Avec une copie, une panne de réseau ne se dit pas : l'atelier travaille hors ligne.
+        (r.raison === 'refus' || r.raison === 'erreur' ? VERIFICATION : null);
+      if (nouveau !== null) this.avis = nouveau;
+      else if (r.raison === 'pret' && AVIS_DE_LA_COPIE.some((a) => a.texte === this.avis?.texte)) this.avis = null;
     });
   }
 
@@ -245,6 +278,7 @@ export class Atelier {
 
   /** Contrôle la liste, la date et l'envoie ; sans rien envoyer si elle est fautive. */
   envoyer(): Promise<void> {
+    this.envoi = true;
     return this.enFile(async () => {
       if (!this.disponible) return;
       const phrases = validerPourEnvoi(etat.liste);
@@ -257,8 +291,11 @@ export class Atelier {
       const texte = ecrireFichier(dater(etat.liste, maintenant));
       const r = await this.appeler(() => this.pont.envoyer(texte, message));
       this.poser(r);
+      if (r.raison === 'pret') this.divergence = false;
       if (this.illisible) this.avis = ILLISIBLE;
       else this.avis = r.raison === 'pret' ? ENVOYEE : ECHECS_D_ENVOI[r.raison];
+    }).finally(() => {
+      this.envoi = false;
     });
   }
 
@@ -268,6 +305,7 @@ export class Atelier {
       const r = await this.appeler(() => this.pont.reprendre());
       this.poser(r);
       if (r.raison === 'pret' && this.disponible) {
+        this.divergence = false;
         this.avis = calme(
           r.sauvegarde === null
             ? 'La liste en ligne est reprise.'
@@ -369,6 +407,11 @@ export class Atelier {
           })
           .catch(() => undefined),
     };
+  }
+
+  /** Demande confirmation avant de mettre la version locale de côté et de reprendre la liste en ligne. */
+  demanderReprise(): void {
+    this.demande = { genre: 'reprendre', suite: () => this.reprendre().catch(() => undefined) };
   }
 
   /**
