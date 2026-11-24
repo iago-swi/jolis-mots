@@ -39,7 +39,8 @@ const VERIFICATION = alerte("L'atelier n'a pas pu vérifier la liste en ligne. T
 const ILLISIBLE = alerte(
   "Le fichier des mots de l'atelier est illisible. Tu peux reprendre la liste en ligne ; ta version sera mise de côté.",
 );
-const NON_ENREGISTREE = alerte("La fiche n'a pas pu être enregistrée.");
+const REPRISE_ECHOUEE = alerte("La liste en ligne n'a pas pu être reprise. Rien n'a changé ici.");
+const NON_ENREGISTREE =alerte("La fiche n'a pas pu être enregistrée.");
 const ENVOI_ECHOUE = alerte("L'envoi a échoué. Tes modifications restent en attente.");
 
 const ECHECS_D_ENVOI: Record<Exclude<RaisonDepot, 'pret'>, Avis> = {
@@ -51,7 +52,15 @@ const ECHECS_D_ENVOI: Record<Exclude<RaisonDepot, 'pret'>, Avis> = {
 };
 
 /** Les avis sur l'état de la copie : une synchronisation réussie les rend caducs. */
-const AVIS_DE_LA_COPIE: readonly Avis[] = [SANS_GIT, DIVERGENCE, CONNEXION, RECEPTION, VERIFICATION, ILLISIBLE];
+const AVIS_DE_LA_COPIE: readonly Avis[] = [
+  SANS_GIT,
+  DIVERGENCE,
+  CONNEXION,
+  RECEPTION,
+  VERIFICATION,
+  ILLISIBLE,
+  REPRISE_ECHOUEE,
+];
 
 /** Le texte de l'avis de divergence, que l'écran garde affiché tant qu'elle n'est pas réglée. */
 export const TEXTE_DIVERGENCE = DIVERGENCE.texte;
@@ -311,8 +320,10 @@ export class Atelier {
             ? 'La liste en ligne est reprise.'
             : `La liste en ligne est reprise. Ta version est gardée ici : ${r.sauvegarde}`,
         );
+      } else if (r.raison !== 'pret') {
+        // La copie et la divergence restent telles quelles ; l'échec est dit.
+        this.avis = REPRISE_ECHOUEE;
       } else {
-        // Sans phrase pour cette panne, l'avis qui a mené à la reprise reste.
         this.avis = this.avisDeLaCopie(r.raison) ?? this.avis;
       }
     });

@@ -38,7 +38,8 @@ const DIVERGENCE = "La liste en ligne a changé ailleurs. Rien n'a été envoyé
 const ENREGISTREMENT = "La fiche n'a pas pu être enregistrée.";
 const VERIFICATION = "L'atelier n'a pas pu vérifier la liste en ligne. Tu peux continuer à travailler.";
 const RECEPTION = "L'atelier n'a pas pu recevoir la liste.";
-const SANS_RESEAU = "Pas de réseau : la liste n'est pas partie. Tes modifications restent en attente.";
+const REPRISE = "La liste en ligne n'a pas pu être reprise. Rien n'a changé ici.";
+const SANS_RESEAU ="Pas de réseau : la liste n'est pas partie. Tes modifications restent en attente.";
 
 // La vraie liste embarquée n'est jamais chargée (voir etat.test.ts).
 vi.mock('./liste-embarquee', () => ({ listeEmbarquee: embarquee }));
@@ -396,12 +397,19 @@ describe('la liste en ligne changée ailleurs', () => {
     expect(atelier.avis?.ton).toBe('calme');
   });
 
-  it('une reprise qui échoue garde la divergence', async () => {
-    const { faux, atelier } = await enDivergence();
-    faux.pannes.reprendre = 'sans-reseau';
-    await atelier.reprendre();
-    expect(atelier.divergence).toBe(true);
-  });
+  for (const panne of ['sans-reseau', 'refus', 'erreur', 'rejet'] as const) {
+    it(`une reprise qui échoue (${panne}) : l’échec est dit, la divergence reste, rien ne change`, async () => {
+      const { faux, etat, atelier } = await enDivergence();
+      const avant = etat.liste;
+      faux.pannes.reprendre = panne;
+      atelier.demanderReprise();
+      await atelier.confirmer();
+      expect(atelier.avis).toEqual({ ton: 'alerte', texte: REPRISE });
+      expect(atelier.divergence).toBe(true);
+      expect(atelier.disponible).toBe(true);
+      expect(etat.liste).toBe(avant);
+    });
+  }
 });
 
 describe('la copie illisible', () => {
@@ -454,13 +462,14 @@ describe('la copie illisible', () => {
     expect(atelier.avis).toEqual({ ton: 'calme', texte: 'La liste en ligne est reprise.' });
   });
 
-  it('reprendre qui échoue : la copie reste illisible', async () => {
+  it('reprendre qui échoue : la copie reste illisible, l’échec est dit', async () => {
     const faux = new FauxPont('{"format":1,"publie":', ecrireFichier(locale));
     faux.pannes.reprendre = 'sans-reseau';
     const { atelier } = await demarrerSur(faux);
     await atelier.reprendre();
     expect(atelier.disponible).toBe(false);
-    expect(atelier.avis).toEqual({ ton: 'alerte', texte: ILLISIBLE });
+    expect(atelier.illisible).toBe(true);
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: REPRISE });
   });
 });
 

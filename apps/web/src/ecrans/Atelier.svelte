@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { embellir } from '@jolis-mots/core';
   import { onDestroy, untrack } from 'svelte';
   import { atelier as instance, TEXTE_DIVERGENCE } from '../atelier.svelte';
   import Apercu from '../composants/atelier/Apercu.svelte';
@@ -58,7 +59,8 @@
 
 {#snippet avisEtDetail()}
   {#if atelier.avis !== null}
-    <p class="avis {atelier.avis.ton}">{atelier.avis.texte}</p>
+    <!-- Apostrophes typographiques à l'affichage ; le message de git, lui, reste brut. -->
+    <p class="avis {atelier.avis.ton}">{embellir(atelier.avis.texte)}</p>
   {/if}
   {#if detail !== ''}
     <p class="git" lang="en">{detail}</p>
@@ -70,19 +72,16 @@
     <BarreEnvoi {atelier} />
 
     {#if atelier.disponible}
-      <div class="annonces" role="status">
-        {#if atelier.avis !== null || atelier.divergence}
-          <div class="annonce">
-            <div class="textes">
-              {@render avisEtDetail()}
-              {#if divergenceADire}
-                <p class="avis alerte">{TEXTE_DIVERGENCE}</p>
-              {/if}
-            </div>
-            {#if atelier.divergence}
-              <button class="reprendre" disabled={atelier.occupe} onclick={() => atelier.demanderReprise()}>Reprendre la liste en ligne</button>
-            {/if}
-          </div>
+      <!-- La région annoncée ne porte que les phrases, et reste en place même vide ; le bouton est à côté. -->
+      <div class="annonce" class:vide={atelier.avis === null && !atelier.divergence}>
+        <div class="textes" role="status">
+          {@render avisEtDetail()}
+          {#if divergenceADire}
+            <p class="avis alerte">{embellir(TEXTE_DIVERGENCE)}</p>
+          {/if}
+        </div>
+        {#if atelier.divergence}
+          <button class="reprendre" disabled={atelier.occupe} onclick={() => atelier.demanderReprise()}>Reprendre la liste en ligne</button>
         {/if}
       </div>
 
@@ -93,12 +92,14 @@
       </div>
     {:else}
       <!-- Sans copie lisible, pas de colonnes : ce qui manque, et comment en sortir. -->
-      <div class="indisponible" role="status">
-        {#if atelier.avis !== null}
-          {@render avisEtDetail()}
-        {:else if atelier.occupe}
-          <p class="avis calme attente">L’atelier va chercher la liste…</p>
-        {/if}
+      <div class="indisponible">
+        <div class="textes" role="status">
+          {#if atelier.avis !== null}
+            {@render avisEtDetail()}
+          {:else if atelier.occupe}
+            <p class="avis calme attente">L’atelier va chercher la liste…</p>
+          {/if}
+        </div>
         <div class="sorties">
           <button class:principal={!atelier.illisible} disabled={atelier.occupe} onclick={() => atelier.reessayer().catch(() => undefined)}>Réessayer</button>
           {#if atelier.illisible}
@@ -153,12 +154,9 @@
   }
 
   /* L'avis sous la barre : une ligne ou deux, puis les colonnes. */
-  .annonces {
-    flex-shrink: 0;
-  }
-
   /* Les phrases à gauche ; « Reprendre la liste en ligne » à leur droite, sous elles si la place manque. */
   .annonce {
+    flex-shrink: 0;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
@@ -168,12 +166,25 @@
     border-bottom: 1px solid var(--filet);
   }
 
+  /* Rien à dire : la région reste, sans hauteur. */
+  .annonce.vide {
+    padding: 0;
+    border-bottom: none;
+  }
+
   .textes {
-    flex: 1 1 420px;
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 4px;
+  }
+
+  .annonce .textes {
+    flex: 1 1 420px;
+  }
+
+  .indisponible .textes {
+    gap: 12px;
   }
 
   .avis {
@@ -197,8 +208,10 @@
   /* Le message de git, en anglais, à copier au besoin. */
   .git {
     margin: 0;
-    max-height: 4.5lh;
+    max-height: 3lh;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--filet) transparent;
     font-size: 14px;
     line-height: 1.35;
     color: var(--second);

@@ -14,5 +14,8 @@ export default defineConfig({
     include: ['{packages,apps}/**/src/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     environment: 'node',
+    // Le premier import après `vi.resetModules()` compile les modules Svelte : plus de 5 s
+    // quand la machine est chargée (les tests de git tournent en même temps).
+    testTimeout: 20000,
   },
 });
