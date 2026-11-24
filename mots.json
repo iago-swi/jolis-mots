@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "publie": "2026-11-24T14:50:52Z",
+  "publie": "2026-11-24T14:53:21Z",
   "mots": [
     {"id":"r1p4yz","mot":"Abalourdir","tri":"abalourdir","genre":"verbe trans.","definition":"Rendre balourd, gauche, stupide. SYN: abêtir.","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
     {"id":"oku6ct","mot":"aberration","tri":"aberration","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
@@ -2379,6 +2379,7 @@
     {"id":"n47sx3","mot":"Touffeur","tri":"touffeur","genre":"subst. fém.","definition":"Atmosphère étouffante et lourde qui saisit dans un lieu où la chaleur est extrême. US: touffeur accablante, insupportable, orageuse; touffeur d'une chambre, d'été, de la nuit, d'orage. EX: Toute brise était arrêtée par les collines au nord; et au sud, les landes saturées de pollen soufflaient sur la ville haletante une touffeur mortelle.","sources":["Sylvain Tesson: Éloge de l'énergie vagabonde (207)"],"note":"","util":"","aCompleter":false},
     {"id":"d4pepr","mot":"Toupiller","tri":"toupiller","genre":"verbe intrans.","definition":"1. [Vieilli] Tourner sur soi-même comme le fait une toupie. EX: Congo danse seule, accroupie en kangourou, les jambes écartées, battant des mains; elle toupille sans déplacer sa chevelure gommée, qu'une raie large fend, comme une pelade.\n2. [Fig.] Faire toupiller qqn : s'amuser de lui. EX: Une telle s'était moquée de l'un deux (...) une autre faisait le malheur de son amant, qui l'aimait (...) toutes trompaient leurs servants ou les faisaient toupiller comme des tontons, et toutes s'en faisaient gloire!","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
     {"id":"k7c9dq","mot":"Tour","tri":"tour","genre":"subst. masc.","definition":"[Rare] Ligne courbe. SYN: boucle, lacet, méandre. EX: Tours et détours d'une rivière.","sources":[],"note":"","util":"LLL","aCompleter":false},
+    {"id":"e7q1gc","mot":"Tout a trac","tri":"tout a trac","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"lvcimr","mot":"Toutim","tri":"toutim","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"vpvn8c","mot":"Tout à trac","tri":"trac","genre":"expr.","definition":"[Déterm. d'un verbe de parole] Spontanément, franchement, sans détour. US: avouer, crier, jeter tout à trac. EX: Elle lui assénait tout à trac des nouvelles qui le décourageaient.","sources":[],"note":"","util":"","aCompleter":false},
     {"id":"ycvjfp","mot":"Perdre la tramontane","tri":"tramontane","genre":"expr.","definition":"1. Ne plus pouvoir s'orienter au moyen de l'Étoile polaire.\n2. [Fig., vieilli ou litt.] Être en plein désarroi, être égaré, désorienté, déboussolé. SYN: perdre le nord (fam.), la boussole (fam.)","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
