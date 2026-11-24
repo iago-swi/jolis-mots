@@ -424,6 +424,57 @@ Scripts racine : `package:android` (signé) et `package:android:debug` (`npm run
 - [ ] **Step 3: Vérifier le chemin signé avec une clé jetable.** Créer dans le dossier temporaire de la session un fichier de clé d'essai (`keytool … -storepass:env`, mot de passe jetable tenu dans une variable d'environnement de la seule commande), lancer la fabrication avec `JOLISMOTS_KEYSTORE` et `JOLISMOTS_KEYSTORE_PASS` pointant dessus : `apksigner verify` réussit et affiche le certificat d'essai. Sans `JOLISMOTS_KEYSTORE` et sans fichier à l'emplacement par défaut : le script s'arrête avec la commande `keytool`. Supprimer ensuite la clé d'essai et l'APK d'essai : **cet APK ne doit jamais être publié.**
 - [ ] **Step 4: Commit** — `git commit -m "Android : APK signé avec une clé propre à Jolis Mots"`
 
+### Task 9b: Le mot à la même taille sur chaque fiche
+
+Demandé par Philippe pendant la construction (24 novembre 2026) : « je n'aime pas trop que le mot n'a pas la même taille à chaque fois ». Aujourd'hui `tailleDuMot` donne 62 px jusqu'à 9 lettres, puis rétrécit en continu jusqu'à 34 px. Décidé par Philippe : **une seule grande taille pour presque tous les mots ; une expression passe sur deux lignes à cette taille ; seuls les mots d'un seul tenant trop longs pour une ligne prennent une seconde taille, plus petite. Deux tailles au lieu d'un dégradé.**
+
+**Files:**
+- Modify: `packages/core/src/typographie.ts`, `packages/core/src/typographie.test.ts`, `apps/web/src/composants/Fiche.svelte`, `docs/superpowers/specs/2026-11-24-jolis-mots-design.md` (section 5.1, une phrase)
+
+**Interfaces:**
+- Produces:
+
+```ts
+export const TAILLE_DU_MOT = 54;        // px, la taille ordinaire
+export const TAILLE_DU_MOT_LONG = 40;   // px, la seconde taille
+export const LETTRES_SUR_UNE_LIGNE: number; // longueur du plus long morceau qui tient encore sur une ligne à la taille ordinaire
+export function tailleDuMot(mot: string): number; // TAILLE_DU_MOT ou TAILLE_DU_MOT_LONG, rien d'autre
+```
+
+Règles :
+
+- Un **morceau** est une suite de caractères sans espace ni trait d'union (le navigateur peut passer à la ligne après un trait d'union). `tailleDuMot` regarde le plus long morceau du mot : jusqu'à `LETTRES_SUR_UNE_LIGNE` caractères, la taille ordinaire ; au-delà, la seconde taille. La longueur totale de l'expression ne compte pas : « Grosjean comme devant » est à la taille ordinaire, sur deux lignes.
+- La largeur de référence est celle d'un téléphone de 390 px (la colonne de la fiche y fait 334 px). À cette largeur : aucun morceau d'un mot à la taille ordinaire ne dépasse la colonne, et aucun morceau de la liste réelle ne la dépasse à la seconde taille (le plus long est « Abracadabrantesque », 18 lettres).
+- 54 et 40 sont des valeurs de départ. Mesurer dans le navigateur, à 390 px de large, la largeur réelle des morceaux les plus larges de la liste (`donnees/mots.json`, mots complets) pour chaque longueur de 11 à 18 lettres, puis fixer `LETTRES_SUR_UNE_LIGNE` à la plus grande longueur dont **tous** les morceaux réels tiennent à la taille ordinaire. Si la seconde taille ne suffit pas pour « Abracadabrantesque », la baisser par pas de 2 px jusqu'à ce qu'il tienne ; ne pas toucher à la taille ordinaire sans le dire dans le compte rendu. Donner les mesures dans le compte rendu, avec le nombre de mots complets à chaque taille.
+- Dans `Fiche.svelte`, le mot garde `overflow-wrap: anywhere` comme filet de sûreté, et son interligne convient à deux lignes (une expression sur deux lignes ne doit ni se chevaucher ni s'écarter trop : viser un interligne de 1,05 à 1,1).
+- La fiche du Recueil et l'aperçu de l'atelier utilisent le même composant : rien d'autre à changer.
+
+- [ ] **Step 1: Écrire les tests qui échouent**
+
+```ts
+expect(tailleDuMot('Vénuste')).toBe(TAILLE_DU_MOT);
+expect(tailleDuMot('Baguenauder')).toBe(TAILLE_DU_MOT);                 // 11 lettres : plus de dégradé
+expect(tailleDuMot('Grosjean comme devant')).toBe(TAILLE_DU_MOT);        // expression : la longueur totale ne compte pas
+expect(tailleDuMot('Béni-oui-oui')).toBe(TAILLE_DU_MOT);                 // le trait d'union coupe les morceaux
+expect(tailleDuMot('Abracadabrantesque')).toBe(TAILLE_DU_MOT_LONG);
+expect(tailleDuMot('x'.repeat(LETTRES_SUR_UNE_LIGNE))).toBe(TAILLE_DU_MOT);
+expect(tailleDuMot('x'.repeat(LETTRES_SUR_UNE_LIGNE + 1))).toBe(TAILLE_DU_MOT_LONG);
+expect(tailleDuMot('Sans ' + 'x'.repeat(LETTRES_SUR_UNE_LIGNE + 1))).toBe(TAILLE_DU_MOT_LONG);
+expect(tailleDuMot('')).toBe(TAILLE_DU_MOT);
+// jamais d'autre valeur
+for (const m of ['A', 'Éployer', 'Circonvolution', "N'avoir (pas / point) de cesse que + subj."]) {
+  expect([TAILLE_DU_MOT, TAILLE_DU_MOT_LONG]).toContain(tailleDuMot(m));
+}
+```
+
+Les tests existants de `tailleDuMot` qui décrivent le dégradé sont remplacés par ceux-ci.
+
+- [ ] **Step 2: Les lancer** — attendu : échec.
+- [ ] **Step 3: Mesurer, puis écrire le code** selon les règles ci-dessus.
+- [ ] **Step 4: Mettre la conception à jour.** Dans `docs/superpowers/specs/2026-11-24-jolis-mots-design.md`, section 5.1, après la phrase qui décrit la fiche (« La fiche montre, de haut en bas : … »), ajouter : « Le mot est composé à une seule grande taille ; une expression passe à la ligne entre ses mots. Seul un mot d'un seul tenant trop long pour une ligne prend une seconde taille, plus petite : deux tailles, jamais un dégradé (décidé par Philippe pour la 1.0.0). »
+- [ ] **Step 5: Vérifier dans le navigateur**, à 390 px puis 411 px de large, palettes Papier et Nuit : `?mot=herbu`, `?mot=baguenauder`, `?mot=abracadabrantesque`, `?mot=fantasmagorique`, `?mot=grosjean` (ou une autre expression de trois mots de la liste), et le plus long morceau encore à la taille ordinaire : aucun mot ne dépasse la colonne, aucun n'est coupé au milieu d'un morceau, les deux lignes d'une expression sont bien espacées. `npm test` et `npm run check` passent.
+- [ ] **Step 6: Commit** — `git commit -m "Fiche : le mot à la même taille, sauf les très longs"`
+
 ---
 
 ## Deuxième partie : l'atelier
@@ -914,7 +965,7 @@ Tâche du contrôleur, après la relecture finale de la branche.
 
 Aucun agent ne peut le faire à sa place. Rien de tout cela ne bloque la demande de fusion ; les points 1 et 2 sont nécessaires avant « publie », pour joindre l'APK signé à la version.
 
-1. **Créer la clé de signature**, dans un terminal : la commande `keytool` de la tâche 9. Elle demande un mot de passe et un nom. Garder le mot de passe dans son gestionnaire de mots de passe et une copie du fichier `jolis-mots.jks` ailleurs que sur cette machine : sans eux, aucune mise à jour future ne pourra s'installer par-dessus.
+1. **Créer la clé de signature**, dans un terminal : `npm run cle:android` (ajouté pendant la construction, à la place de la commande `keytool` brute de la tâche 9, qui dépendait du terminal utilisé). La commande demande un mot de passe et un nom, et refuse d'écraser une clé existante. Garder le mot de passe dans son gestionnaire de mots de passe et une copie du fichier `jolis-mots.jks` ailleurs que sur cette machine : sans eux, aucune mise à jour future ne pourra s'installer par-dessus.
 2. **Fabriquer l'APK signé**, depuis PowerShell : `npm run package:android`, en tapant le mot de passe quand `apksigner` le demande.
 3. **Sur le téléphone** : désinstaller la 0.1.0, installer la 1.0.0, vérifier que les filtres du Recueil tiennent sur une ligne et qu'il n'y a pas d'éclair au lancement.
 4. **Installer la version Windows** avec `Jolis-Mots-1.0.0-setup.exe`.
