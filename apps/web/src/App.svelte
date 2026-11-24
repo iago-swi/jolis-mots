@@ -3,7 +3,7 @@
   import Onglets from './composants/Onglets.svelte';
   import { ecranDeLAdresse, etat } from './etat.svelte';
   import Mot from './ecrans/Mot.svelte';
-  import Quiz from './ecrans/Bientot.svelte';
+  import Quiz from './ecrans/Quiz.svelte';
   import Recueil from './ecrans/Recueil.svelte';
   import Reglages from './ecrans/Bientot.svelte';
 
