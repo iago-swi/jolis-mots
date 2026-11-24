@@ -195,6 +195,26 @@ describe('remplacerListe', () => {
     expect(etat.lus.every((id) => etat.complets.some((m) => m.id === id))).toBe(true);
   });
 
+  it('posée avant le démarrage : ne tire rien, `demarrer` tire un seul mot', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.remplacerListe(listePlusRecente);
+    expect(etat.lus).toEqual([]);
+    expect(etat.progres).toEqual({});
+    etat.demarrer({ search: '', hash: '' });
+    expect(etat.lus).toHaveLength(1);
+    expect(Object.keys(etat.progres)).toEqual(etat.lus);
+  });
+
+  it('posée avant le démarrage, avec « ?mot= » : ce mot est le premier et le seul lu', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.remplacerListe(listePlusRecente);
+    etat.demarrer({ search: '?mot=mot%20b1', hash: '' });
+    expect(etat.lus).toEqual(['b1']);
+    expect(Object.keys(etat.progres)).toEqual(['b1']);
+  });
+
   it('ferme la fiche ouverte quand son mot disparaît, la garde sinon', async () => {
     poserStockage();
     const { etat } = await lancer();

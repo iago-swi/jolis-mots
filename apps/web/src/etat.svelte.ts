@@ -81,6 +81,8 @@ class Etat {
   panneauAuteurs = $state(false);
   /** Liste téléchargée, gardée de côté jusqu'au prochain mot tiré. */
   private listeEnAttente: FichierMots | null = null;
+  /** Vrai après `demarrer` : avant, aucun mot n'est montré, c'est `demarrer` qui tire le premier. */
+  private demarre = false;
   /** Palette imposée par l'adresse (« ?palette=nuit »), jamais enregistrée. */
   paletteForcee = $state<Palette | null>(null);
 
@@ -158,7 +160,7 @@ class Etat {
 
   /**
    * Adopte `l` tout de suite et remet l'état d'aplomb : les mots qui ne sont plus complets quittent `lus`,
-   * le mot affiché reste s'il le peut, un mot est tiré s'il n'en reste aucun de lu, la fiche ouverte se
+   * le mot affiché reste s'il le peut, un mot est tiré s'il n'en reste aucun de lu (après `demarrer` seulement), la fiche ouverte se
    * ferme si son mot n'est plus complet. Une liste en attente qui n'est pas plus récente que `l` est oubliée.
    */
   remplacerListe(l: FichierMots): void {
@@ -169,7 +171,7 @@ class Etat {
     this.lus = this.lus.filter((id) => complets.has(id));
     const rang = affiche === undefined ? -1 : this.lus.indexOf(affiche);
     this.position = rang >= 0 ? rang : Math.max(0, Math.min(this.position, this.lus.length - 1));
-    if (this.lus.length === 0) {
+    if (this.demarre && this.lus.length === 0) {
       const m = this.tirer();
       if (m !== null) this.montrer(m);
     }
@@ -249,6 +251,7 @@ class Etat {
    * le quiz (« ?quiz=vus ») et le premier mot (« ?mot=ceruleen », comparé au tri normalisé).
    */
   demarrer(adresse: { search: string; hash: string }): void {
+    this.demarre = true;
     const params = new URLSearchParams(adresse.search);
     const palette = params.get('palette');
     if (estPalette(palette)) this.paletteForcee = palette;
