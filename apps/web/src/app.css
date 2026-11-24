@@ -1,0 +1,99 @@
+/* Les quatre palettes (conception, section 9) : six couleurs, rien d'autre. */
+:root,
+:root[data-palette='systeme'],
+:root[data-palette='papier'] {
+  --papier: #f3f4ef;
+  --encre: #1a2230;
+  --second: #566070;
+  --filet: #d5d8d0;
+  --exemple: #3a4352;
+  --accent: #b8321e;
+  color-scheme: light;
+}
+
+:root[data-palette='nuit'] {
+  --papier: #14181f;
+  --encre: #ece9e0;
+  --second: #a3a9b3;
+  --filet: #2f3641;
+  --exemple: #c9ccd2;
+  --accent: #e8765f;
+  color-scheme: dark;
+}
+
+/* « Comme le système » : Papier le jour, Nuit quand l'appareil est en mode sombre. */
+@media (prefers-color-scheme: dark) {
+  :root[data-palette='systeme'] {
+    --papier: #14181f;
+    --encre: #ece9e0;
+    --second: #a3a9b3;
+    --filet: #2f3641;
+    --exemple: #c9ccd2;
+    --accent: #e8765f;
+    color-scheme: dark;
+  }
+}
+
+:root[data-palette='ivoire'] {
+  --papier: #f6efe2;
+  --encre: #2b2118;
+  --second: #6b5b4b;
+  --filet: #ddd2bf;
+  --exemple: #4a3b2d;
+  --accent: #8a4b14;
+  color-scheme: light;
+}
+
+:root[data-palette='ceruleen'] {
+  --papier: #eef2f6;
+  --encre: #14233b;
+  --second: #51607a;
+  --filet: #cfd8e3;
+  --exemple: #33435c;
+  --accent: #1f5fa8;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--papier);
+  color: var(--encre);
+  font-family: 'EB Garamond', serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  height: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

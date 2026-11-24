@@ -10,6 +10,9 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
+    "dev": "npm run dev -w @jolis-mots/web",
+    "build": "npm run build -w @jolis-mots/web",
+    "check": "npm run typecheck && npm run build",
     "import": "python -I tools/import/extraire.py vocabulaire.xlsx tools/import/sortie/lignes.json && tsx tools/import/importer.ts"
   },
   "devDependencies": {

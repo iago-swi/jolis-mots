@@ -9,3 +9,4 @@ export * from './import';
 export * from './memoire';
 export * from './selection';
 export * from './quiz';
+export * from './stockage';
