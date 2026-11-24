@@ -6,3 +6,5 @@ export * from './typographie';
 export * from './recherche';
 export * from './fichier';
 export * from './import';
+export * from './memoire';
+export * from './selection';
