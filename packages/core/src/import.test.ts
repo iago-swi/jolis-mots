@@ -54,6 +54,18 @@ describe('importer', () => {
     expect(rapport.doublonsFusionnes).toEqual(['Quitus']);
   });
 
+  it('ne confond pas deux mots qui ne diffèrent que par un accent', () => {
+    const { fichier, rapport } = importer([
+      ligne({ mot: 'Bistre', tri: 'bistre', definition: 'Couleur brun noirâtre.' }),
+      ligne({ mot: 'Bistré', tri: 'bistré', definition: 'De couleur bistre.' }),
+      ligne({ mot: 'Tout a trac', tri: 'trac' }),
+      ligne({ mot: 'Tout à trac', tri: 'trac', definition: 'Spontanément.' }),
+    ], options());
+    expect(fichier.mots.map((m) => m.mot).sort()).toEqual(['Bistre', 'Bistré', 'Tout a trac', 'Tout à trac']);
+    expect(rapport.doublonsFusionnes).toEqual([]);
+    expect(rapport.doublonsGardes).toEqual([]);
+  });
+
   it('reprend les identifiants d’un import précédent et trie selon Tri', () => {
     const premier = importer([ligne({ mot: "S'abolir", tri: 'abolir' }), ligne({ mot: 'Zèle', tri: 'zele' }), ligne({ mot: 'Écrin', tri: 'écrin' })], options()).fichier;
     const second = importer([ligne({ mot: 'Zèle', tri: 'zele' }), ligne({ mot: "S'abolir", tri: 'abolir' })], { ...options(), existant: premier }).fichier;

@@ -1,6 +1,5 @@
 import { comparerMots } from './fichier';
 import { genreEstConnu } from './genre';
-import { normaliser } from './recherche';
 import { estComplet, type FichierMots, type Mot } from './types';
 
 /** Une ligne de la feuille « Philippe », chaque cellule en texte. */
@@ -19,9 +18,9 @@ type Fiche = Omit<Mot, 'id'>;
 
 const DIESES = /#{3,}/g;
 
-/** Clé de doublon : le mot sans majuscules, accents ni espaces en trop. */
+/** Clé de doublon : le mot sans majuscules ni espaces en trop ; les accents comptent. */
 function cleDoublon(mot: string): string {
-  return normaliser(mot).replace(/\s+/g, ' ').trim();
+  return mot.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 function lireSources(source: string): string[] {
