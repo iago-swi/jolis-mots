@@ -4,7 +4,8 @@
  * 1. fabrique l'application (`npm run build`) ;
  * 2. la sert depuis `apps/web/dist` sur un port local libre, le temps du script ;
  * 3. la photographie avec Edge sans fenêtre, piloté par son protocole de débogage :
- *    écran émulé de 390 × 844 px (densité 2) et mode clair imposé ;
+ *    écran émulé de 411 × 890 px (densité 2), la largeur du téléphone de Philippe, 1280 × 800
+ *    pour l'atelier, et mode clair imposé ;
  * 4. écrit les images dans `docs/captures/`.
  *
  * Avant les photos, il contrôle que les filtres du Recueil tiennent sur une seule ligne
@@ -14,7 +15,11 @@
  * imposé fixe en plus les pastilles « Comme le système » des Réglages, qui suivent le mode
  * sombre de l'appareil. Les images ne dépendent donc ni du hasard du premier mot, ni du
  * mode sombre de la machine. Seul le quiz garde un hasard : ses trois mauvaises réponses.
- * Il s'ouvre sur la séance en cours : avec `?mot=baguenauder#quiz`, il pose la question de ce mot.
+ *
+ * `quiz.png` montre le choix du quiz. `question.png` saute ce choix (`?quiz=vus`) : le seul
+ * mot vu jusque-là étant « Baguenauder », la question porte sur lui. `atelier.png` est prise
+ * à 1280 × 800 avec le pont de démonstration (`?pont=demo#atelier`) ; aucune adresse n'ouvre
+ * un mot dans l'atelier, le script touche donc la ligne « Vénuste » de la liste.
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -28,8 +33,11 @@ const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(RACINE, 'apps', 'web', 'dist');
 const SORTIE = path.join(RACINE, 'docs', 'captures');
 
-const LARGEUR = 390;
-const HAUTEUR = 844;
+/** Le téléphone de Philippe : à 390 px, le dernier filtre du Recueil sortirait de l'image. */
+const LARGEUR = 411;
+const HAUTEUR = 890;
+/** L'atelier, sur un écran de bureau, photographié à sa taille (densité 1). */
+const ATELIER = { largeur: 1280, hauteur: 800, mot: 'Vénuste' };
 /** Densité des photos : 2 donne des images nettes sur un écran de téléphone. */
 const ECHELLE = 2;
 
@@ -58,6 +66,7 @@ const MOT = 'mot=baguenauder&palette=papier';
 const ECRANS = [
   { nom: 'mot', adresse: `?${MOT}` },
   { nom: 'quiz', adresse: `?${MOT}#quiz` },
+  { nom: 'question', adresse: `?quiz=vus&${MOT}#quiz` },
   { nom: 'recueil', adresse: `?${MOT}#recueil` },
   { nom: 'reglages', adresse: `?${MOT}#reglages` },
 ];
@@ -149,11 +158,11 @@ await onglet.envoyer('Emulation.setEmulatedMedia', {
 });
 
 /** Émule un écran de la largeur et de la hauteur données (en px CSS). */
-async function emuler(largeur, hauteur) {
+async function emuler(largeur, hauteur, echelle = ECHELLE) {
   await onglet.envoyer('Emulation.setDeviceMetricsOverride', {
     width: largeur,
     height: hauteur,
-    deviceScaleFactor: ECHELLE,
+    deviceScaleFactor: echelle,
     mobile: false,
   });
 }
@@ -174,11 +183,42 @@ async function charger(adresse) {
   await new Promise((resolu) => setTimeout(resolu, 800));
 }
 
+/** Rend la photo (PNG) de la page affichée. */
+async function photo() {
+  const { data } = await onglet.envoyer('Page.captureScreenshot', { format: 'png' });
+  return Buffer.from(data, 'base64');
+}
+
 /** Charge une adresse de l'application et rend la photo (PNG). */
 async function photographier(adresse) {
   await charger(adresse);
-  const { data } = await onglet.envoyer('Page.captureScreenshot', { format: 'png' });
-  return Buffer.from(data, 'base64');
+  return photo();
+}
+
+/** L'atelier avec le pont de démonstration, le mot `ATELIER.mot` ouvert dans la fiche. */
+async function photographierAtelier() {
+  await emuler(ATELIER.largeur, ATELIER.hauteur, 1);
+  await charger('?pont=demo&palette=papier#atelier');
+  const { result } = await onglet.envoyer('Runtime.evaluate', {
+    expression: `(() => {
+      const ligne = [...document.querySelectorAll('.liste-mots ul button')].find(
+        (b) => b.querySelector('.mot')?.textContent === ${JSON.stringify(ATELIER.mot)},
+      );
+      if (ligne === undefined) return false;
+      ligne.scrollIntoView({ block: 'center' });
+      ligne.click();
+      return true;
+    })()`,
+    returnByValue: true,
+  });
+  if (result.value !== true) throw new Error(`« ${ATELIER.mot} » introuvable dans la liste de l’atelier.`);
+  await new Promise((resolu) => setTimeout(resolu, 800));
+  const ouvert = await onglet.envoyer('Runtime.evaluate', {
+    expression: 'document.getElementById("f-mot")?.value',
+    returnByValue: true,
+  });
+  if (ouvert.result.value !== ATELIER.mot) throw new Error(`La fiche de « ${ATELIER.mot} » ne s’est pas ouverte.`);
+  return photo();
 }
 
 /** Vrai si les filtres du Recueil tiennent sur une ligne, sans défilement, à 411 px de large. */
@@ -210,6 +250,10 @@ try {
       await sharp(image).png({ compressionLevel: 9 }).toFile(path.join(SORTIE, `${e.nom}.png`));
       console.log(`écrit : docs/captures/${e.nom}.png`);
     }
+
+    await sharp(await photographierAtelier()).png({ compressionLevel: 9 }).toFile(path.join(SORTIE, 'atelier.png'));
+    console.log('écrit : docs/captures/atelier.png');
+    await emuler(LARGEUR, HAUTEUR);
 
     // Les quatre palettes de l'écran Mot, côte à côte, chacune à la moitié de la taille de prise.
     const ECART = 24;
