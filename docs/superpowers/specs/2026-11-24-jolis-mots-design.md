@@ -408,3 +408,52 @@ Demandé par Philippe le 25 novembre 2026, après la publication de la 1.0.1, et
 - **Première entrée.** « Début de l'historique », avec le nombre de mots, sans liste à déplier. Une réinstallation remet l'historique à zéro.
 - **Sur Windows.** Un enregistrement dans l'atelier ne change pas la date de la liste ; un envoi, si. L'entrée apparaît donc à l'envoi réussi et compare avec la liste envoyée précédente : sur bureau, l'historique note la liste envoyée, jamais la copie de travail.
 - Toucher un mot ajouté ou modifié ouvre sa fiche. Une liste qui ne change aucun mot visible ne crée pas d'entrée. L'historique garde les 200 dernières entrées.
+
+## 15. Version 1.0.3 : saisie rapide, vérificateur, orthographe, historique complet sous Windows
+
+Demandé par Philippe le 25 novembre 2026 pour nettoyer et compléter ses mots dans l'atelier ; numéroté 1.0.3 à sa demande. Tout ce qui suit ne concerne que l'atelier sous Windows, sauf l'historique, dont seule la version Windows change.
+
+### 15.1 Décidé par Philippe
+
+- **Saisie rapide, approche C** (les deux) : une barre de boutons au-dessus de la définition, et des abréviations développées par la touche Tab. Écartées : la barre seule (il faut lâcher le clavier), les abréviations seules (rien à voir pour les apprendre).
+- **Un vérificateur** de tous les mots complets : cohérence des balises et des indications, fautes, numérotation, genre.
+- **L'orthographe en français** pendant la saisie (le correcteur était en anglais).
+- **Sous Windows, l'historique de la liste** se lit sur GitHub, depuis le premier import ; le téléphone garde le sien, qui commence à son installation.
+
+### 15.2 Saisie rapide
+
+- La barre, sobre, sur une ligne : `1.` [Litt.] [Fig.] [Par ext.] [Vieux] [Fam.] `EX:` `SYN:` `US:` et « ⋯ », qui déplie les autres. Un clic insère au curseur ; au survol, chaque bouton montre son abréviation.
+- Tab, quand le mot juste avant le curseur est une abréviation connue, le remplace. Sinon, Tab garde son rôle.
+
+| Abréviation | Devient |
+| --- | --- |
+| `litt`, `fig`, `ext`, `anal`, `meto`, `meta` | `[Litt.] `, `[Fig.] `, `[Par ext.] `, `[Par anal.] `, `[Par méton.] `, `[Par métaph.] ` |
+| `vx`, `vi`, `fam`, `pej`, `pop`, `rare` | `[Vieux] `, `[Vieilli] `, `[Fam.] `, `[Péj.] `, `[Pop.] `, `[Rare] ` |
+| `ex`, `syn`, `us`, `ant` | `EX: `, `SYN: `, `US: `, `ANTON: ` |
+| `n` | un retour à la ligne et le numéro du sens suivant (`2. `) |
+
+- L'insertion passe par l'édition du navigateur : Ctrl+Z l'annule comme une frappe.
+
+### 15.3 Le vérificateur
+
+- Un cinquième filtre de la liste, « À vérifier », avec son nombre : les mots complets qui ont au moins une remarque.
+- Dans la fiche, au-dessus de la définition, les remarques du mot, une ligne chacune :
+  - balise mal écrite (`EX :`, `Ex:`, `Syn:`) ;
+  - indication entre crochets inconnue : ni dans la table des abréviations développées, ni employée ailleurs dans la liste ;
+  - indication hors crochets en tête d'un sens (« Sens figuré », « Fig. », un mot en minuscules suivi d'une majuscule, comme « fauconnerie Oiseau ») ;
+  - numérotation qui saute ou ne commence pas à 1 ;
+  - crochet, parenthèse ou guillemet non fermé ; `EX:` vide ;
+  - genre vide, ou inconnu de la table des genres ;
+  - espaces doubles, espace avant un point ou une virgule ;
+  - mots inconnus du dictionnaire français.
+- « Corriger » est proposé pour les écarts mécaniques (balise mal écrite, espaces) : le texte ne change que sur ce clic. « C'est voulu » fait taire une remarque pour ce mot, sur cet ordinateur.
+
+### 15.4 Orthographe
+
+- Le correcteur de la fenêtre travaille en français.
+- Le vérificateur demande au même dictionnaire les mots inconnus de chaque définition.
+
+### 15.5 Historique sous Windows
+
+- L'atelier lit l'histoire de la branche `donnees` sur GitHub (dans sa copie locale) : chaque version envoyée y est comparée à la précédente, avec les règles de la section 14. La première version, l'import depuis l'Excel, ouvre l'historique.
+- Sans copie locale ou si la lecture échoue, l'écran montre l'historique noté sur l'ordinateur, comme en 1.0.2.
