@@ -351,6 +351,24 @@ describe('dépôt : cas à part', () => {
     expect(await synchroniser(d)).toMatchObject({ raison: 'pret', locale: TEXTE_ORIGINE, envoyee: TEXTE_ORIGINE });
   });
 
+  it('12. un envoi sans réponse est arrêté au bout du délai : erreur, rien n’est perdu, le suivant passe', { timeout: DELAI }, async () => {
+    const f = preparer();
+    const { d } = f;
+    await synchroniser(d);
+    const muet = await serveurMuet();
+    try {
+      git(d.dossier, 'remote', 'set-url', '--push', 'origin', muet.adresse);
+      const e = await envoyer({ ...d, delais: { reseau: 1500, telechargement: 1500, envoi: 1500 } }, T2, 'envoi bloqué');
+      // Un envoi qui n'aboutit pas n'est pas forcément un réseau absent : la fenêtre de connexion a pu attendre.
+      expect(e).toMatchObject({ raison: 'erreur', locale: T2, envoyee: TEXTE_ORIGINE });
+      expect(e.detail).not.toBe('');
+    } finally {
+      await muet.fermer();
+    }
+    git(d.dossier, 'remote', 'set-url', '--push', 'origin', f.origine);
+    expect(await envoyer(d, T2, 'envoi repris')).toMatchObject({ raison: 'pret', envoyee: T2 });
+  });
+
   it('9. classer les messages de git', () => {
     expect(classer("fatal: unable to access 'https://github.com/x/': Could not resolve host: github.com")).toBe('sans-reseau');
     expect(classer("fatal: unable to access 'https://github.com/x/': Failed to connect to github.com port 443")).toBe('sans-reseau');

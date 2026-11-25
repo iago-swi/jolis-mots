@@ -125,7 +125,19 @@ function aDuTexte(m: Mot): boolean {
 export class Atelier {
   depot = $state<EtatDepot | null>(null);
   occupe = $state(false);
-  avis = $state<Avis | null>(null);
+  #avis = $state<Avis | null>(null);
+  /** Le message de git de l'opération qui a posé l'avis d'alerte en place. */
+  #detailDeLAvis = $state('');
+  /** L'avis en place. Une alerte retient le message de git du moment où elle est posée. */
+  get avis(): Avis | null {
+    return this.#avis;
+  }
+  set avis(a: Avis | null) {
+    if (a === this.#avis) return;
+    const enPanne = this.depot !== null && this.depot.raison !== 'pret';
+    this.#detailDeLAvis = a?.ton === 'alerte' && enPanne ? this.depot!.detail.trim() : '';
+    this.#avis = a;
+  }
   /**
    * La liste en ligne a changé ailleurs, et ce n'est pas réglé : posé par toute réponse
    * « divergence », levé par une reprise, un envoi ou une synchronisation réussis.
@@ -149,13 +161,12 @@ export class Atelier {
     !this.disponible && this.depot !== null && (this.depot.locale !== null || this.depot.envoyee !== null),
   );
   /**
-   * Le message de git, en anglais, quand la dernière opération a échoué. Il ne se montre que
+   * Le message de git, en anglais, de l'échec qu'une alerte raconte. Il ne se montre que
    * sous un avis d'alerte, qui dit en français ce qui s'est passé : une panne que l'atelier
-   * tait (pas de réseau, avec une copie) ne laisse pas de ligne anglaise orpheline.
+   * tait (pas de réseau, avec une copie) ne laisse pas de ligne anglaise orpheline, ni ne
+   * remplace le message de l'alerte encore en place.
    */
-  readonly detail: string = $derived(
-    this.avis?.ton === 'alerte' && this.depot !== null && this.depot.raison !== 'pret' ? this.depot.detail.trim() : '',
-  );
+  readonly detail: string = $derived(this.#avis?.ton === 'alerte' ? this.#detailDeLAvis : '');
   /**
    * La dernière liste envoyée est connue. Sans elle (git introuvable, branche en ligne absente
    * de la copie), rien n'est compté ni envoyé : un compte contre une liste vide serait faux.
@@ -305,7 +316,11 @@ export class Atelier {
             ? { ...MISE_DE_COTE, chemin: r.sauvegarde }
             : { ton: nouveau.ton, texte: `${nouveau.texte} ${MISE_DE_COTE.texte}`, chemin: r.sauvegarde };
       } else if (nouveau !== null) this.avis = nouveau;
-      else if (r.raison === 'pret' && AVIS_DE_LA_COPIE.some((a) => a.texte === this.avis?.texte)) this.avis = null;
+      else if (r.raison === 'pret' && AVIS_DE_LA_COPIE.some((a) => this.avis?.texte.startsWith(a.texte))) {
+        // Un avis sur la copie, seul ou suivi de la mise de côté, est caduc ; le chemin, lui, reste dit.
+        const chemin = this.avis?.chemin;
+        this.avis = chemin === undefined ? null : { ...MISE_DE_COTE, chemin };
+      }
     });
   }
 

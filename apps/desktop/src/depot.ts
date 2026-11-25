@@ -19,6 +19,8 @@ export const FICHIER = 'mots.json';
 export interface Delais {
   reseau: number;
   telechargement: number;
+  /** L'envoi ; cinq minutes par défaut. */
+  envoi?: number;
 }
 
 /** Où vit la copie locale. `git` : nom du programme, 'git' par défaut. */
@@ -115,10 +117,14 @@ async function allerChercher(d: Depot): Promise<void> {
   if (s.code !== 0) throw new Panne(raisonDe(s), s.stderr.trim());
 }
 
-/** Envoie la branche ; arrêté au bout de cinq minutes. */
+/**
+ * Envoie la branche ; arrêté au bout de cinq minutes. Un envoi qui n'aboutit pas n'est pas
+ * forcément un réseau absent (la fenêtre de connexion a pu attendre) : c'est une erreur.
+ */
 async function pousser(d: Depot): Promise<void> {
-  const s = await lancer(d, d.dossier, [...DEBIT_MINIMAL, 'push', 'origin', BRANCHE], DELAI_ENVOI);
-  if (s.code !== 0) throw new Panne(raisonDe(s), s.stderr.trim());
+  const s = await lancer(d, d.dossier, [...DEBIT_MINIMAL, 'push', 'origin', BRANCHE], d.delais?.envoi ?? DELAI_ENVOI);
+  if (s.expire) throw new Panne('erreur', s.stderr.trim() || 'git push: no answer before the time limit');
+  if (s.code !== 0) throw new Panne(classer(s.stderr), s.stderr.trim());
 }
 
 /** Vrai si `ancetre` est un ancêtre de `rev` (ou le même commit). */

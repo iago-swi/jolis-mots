@@ -268,8 +268,8 @@ it('garde tout le reste de la définition tel quel', () => {
 });
 
 it('donne les synonymes quand la définition commence par une balise', () => {
-  expect(definitionPourQuiz(mot('Paradoxe', 'subst.', "[Vieux] SYN: raisonnement par l'absurde."))).toBe("Synonymes : raisonnement par l'absurde");
-  expect(definitionPourQuiz(mot('Cheftain', 'subst.', 'SYN: as, chef, gouvernant.'))).toBe('Synonymes : as, chef, gouvernant');
+  expect(definitionPourQuiz(mot('Paradoxe', 'subst.', "[Vieux] SYN: raisonnement par l'absurde."))).toBe("Synonymes : raisonnement par l'absurde");
+  expect(definitionPourQuiz(mot('Cheftain', 'subst.', 'SYN: as, chef, gouvernant.'))).toBe('Synonymes : as, chef, gouvernant');
 });
 
 it('prend le texte du premier sens qui en a un, avant les synonymes', () => {

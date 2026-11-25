@@ -16,7 +16,7 @@
   import { volet } from '../volet';
 
   /** Les auteurs qui ont leur propre filtre, dans l'ordre des boutons. */
-  const PRINCIPAUX = ['Nicolas Bouvier', 'Sylvain Tesson', 'François Rollin', 'Didier Méral'];
+  const PRINCIPAUX = ['Nicolas Bouvier', 'Sylvain Tesson', 'François Rollin'];
 
   interface Ligne {
     mot: Mot;

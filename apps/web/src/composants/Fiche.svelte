@@ -1,6 +1,5 @@
 <script lang="ts">
   import {
-    afficherPages,
     developperGenre,
     developperIndication,
     embellir,
@@ -73,8 +72,7 @@
       <h2>Rencontré chez</h2>
       {#each sources as src, k (k)}
         <p class="source">
-          {#if src.auteur !== null}{embellir(src.auteur) + ', '}{/if}<span class="titre">{embellir(src.titre)}</span
-          >{#if src.pages !== null}<span class="pages">, {afficherPages(src.pages)}</span>{/if}
+          {#if src.auteur !== null}{embellir(src.auteur) + ', '}{/if}<span class="titre">{embellir(src.titre)}</span>
         </p>
       {/each}
     </section>
@@ -191,9 +189,5 @@
 
   .titre {
     font-style: italic;
-  }
-
-  .pages {
-    color: var(--second);
   }
 </style>
