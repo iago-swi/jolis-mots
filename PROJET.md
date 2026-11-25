@@ -381,7 +381,7 @@ Toutes se lancent depuis la racine.
 - Avant les photos, il vérifie que les filtres du Recueil tiennent sur une ligne d'un écran de 411 px de large, au départ puis avec l'autre auteur au nom le plus long choisi, et s'arrête sinon.
 - Edge sans fenêtre ne descend pas sous 500 px de large : le script émule donc un écran de 411 × 890 px, la largeur du téléphone de Philippe, et impose le mode clair, car les pastilles « Comme le système » des Réglages suivent le mode sombre de la machine.
 - Les adresses fixent le mot (`?mot=baguenauder`, `?mot=ceruleen` pour `palettes.png`) et la palette (`?palette=papier`). `quiz.png` montre le choix du quiz ; `question.png` le saute (`?quiz=vus`) et interroge sur « Baguenauder », le seul mot vu jusque-là. Les trois mauvaises réponses sont tirées au hasard : elles changent d'une exécution à l'autre.
-- `atelier.png` est prise à 1280 × 800 avec le pont de démonstration (`?pont=demo#atelier`). Aucune adresse n'ouvre un mot dans l'atelier : le script touche la ligne « Vénuste » de la liste, puis vérifie que la fiche s'est ouverte. On y voit la première ligne avec Note et Util., la remarque du vérificateur sur le point final du sens 2 et la barre de balises.
+- `atelier.png` est prise à 1280 × 800 avec le pont de démonstration (`?pont=demo#atelier`). Aucune adresse n'ouvre un mot dans l'atelier : le script touche la ligne « Vénuste » de la liste, puis vérifie que la fiche s'est ouverte. On y voit Mot et Tri sur la première ligne, Genre, Note et Util. sur la deuxième (la fiche y est étroite), la remarque du vérificateur sur le point final du sens 2 et la barre de balises.
 
 ## Versions et publication
 
