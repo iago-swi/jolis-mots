@@ -235,3 +235,65 @@ describe('pureté', () => {
     expect(c1).toEqual(c2);
   });
 });
+
+describe('point final', () => {
+  function pointFinal(definition: string) {
+    return verifierMot(mot({ definition }), connues).filter((r) => r.code === 'point-final');
+  }
+  /** La correction ne fait qu'ajouter des points : rien d'autre ne bouge. */
+  function seulementDesPoints(avant: string, apres: string, ajoutes: number): void {
+    let j = 0;
+    for (let i = 0; i < avant.length; i++, j++) {
+      while (apres[j] !== avant[i] && apres[j] === '.') j++;
+      expect(apres[j], `caractère ${i}`).toBe(avant[i]);
+    }
+    expect(apres.length - avant.length).toBe(ajoutes);
+  }
+
+  it('un sens sans point', () => {
+    expect(pointFinal('Oiseau jeune et niais')).toEqual([{ code: 'point-final', texte: 'Point final manquant', correction: 'Oiseau jeune et niais.' }]);
+  });
+  it('le sens 2 sur 3', () => {
+    const def = '1. [Fig.] Un.\n2. Deux\n3. Trois.';
+    expect(pointFinal(def)).toEqual([{ code: 'point-final', texte: 'Point final manquant (sens 2)', correction: '1. [Fig.] Un.\n2. Deux.\n3. Trois.' }]);
+    expect(pointFinal('1. Un\n2. Deux.\n3. Trois')[0]?.texte).toBe('Point final manquant (sens 1, 3)');
+  });
+  it('texte suivi de EX: sur la même ligne', () => {
+    expect(pointFinal('Oiseau jeune EX: Un béjaune.')[0]?.correction).toBe('Oiseau jeune. EX: Un béjaune.');
+    expect(pointFinal('1. Oiseau jeune  EX : Un béjaune\n2. Sot. SYN: niais')[0]?.correction).toBe('1. Oiseau jeune.  EX : Un béjaune\n2. Sot. SYN: niais');
+  });
+  it('texte suivi d’un retour à la ligne puis SYN:', () => {
+    const def = '1. Oiseau jeune \nSYN: niais.\n2. Sot.';
+    expect(pointFinal(def)).toEqual([{ code: 'point-final', texte: 'Point final manquant (sens 1)', correction: '1. Oiseau jeune. \nSYN: niais.\n2. Sot.' }]);
+  });
+  it('parenthèse, guillemet, crochet fermants', () => {
+    expect(pointFinal('Jeune homme (sot.)')).toEqual([]);
+    expect(pointFinal('Jeune homme. (Rare.)')).toEqual([]);
+    expect(pointFinal('Dit « niais ! »')).toEqual([]);
+    expect(pointFinal('Jeune homme (rare)')[0]?.correction).toBe('Jeune homme (rare).');
+  });
+  it('accepte un guillemet droit après la ponctuation, et ignore une note finale entre crochets (Neume, Allitération)', () => {
+    expect(pointFinal('Comme dans "Pour qui sont ces serpents qui sifflent sur vos têtes?"')).toEqual([]);
+    expect(pointFinal('1. Un.\n2. Courte mélodie.\n[Note: le mot existe aussi au masculin]')).toEqual([]);
+    expect(pointFinal('Chapeau:\n1. Un')[0]?.texte).toBe('Point final manquant (avant le sens 1, sens 1)');
+  });
+  it('accepte « ... », « … », « ! » et « ? »', () => {
+    expect(pointFinal('1. Un...\n2. Deux…\n3. Trois !\n4. Quatre ?')).toEqual([]);
+  });
+  it('ignore un sens fait seulement de balises, et l’indication en tête', () => {
+    expect(pointFinal('1. Un.\n2. EX: Un exemple sans point')).toEqual([]);
+    expect(pointFinal('[Fig.]\n1. Un.\n2. Deux.')).toEqual([]);
+    expect(pointFinal('1. [Fig.]')).toEqual([]);
+    expect(pointFinal('Chapeau\n1. Un.')[0]?.texte).toBe('Point final manquant (avant le sens 1)');
+  });
+  it('la correction ne change aucun autre caractère', () => {
+    const def = '[Litt.]\n1. Oiseau jeune  EX: Un béjaune\n\n2. [Fig.] Sot (rare)\t\nSYN: niais, sot\n3. Trois. US: rien\n4. Quatre';
+    const [r] = pointFinal(def);
+    expect(r?.texte).toBe('Point final manquant (sens 1, 2, 4)');
+    seulementDesPoints(def, r!.correction!, 3);
+    expect(r!.correction).toBe('[Litt.]\n1. Oiseau jeune.  EX: Un béjaune\n\n2. [Fig.] Sot (rare).\t\nSYN: niais, sot\n3. Trois. US: rien\n4. Quatre.');
+  });
+  it('un mot à compléter n’est pas concerné', () => {
+    expect(verifierMot(mot({ definition: 'Sans point', aCompleter: true }), connues)).toEqual([]);
+  });
+});

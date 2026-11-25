@@ -12,7 +12,8 @@ export type CodeRemarque =
   | 'exemple-vide'
   | 'genre-vide'
   | 'genre-inconnu'
-  | 'espaces';
+  | 'espaces'
+  | 'point-final';
 
 /** Une remarque du vérificateur ; `correction` est la définition corrigée, ou null si rien n'est mécanique. */
 export interface Remarque {
@@ -190,6 +191,59 @@ function aUnExempleVide(texte: string): boolean {
   });
 }
 
+/** Une balise comme la lit `lireDefinition` : `EX:`, `SYN:`, `US:`, `ANTON:`, `ANT:`, une espace permise avant « : ». */
+const BALISE_LUE = /(?<![\p{L}\p{N}])(?:EX|SYN|US|ANTON|ANT)[ \t]?:/u;
+/** Une fin de phrase : « . », « ! », « ? » ou « … », suivis peut-être de « ) », « » », « ] » ou d'un guillemet droit ou anglais. */
+const FIN_DE_PHRASE = /[.!?…](?:\s*[)»\]"”])*$/u;
+
+/**
+ * Les sens découpés comme par `lireDefinition`, avec, pour chacun, la position juste après le dernier
+ * caractère de son texte propre (avant sa première balise), ou null si ce texte est vide.
+ */
+function finsDeSens(def: string): { numero: string | null; fin: number | null }[] {
+  const lignes: { debut: number; numero: string | null; apresNumero: number }[] = [];
+  let pos = 0;
+  for (const ligne of def.split('\n')) {
+    const m = DEBUT_DE_SENS.exec(ligne);
+    lignes.push({ debut: pos, numero: m?.[1] ?? null, apresNumero: pos + (m?.[0].length ?? 0) });
+    pos += ligne.length + 1;
+  }
+  const premier1 = lignes.findIndex((l) => l.numero === '1');
+  const segments: { numero: string | null; debut: number; fin: number }[] = [];
+  if (premier1 === -1) segments.push({ numero: null, debut: 0, fin: def.length });
+  else {
+    const numerotees = lignes.slice(premier1).filter((l) => l.numero !== null);
+    segments.push({ numero: null, debut: 0, fin: lignes[premier1]!.debut });
+    numerotees.forEach((l, i) => segments.push({ numero: l.numero, debut: l.apresNumero, fin: numerotees[i + 1]?.debut ?? def.length }));
+  }
+  return segments.map(({ numero, debut, fin }) => {
+    let corps = def.slice(debut, fin);
+    let decalage = debut;
+    const blancs = corps.length - corps.trimStart().length;
+    corps = corps.slice(blancs);
+    decalage += blancs;
+    if (corps.startsWith('[') && corps.includes(']')) {
+      const apres = corps.indexOf(']') + 1;
+      corps = corps.slice(apres);
+      decalage += apres;
+    }
+    let texte = corps.slice(0, BALISE_LUE.exec(corps)?.index ?? corps.length).trimEnd();
+    // Une dernière ligne faite d'une note entre crochets (« [Note: …] ») ne termine pas la phrase : on juge ce qui la précède.
+    const derniere = texte.lastIndexOf('\n');
+    if (derniere !== -1 && /^\[[^\]]*\]$/u.test(texte.slice(derniere + 1).trim())) texte = texte.slice(0, derniere).trimEnd();
+    return { numero, fin: texte.trim() === '' ? null : decalage + texte.length };
+  });
+}
+
+/** Les sens dont le texte propre ne finit pas par un point (ou « ! », « ? », « … »), et la définition corrigée. */
+function pointsFinaux(def: string): { sens: (string | null)[]; correction: string } | null {
+  const manquants = finsDeSens(def).filter((s): s is { numero: string | null; fin: number } => s.fin !== null && !FIN_DE_PHRASE.test(def.slice(0, s.fin)));
+  if (manquants.length === 0) return null;
+  let correction = def;
+  for (const s of [...manquants].reverse()) correction = `${correction.slice(0, s.fin)}.${correction.slice(s.fin)}`;
+  return { sens: manquants.map((s) => s.numero), correction };
+}
+
 /** Les remarques sur un mot complet, dans l'ordre des codes ; un mot à compléter (ou sans définition) n'en a aucune. */
 export function verifierMot(m: Mot, connues: Set<string>): Remarque[] {
   if (!estComplet(m)) return [];
@@ -244,6 +298,14 @@ export function verifierMot(m: Mot, connues: Set<string>): Remarque[] {
 
   const espaces = corrigerEspaces(def);
   if (espaces !== def) ajouter('espaces', 'Espace double, ou espace avant un point ou une virgule.', espaces);
+
+  const points = pointsFinaux(def);
+  if (points !== null) {
+    const seul = points.sens.length === 1 && points.sens[0] === null && sens.length <= 1;
+    const numeros = points.sens.filter((n) => n !== null);
+    const lesquels = [...(points.sens.includes(null) ? ['avant le sens 1'] : []), ...(numeros.length > 0 ? [`sens ${numeros.join(', ')}`] : [])].join(', ');
+    ajouter('point-final', seul ? 'Point final manquant' : `Point final manquant (${lesquels})`, points.correction);
+  }
 
   return remarques;
 }
