@@ -31,7 +31,9 @@
   });
   /** Du plus récent au plus ancien. */
   const entrees = $derived([...(duDepot ?? etat.historique)].reverse());
-  let deplie = $state<string | null>(null);
+  // Ouvert depuis l'annonce d'une nouvelle liste : son entrée est dépliée.
+  let deplie = $state<string | null>(etat.entreeADeplier);
+  etat.entreeADeplier = null;
   /** Les mots encore dans la liste : eux seuls ouvrent une fiche. */
   const presents = $derived(new Set(etat.complets.map((m) => m.id)));
   // La fiche ouverte passe par l'état, comme au Recueil : le bouton retour d'Android la ferme d'abord.

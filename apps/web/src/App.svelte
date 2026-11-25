@@ -1,5 +1,6 @@
 <script lang="ts">
   import { atelier } from './atelier.svelte';
+  import Annonce from './composants/Annonce.svelte';
   import Entete from './composants/Entete.svelte';
   import Onglets from './composants/Onglets.svelte';
   import { ecranDeLAdresse, etat } from './etat.svelte';
@@ -33,6 +34,7 @@
     {:else}
       <Reglages />
     {/if}
+    <Annonce />
   </main>
   <Onglets />
 </div>

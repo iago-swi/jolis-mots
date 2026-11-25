@@ -2,6 +2,12 @@
 
 Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les règles sont dans [VERSIONING.md](VERSIONING.md).
 
+## [1.0.4] - 2026-11-25
+
+### Ajouté
+
+- Sur le téléphone, quand une nouvelle liste ajoute, modifie ou supprime des mots, une petite annonce le dit quelques secondes en haut de l'écran : « Liste mise à jour · +2 · ~1 → 1 139 mots ». La toucher ouvre l'historique de la liste, sur cette entrée dépliée. Il n'y a pas d'annonce pour une liste qui ne change aucun mot visible.
+
 ## [1.0.3] - 2026-11-25
 
 ### Ajouté

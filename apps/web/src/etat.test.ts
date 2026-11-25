@@ -349,6 +349,61 @@ describe('l’historique de la liste', () => {
   });
 });
 
+describe('l’annonce d’une nouvelle liste', () => {
+  it('se pose quand une liste reçue change des mots, pas pour la première liste', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '' });
+    expect(etat.annonce).toBeNull();
+    etat.remplacerListe(listePlusRecente);
+    expect(etat.annonce).toBe(etat.historique[1]);
+    expect(etat.annonce).toMatchObject({ debut: false, total: 4, ajoutes: [{ id: 'b1', mot: 'mot b1' }] });
+  });
+
+  it('se pose aussi à l’ouverture, quand la liste gardée est plus récente que la dernière notée', async () => {
+    const stockage = poserStockage();
+    const premier = await lancer();
+    premier.etat.demarrer({ search: '', hash: '' });
+    // La liste téléchargée la veille, gardée sans avoir été adoptée.
+    stockage.set(CLE_LISTE, JSON.stringify(listePlusRecente));
+    const second = await lancer();
+    second.etat.demarrer({ search: '', hash: '' });
+    expect(second.etat.annonce).toMatchObject({ publie: listePlusRecente.publie, ajoutes: [{ id: 'b1' }] });
+  });
+
+  it('ne se pose pas pour une liste qui ne change aucun mot visible', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '' });
+    etat.remplacerListe({ ...embarquee, publie: '2026-11-21T08:00:00.000Z' });
+    expect(etat.annonce).toBeNull();
+  });
+
+  it('se toucher ouvre l’historique avec l’entrée dépliée ; le retour revient à l’écran d’avant', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '#recueil' });
+    etat.remplacerListe(listePlusRecente);
+    etat.ouvrirAnnonce();
+    expect(etat.annonce).toBeNull();
+    expect(etat.ecran).toBe('historique');
+    expect(etat.entreeADeplier).toBe(listePlusRecente.publie);
+    expect(etat.retour()).toBe(true);
+    expect(etat.ecran).toBe('reglages');
+    expect(etat.retour()).toBe(true);
+    expect(etat.ecran).toBe('recueil');
+  });
+
+  it('fermerAnnonce l’efface', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '' });
+    etat.remplacerListe(listePlusRecente);
+    etat.fermerAnnonce();
+    expect(etat.annonce).toBeNull();
+  });
+});
+
 describe('la fiche ouverte depuis l’historique', () => {
   it('le bouton retour la ferme d’abord, puis revient aux réglages', async () => {
     poserStockage();
