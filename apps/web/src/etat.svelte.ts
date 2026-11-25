@@ -2,12 +2,16 @@ import {
   choisirListe,
   estComplet,
   marquerMontre,
+  noterListe,
   normaliser,
   prochainMot,
   QUESTIONS_PAR_DEFAUT,
   QUESTIONS_POSSIBLES,
   repondre,
+  validerHistorique,
   validerProgres,
+  validerReference,
+  type EntreeHistorique,
   type FichierMots,
   type Mot,
   type Portee,
@@ -17,7 +21,7 @@ import { listeEmbarquee } from './liste-embarquee';
 import { pont } from './pont';
 import { CLES, ecrire, lire } from './stockage';
 
-export type Ecran = 'mot' | 'quiz' | 'recueil' | 'reglages' | 'atelier';
+export type Ecran = 'mot' | 'quiz' | 'recueil' | 'reglages' | 'historique' | 'atelier';
 export type Palette = 'systeme' | 'papier' | 'nuit' | 'ivoire' | 'ceruleen';
 export interface Reglages {
   questionsParQuiz: number;
@@ -25,7 +29,7 @@ export interface Reglages {
 }
 
 /** L'Atelier n'existe que sur bureau ; ailleurs, « #atelier » mène à l'écran Mot. */
-const ECRANS: readonly Ecran[] = ['mot', 'quiz', 'recueil', 'reglages', ...(pont === null ? [] : ['atelier' as const])];
+const ECRANS: readonly Ecran[] = ['mot', 'quiz', 'recueil', 'reglages', 'historique', ...(pont === null ? [] : ['atelier' as const])];
 const PALETTES: readonly Palette[] = ['systeme', 'papier', 'nuit', 'ivoire', 'ceruleen'];
 const PORTEES: readonly Portee[] = ['tous', 'vus'];
 const REGLAGES_PAR_DEFAUT: Reglages = { questionsParQuiz: QUESTIONS_PAR_DEFAUT, palette: 'systeme' };
@@ -69,6 +73,10 @@ class Etat {
   progres = $state<Progres>(validerProgres(lire<unknown>(CLES.progres, {})));
   favoris = $state<string[]>(lire<unknown[]>(CLES.favoris, []).filter((x): x is string => typeof x === 'string'));
   reglages = $state<Reglages>(reglagesDeDepart());
+  /** L'historique de la liste, du plus ancien au plus récent (conception, section 14). */
+  historique = $state.raw<EntreeHistorique[]>(validerHistorique(lire<unknown>(CLES.historique, [])));
+  /** La dernière liste notée dans l'historique, réduite à ce qui sert à comparer. */
+  private reference = validerReference(lire<unknown>(CLES.reference, null));
   /** Les mots montrés sur l'écran Mot depuis l'ouverture, dans l'ordre. Mémoire seulement. */
   lus = $state<string[]>([]);
   /** Rang, dans `lus`, du mot affiché. */
@@ -178,6 +186,23 @@ class Etat {
       if (m !== null) this.montrer(m);
     }
     if (this.ficheOuverte !== null && !complets.has(this.ficheOuverte)) this.ficheOuverte = null;
+    // Sur bureau, la liste en place porte des modifications pas encore envoyées : l'atelier note
+    // lui-même chaque liste envoyée ou reçue (voir `Atelier.poser`).
+    if (pont === null) this.noterListe(l);
+  }
+
+  /** Note `f` dans l'historique si elle est nouvelle pour l'appareil (conception, section 14). */
+  noterListe(f: FichierMots): void {
+    if (Number.isNaN(Date.parse(f.publie))) return;
+    const r = noterListe(this.historique, this.reference, f);
+    if (r.reference !== this.reference) {
+      this.reference = r.reference;
+      ecrire(CLES.reference, r.reference);
+    }
+    if (r.historique !== this.historique) {
+      this.historique = r.historique;
+      ecrire(CLES.historique, r.historique);
+    }
   }
 
   precedent(): void {
@@ -206,7 +231,7 @@ class Etat {
       if (typeof location !== 'undefined' && ecranDeLAdresse(location.hash) !== 'atelier') location.hash = 'atelier';
       return;
     }
-    if (e === 'reglages' && this.ecran !== 'reglages') this.ecranAvantReglages = this.ecran;
+    if (e === 'reglages' && this.ecran !== 'reglages' && this.ecran !== 'historique') this.ecranAvantReglages = this.ecran;
     this.ecran = e;
     if (typeof location !== 'undefined' && ecranDeLAdresse(location.hash) !== e) location.hash = e;
   }
@@ -218,6 +243,7 @@ class Etat {
   retour(): boolean {
     if (this.ficheOuverte !== null) this.ficheOuverte = null;
     else if (this.panneauAuteurs) this.panneauAuteurs = false;
+    else if (this.ecran === 'historique') this.allerA('reglages');
     else if (this.ecran === 'reglages') this.allerA(this.ecranAvantReglages);
     else if (this.ecran !== 'mot') this.allerA('mot');
     else return false;
@@ -280,6 +306,7 @@ class Etat {
       });
     }
 
+    if (pont === null) this.noterListe(this.liste);
     const voulu = params.get('mot');
     const impose = voulu === null ? undefined : this.trouver(normaliser(voulu));
     if (impose !== undefined) this.montrer(impose);

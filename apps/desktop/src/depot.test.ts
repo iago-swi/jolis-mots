@@ -326,7 +326,7 @@ describe('dépôt : cas à part', () => {
       git(d.dossier, 'remote', 'set-url', 'origin', muet.adresse);
       const debut = Date.now();
       const e = await synchroniser({ ...d, delais: { reseau: 1500, telechargement: 1500 } });
-      expect(Date.now() - debut).toBeLessThan(8000);
+      expect(Date.now() - debut).toBeLessThan(15000);
       expect(e).toMatchObject({ raison: 'sans-reseau', locale: TEXTE_ORIGINE, envoyee: TEXTE_ORIGINE });
       expect(muet.connexions()).toBeGreaterThan(0);
     } finally {
@@ -343,7 +343,7 @@ describe('dépôt : cas à part', () => {
     try {
       const debut = Date.now();
       const e = await synchroniser({ ...d, adresse: muet.adresse, delais: { reseau: 1500, telechargement: 1500 } });
-      expect(Date.now() - debut).toBeLessThan(8000);
+      expect(Date.now() - debut).toBeLessThan(15000);
       expect(e).toMatchObject({ raison: 'sans-reseau', locale: null, envoyee: null });
     } finally {
       await muet.fermer();

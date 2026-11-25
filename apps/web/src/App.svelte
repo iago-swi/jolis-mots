@@ -7,6 +7,7 @@
   import Mot from './ecrans/Mot.svelte';
   import Quiz from './ecrans/Quiz.svelte';
   import Recueil from './ecrans/Recueil.svelte';
+  import Historique from './ecrans/Historique.svelte';
   import Reglages from './ecrans/Reglages.svelte';
 
   $effect(() => {
@@ -27,6 +28,8 @@
       <Recueil />
     {:else if etat.ecran === 'atelier'}
       <Atelier />
+    {:else if etat.ecran === 'historique'}
+      <Historique />
     {:else}
       <Reglages />
     {/if}

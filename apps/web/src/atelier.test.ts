@@ -1019,3 +1019,26 @@ describe('la fiche en cours de saisie', () => {
     expect(atelier.modifiee).toBe(true);
   });
 });
+
+describe('l’historique sur bureau', () => {
+  it('note la liste envoyée : un envoi qui échoue ne laisse rien, le suivant montre tout ce qui part', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    // Sur bureau, l'état sait qu'un pont existe : il laisse l'atelier noter les listes.
+    vi.doMock('./pont', () => ({ pont: faux }));
+    try {
+      const { etat, atelier } = await demarrerSur(faux);
+      expect(etat.historique).toHaveLength(1);
+      expect(etat.historique[0]).toMatchObject({ debut: true, publie: locale.publie, total: 3 });
+      await atelier.enregistrer({ ...mot('nouveau1'), mot: 'Venelle', tri: 'venelle' });
+      faux.pannes.envoyer = 'sans-reseau';
+      await atelier.envoyer();
+      expect(etat.historique).toHaveLength(1);
+      delete faux.pannes.envoyer;
+      await atelier.envoyer();
+      expect(etat.historique).toHaveLength(2);
+      expect(etat.historique[1]).toMatchObject({ debut: false, total: 4, ajoutes: [{ id: 'nouveau1', mot: 'Venelle' }] });
+    } finally {
+      vi.doUnmock('./pont');
+    }
+  });
+});

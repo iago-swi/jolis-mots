@@ -33,6 +33,7 @@ Le cœur est livré en TypeScript (`"exports": "./src/index.ts"`) : Vite le tran
 | `selection.ts` | `prochainMot`. |
 | `quiz.ts` | `composerQuiz`, `compterPortees`, `definitionPourQuiz`, `QUESTIONS_POSSIBLES`. |
 | `miseAJour.ts` | `ADRESSE_LISTE`, `choisirListe`. |
+| `historique.ts` | `noterListe`, `referenceDe`, `validerHistorique`, `validerReference`, `HISTORIQUE_MAX` : l'historique de la liste (conception, section 14). |
 | `stockage.ts` | `lireJson`. |
 | `import.ts` | `importer`, `rapportEnMarkdown`. |
 | `atelier.ts` | La liste et la fiche de l'atelier : `proposerTri`, `groupesDeDoublons`, `compterFiltres`, `listerAtelier`, `genresUtilises`, `homonymes`, `adresseCnrtl`, `nouvelleFiche`, `nettoyerFiche`, `poserFiche`, `retirerFiche`, `lignesDeSources`. |
@@ -84,11 +85,12 @@ Sur la fiche, le mot a une seule grande taille, 54 px ; une expression passe à 
 
 ### Écrans et composants
 
-- `App.svelte` : en-tête, écran courant, barre d'onglets. L'écran se choisit par l'adresse (`#mot`, `#quiz`, `#recueil`, `#reglages`, et `#atelier` sur bureau seulement) ; sans adresse, c'est Mot. Sur bureau, les écrans de lecture tiennent dans une colonne centrée de 560 px ; l'Atelier prend toute la largeur.
+- `App.svelte` : en-tête, écran courant, barre d'onglets. L'écran se choisit par l'adresse (`#mot`, `#quiz`, `#recueil`, `#reglages`, `#historique`, et `#atelier` sur bureau seulement) ; sans adresse, c'est Mot. Sur bureau, les écrans de lecture tiennent dans une colonne centrée de 560 px ; l'Atelier prend toute la largeur.
 - `ecrans/Mot.svelte` : la fiche du mot courant (`composants/Fiche.svelte`), un glissement horizontal de plus de 60 px, au doigt ou au stylet, pour changer de mot (à la souris, glisser sélectionne le texte), l'étoile des favoris, « Mot suivant ».
 - `ecrans/Quiz.svelte` : le choix « Tous les mots » ou « Les mots que j'ai vus », puis les questions ; voir plus bas.
 - `ecrans/Recueil.svelte` : la liste alphabétique avec lettrines, la recherche, les filtres sur une ligne (Bouvier, Tesson, Rollin, l'étoile des favoris, et « Autres », qui ouvre un volet avec les autres auteurs et le nombre de mots de chacun), la fiche ouverte dans un volet. Un seul filtre est allumé à la fois ; toucher le filtre allumé l'éteint. Quand un autre auteur est choisi, le bouton « Autres » prend son nom ; un nom trop long pour la ligne finit par « … », le nom entier restant dans `aria-label` et `title`.
-- `ecrans/Reglages.svelte` : questions par quiz, palette, version, date et heure de la liste (« 25 novembre 2026 à 03:44 », heure de l'appareil), « Effacer mes progrès » ; ce lien reste visible au-dessus de sa confirmation.
+- `ecrans/Historique.svelte` : l'historique de la liste, de la plus récente à la plus ancienne ; une entrée se déplie sur ses mots (« + » ajouté, « ~ » modifié, « − » supprimé, par ordre alphabétique) ; un mot ajouté ou modifié encore dans la liste ouvre sa fiche dans un volet (`etat.ficheOuverte`, que le bouton retour d'Android ferme d'abord). On y vient des Réglages ; le bouton retour y ramène. Sur le téléphone, l'état note chaque liste adoptée ; sur bureau, c'est l'atelier qui note chaque liste envoyée ou reçue (`envoyee`), jamais la copie de travail : un envoi qui échoue ne laisse pas d'entrée.
+- `ecrans/Reglages.svelte` : questions par quiz, palette, version, date et heure de la liste (« 25 novembre 2026 à 03:44 », heure de l'appareil), la ligne « Historique de la liste », « Effacer mes progrès » ; ce lien reste visible au-dessus de sa confirmation.
 - `ecrans/Atelier.svelte` : l'atelier, sur bureau seulement ; voir plus bas.
 - `composants/Entete.svelte`, `composants/Onglets.svelte` : l'en-tête (la marque et le bouton des réglages) et les onglets, trois sur le téléphone, quatre sur bureau.
 - `volet.ts` : l'action Svelte des volets et des confirmations. À l'ouverture, le curseur va sur l'élément marqué `data-depart`, sinon sur le volet (qui reçoit toujours `tabindex="-1"`) ; Échap ferme, où que soit le curseur ; à la fermeture, le curseur revient à l'élément qui l'avait.
@@ -97,7 +99,7 @@ L'état de l'application est dans `etat.svelte.ts` (une classe avec les runes de
 
 Sur la fiche, les retours à la ligne saisis dans le texte d'un sens, un exemple ou un usage restent visibles (`white-space: pre-line`).
 
-Une seule police, EB Garamond, embarquée par `@fontsource/eb-garamond` ; aucune ressource n'est chargée d'un CDN. Les couleurs sont six variables CSS (`--papier`, `--encre`, `--second`, `--filet`, `--exemple`, `--accent`), posées selon la palette par l'attribut `data-palette` de la page. `index.html` porte `data-palette="systeme"` avant le premier affichage, et `main.ts` pose la palette choisie avant de monter l'application. Aucun composant n'écrit de couleur en dur. Les cibles tactiles font au moins 44 px.
+Une seule police, EB Garamond, embarquée par `@fontsource/eb-garamond` ; aucune ressource n'est chargée d'un CDN. Les couleurs sont six variables CSS (`--papier`, `--encre`, `--second`, `--filet`, `--exemple`, `--accent`), posées selon la palette par l'attribut `data-palette` de la page. `index.html` porte `data-palette="systeme"` avant le premier affichage, et `main.ts` pose la palette choisie avant de monter l'application. Aucun composant n'écrit de couleur en dur. Les cibles tactiles font au moins 44 px. Seule exception, voulue par Philippe : la liste dépliée de l'historique, petite et serrée (« c'est vraiment juste une information »).
 
 ### Palettes et réglages
 
@@ -112,7 +114,7 @@ Les réglages sont deux valeurs : `questionsParQuiz` (5, 10, 15 ou 20, 10 par d�
 - `?mot=ceruleen` impose le premier mot (comparé au mot entier, puis au tri, sans accents ni majuscules) ;
 - `?palette=nuit` impose la palette, sans l'enregistrer ;
 - `?quiz=tous` ou `?quiz=vus` ouvre le quiz sans passer par le choix ;
-- `#quiz`, `#recueil`, `#reglages` ouvrent l'écran voulu.
+- `#quiz`, `#recueil`, `#reglages`, `#historique` ouvrent l'écran voulu.
 
 `pont.ts` lit en plus `?pont=demo` : dans un navigateur, l'application se comporte comme sur bureau, avec le pont de démonstration de `pont-demo.ts`, tout en mémoire. Il part de la liste embarquée, à la fois liste locale et liste envoyée, et n'écrit rien nulle part. `#atelier` ouvre alors l'atelier. D'autres paramètres simulent les pannes :
 
@@ -127,7 +129,7 @@ C'est ce qu'utilise `scripts/captures.mjs`.
 
 ### Ce que l'appareil garde
 
-Dans `localStorage`, quatre clés (voir `stockage.ts`) : `jolismots.progres.v1`, `jolismots.favoris.v1`, `jolismots.reglages.v1`, `jolismots.liste.v1` (la dernière liste téléchargée, sur le téléphone). Une valeur absente, illisible ou d'une autre forme est remplacée par la valeur par défaut ; dans les progrès, `validerProgres` garde les entrées bien formées et écarte les autres. Un stockage plein ou refusé est ignoré.
+Dans `localStorage`, six clés (voir `stockage.ts`) : `jolismots.progres.v1`, `jolismots.favoris.v1`, `jolismots.reglages.v1`, `jolismots.historique.v1` (l'historique de la liste, 200 entrées au plus), `jolismots.reference.v1` (la dernière liste notée, réduite à une empreinte par mot complet), `jolismots.liste.v1` (la dernière liste téléchargée, sur le téléphone). Une valeur absente, illisible ou d'une autre forme est remplacée par la valeur par défaut ; dans les progrès, `validerProgres` garde les entrées bien formées et écarte les autres. Un stockage plein ou refusé est ignoré.
 
 Les mots lus depuis l'ouverture (`etat.lus`) et la position dans cette suite vivent en mémoire seulement : ils repartent à zéro à chaque lancement. Il n'y a pas de séance.
 

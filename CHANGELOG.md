@@ -2,6 +2,13 @@
 
 Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les règles sont dans [VERSIONING.md](VERSIONING.md).
 
+## [1.0.2] - 2026-11-25
+
+### Ajouté
+
+- Dans les réglages, « Historique de la liste » : chaque nouvelle liste reçue, de la plus récente à la plus ancienne, avec sa date et son heure, ce qui a changé et le nombre de mots. Une entrée se déplie sur ses mots, par ordre alphabétique : « + » pour un mot ajouté, « ~ » pour un mot modifié, « − » pour un mot supprimé. Toucher un mot ajouté ou modifié ouvre sa fiche.
+- L'historique commence à l'installation de cette version, avec le nombre de mots du moment.
+
 ## [1.0.1] - 2026-11-25
 
 ### Modifié
@@ -79,6 +86,7 @@ Première version : l'application Android. La version Windows et l'atelier pour 
 - La mise à jour de la liste en ligne : quand le téléphone a du réseau, l'application récupère au démarrage la dernière liste des mots et l'adopte au prochain mot qu'elle tire. Sans réseau, elle fonctionne avec la liste qu'elle a.
 - Un fichier à installer sur Android (`Jolis-Mots-0.1.0.apk`), avec une icône et un écran de lancement.
 
+[1.0.2]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.2
 [1.0.1]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.1
 [1.0.0]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.0
 [0.1.0]: https://github.com/iago-swi/jolis-mots/releases/tag/v0.1.0

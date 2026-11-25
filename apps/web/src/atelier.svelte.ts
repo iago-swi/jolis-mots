@@ -239,7 +239,12 @@ export class Atelier {
     const avant = this.depot;
     this.depot = r;
     if (r.raison === 'divergence') this.divergence = true;
-    if (avant === null || r.envoyee !== avant.envoyee) this.envoyee = lireListe(r.envoyee);
+    if (avant === null || r.envoyee !== avant.envoyee) {
+      this.envoyee = lireListe(r.envoyee);
+      // L'historique note la liste envoyée (ou reçue), jamais la copie de travail : un envoi qui
+      // échoue ne laisse pas d'entrée, et une entrée montre tout ce qu'un envoi a fait partir.
+      if (this.envoyee !== null) etat.noterListe(this.envoyee);
+    }
     if (avant === null || r.locale !== avant.locale) {
       this.locale = lireListe(r.locale);
       if (this.locale !== null) {
