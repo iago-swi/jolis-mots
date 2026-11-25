@@ -389,3 +389,22 @@ Philippe envisage une publication sur le Play Store, soit gratuite, soit avec un
 - Dans le filtre Doublons de l'atelier, une recherche garde les groupes entiers : un groupe est montré dès qu'un de ses mots répond, pour comparer ses mots.
 - Phrases de l'atelier pour les cas que la conception ne prévoyait pas : « Le fichier des mots de l'atelier est illisible. Tu peux reprendre la liste en ligne ; ta version sera mise de côté. », « L'atelier n'a pas pu recevoir la liste. », « L'atelier n'a pas pu vérifier la liste en ligne. Tu peux continuer à travailler. », « La fiche n'a pas pu être enregistrée. », « L'envoi a échoué. Tes modifications restent en attente. », « La liste en ligne n'a pas pu être reprise. Rien n'a changé ici. », et après une reprise : « La liste en ligne est reprise. Ta version est gardée ici : », suivi du chemin du fichier.
 
+
+## 14. Version 1.0.2 : l'historique de la liste
+
+Demandé par Philippe le 25 novembre 2026, après la publication de la 1.0.1, et numéroté 1.0.2 à sa demande.
+
+### 14.1 Décidé par Philippe
+
+- Une page, ouverte depuis les Réglages, montre l'historique de la liste des mots, du plus récent au plus ancien. Chaque entrée dit d'où vient la liste, sa date et son heure, ce qui a changé et le nombre de mots.
+- Une entrée se déplie : elle montre les mots ajoutés (marqués « + »), modifiés et supprimés (marqués « − »), par ordre alphabétique. Elle ne montre pas toute la liste.
+- L'affichage reste sobre : ce n'est qu'une information.
+
+### 14.2 Choix de Claude
+
+- **Approche.** Le téléphone ne voit pas l'historique de GitHub, seulement la liste du moment. C'est donc l'appareil qui tient son historique : à chaque nouvelle liste (une date `publie` différente de la dernière notée), il la compare à la dernière liste notée. Écarté : écrire l'historique dans `mots.json`, ce qui change le format publié pour une simple information.
+- **Ce qui compte.** Seuls les mots complets, ceux que le téléphone montre. Ajouté : un mot complet qui ne l'était pas (nouveau, ou « À compléter » décoché). Supprimé : un mot complet qui ne l'est plus (supprimé, ou recoché). Modifié : un mot complet des deux côtés dont le mot, le genre, la définition ou les sources ont changé (la note et l'utilisation, que le téléphone n'affiche pas, ne comptent pas).
+- **Signes.** « + » pour un ajout, « ~ » pour une modification, « − » pour une suppression. Les six couleurs des palettes n'ont pas de vert : les signes sont dans l'encre secondaire, le « − » dans la couleur d'accent, et un mot supprimé est en encre secondaire. Le sens ne repose pas sur la couleur seule.
+- **Première entrée.** « Début de l'historique », avec le nombre de mots, sans liste à déplier. Une réinstallation remet l'historique à zéro.
+- **Sur Windows.** Un enregistrement dans l'atelier ne change pas la date de la liste ; un envoi, si. L'entrée apparaît donc à l'envoi et compare avec la liste envoyée précédente.
+- Toucher un mot ajouté ou modifié ouvre sa fiche. Une liste qui ne change aucun mot visible ne crée pas d'entrée. L'historique garde les 200 dernières entrées.
