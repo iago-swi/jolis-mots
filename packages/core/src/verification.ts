@@ -24,12 +24,12 @@ export interface Remarque {
 
 const FINE = ' ';
 
-/** Une balise, bien ou mal écrite : casse quelconque, espaces avant les deux-points. */
-const BALISE_LARGE = /(?<![\p{L}\p{N}])(ex|syn|us|anton|ant)[ \t  ]*:/giu;
+/** Une balise, bien ou mal écrite : casse quelconque, espaces avant les deux-points ; un point aussi (`SYN.:`), sauf pour `ex` (« par ex. : » est de la prose). */
+const BALISE_LARGE = /(?<![\p{L}\p{N}])(?:(ex)|(syn|us|anton|ant)\.?)[ \t\u00A0\u202F]*:/giu;
 
 /** Ramène `EX :`, `Ex:`, `ex:`, `Syn :`… à la forme canonique (`EX:`, `SYN:`…) ; rien d'autre ne change. */
 export function corrigerBalises(texte: string): string {
-  return texte.replace(BALISE_LARGE, (_, nom: string) => `${nom.toUpperCase()}:`);
+  return texte.replace(BALISE_LARGE, (_, ex: string | undefined, autre: string | undefined) => `${(ex ?? autre ?? '').toUpperCase()}:`);
 }
 
 /**
@@ -99,23 +99,35 @@ function presqueEgaux(a: string, b: string): boolean {
   return fin(a, b) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2));
 }
 
+/** Vrai si `b` s'obtient en intervertissant deux lettres voisines de `a`. */
+function intervertis(a: string, b: string): boolean {
+  let i = 0;
+  while (i < a.length && a[i] === b[i]) i++;
+  return i < a.length - 1 && a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2);
+}
+
 /**
  * Un terme inconnu n'est signalé que s'il ressemble à une indication connue écrite autrement : même
  * squelette (« Litt », « vieilli. », « Par métaph »), abréviation ou développement d'une connue
- * (« littér. », « Médecine » à côté de « Méd. »), ou une faute de frappe (« Fgi. »). Une étiquette
- * nouvelle, employée une seule fois (« Phon. », « Christianisme »), n'est pas signalée.
+ * (« littér. » à côté de « Litt. »), ou une faute de frappe (« Fgi. »). Une étiquette nouvelle, employée
+ * une seule fois (« Phon. », « Christianisme », « Médecine », « Pol. »), n'est pas signalée.
  */
 function ressembleAUneConnue(terme: string, connues: Set<string>): boolean {
   const s = squelette(terme);
   if (s.length < 3) return false;
   // Plusieurs mots (« Myth. gr. », « Philosophie antique ») : seulement s'ils réécrivent une connue.
   const unMot = !/\s/u.test(terme.trim());
+  const abreviation = terme.trim().endsWith('.');
   for (const connue of connues) {
     const c = squelette(connue);
     if (c.length < 3) continue;
     if (s === c) return true;
-    if (unMot && (s.startsWith(c) || c.startsWith(s))) return true;
-    if (unMot && presqueEgaux(s, c)) return true;
+    if (!unMot) continue;
+    // Une abréviation (avec un point) d'une connue : « littér. » ; un mot entier (« Littérature », « Médecine ») est une autre étiquette.
+    if (abreviation && Math.min(s.length, c.length) >= 4 && (s.startsWith(c) || c.startsWith(s))) return true;
+    // Une faute de frappe : une lettre de différence à partir de 5 lettres (« Pol. » n'est pas « Pop. ») ; deux lettres interverties dès 3 (« Fgi. »).
+    if (Math.min(s.length, c.length) >= 5 && presqueEgaux(s, c)) return true;
+    if (s.length === c.length && intervertis(s, c)) return true;
   }
   return false;
 }
@@ -236,9 +248,11 @@ function finsDeSens(def: string): { numero: string | null; fin: number | null }[
 }
 
 /** Les sens dont le texte propre ne finit pas par un point (ou « ! », « ? », « … »), et la définition corrigée. */
-function pointsFinaux(def: string): { sens: (string | null)[]; correction: string } | null {
+function pointsFinaux(def: string): { sens: (string | null)[]; correction: string | null } | null {
   const manquants = finsDeSens(def).filter((s): s is { numero: string | null; fin: number } => s.fin !== null && !FIN_DE_PHRASE.test(def.slice(0, s.fin)));
   if (manquants.length === 0) return null;
+  // Après « : », « , » ou « ; », ajouter un point ne corrige rien : la remarque reste, sans correction.
+  if (manquants.some((s) => /[,;:]$/u.test(def.slice(0, s.fin)))) return { sens: manquants.map((s) => s.numero), correction: null };
   let correction = def;
   for (const s of [...manquants].reverse()) correction = `${correction.slice(0, s.fin)}.${correction.slice(s.fin)}`;
   return { sens: manquants.map((s) => s.numero), correction };
@@ -253,7 +267,7 @@ export function verifierMot(m: Mot, connues: Set<string>): Remarque[] {
 
   const balises = corrigerBalises(def);
   if (balises !== def) {
-    const fautes = [...new Set([...def.matchAll(BALISE_LARGE)].map((b) => b[0]).filter((b) => b !== `${b.replace(/[^\p{L}]/gu, '').toUpperCase()}:`))];
+    const fautes = [...new Set([...def.matchAll(BALISE_LARGE)].filter((b) => b[0] !== `${(b[1] ?? b[2] ?? '').toUpperCase()}:`).map((b) => b[0]))];
     ajouter('balise', `Balise mal écrite${FINE}: ${fautes.map((f) => `« ${f} »`).join(', ')}.`, balises);
   }
 
@@ -304,7 +318,7 @@ export function verifierMot(m: Mot, connues: Set<string>): Remarque[] {
     const seul = points.sens.length === 1 && points.sens[0] === null && sens.length <= 1;
     const numeros = points.sens.filter((n) => n !== null);
     const lesquels = [...(points.sens.includes(null) ? ['avant le sens 1'] : []), ...(numeros.length > 0 ? [`sens ${numeros.join(', ')}`] : [])].join(', ');
-    ajouter('point-final', seul ? 'Point final manquant' : `Point final manquant (${lesquels})`, points.correction);
+    ajouter('point-final', seul ? 'Point final manquant.' : `Point final manquant (${lesquels}).`, points.correction);
   }
 
   return remarques;

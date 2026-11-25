@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Mot } from './types';
 import { corrigerBalises, corrigerEspaces, indicationsConnues, verifierMot, type CodeRemarque } from './verification';
 
-const NBSP = ' ';
+const FINE = ' ';
 
 function mot(partiel: Partial<Mot>): Mot {
   return { id: 'x', mot: 'Mot', tri: 'mot', genre: 'adj.', definition: 'Une définition.', sources: [], note: '', util: '', aCompleter: false, ...partiel };
@@ -79,15 +79,15 @@ describe('verifierMot', () => {
     const r = verifierMot(acratopege, connues).find((x) => x.code === 'balise');
     expect(r).toEqual({
       code: 'balise',
-      texte: `Balise mal écrite${NBSP}: « EX : ».`,
+      texte: `Balise mal écrite${FINE}: « EX : ».`,
       correction: '[Désuet, rare] Sans qualités particulières. EX: Ce musicien a une voix acratopège.',
     });
   });
 
   it('indication inconnue : une connue écrite autrement (Consommé : « Litt » sans point)', () => {
-    expect(verifierMot(consomme, connues)).toEqual([{ code: 'indication-inconnue', texte: `Indication inconnue${NBSP}: [Litt].`, correction: null }]);
+    expect(verifierMot(consomme, connues)).toEqual([{ code: 'indication-inconnue', texte: `Indication inconnue${FINE}: [Litt].`, correction: null }]);
     const r = verifierMot(mot({ definition: '1. [vieilli.] Un.\n2. [Fgi., littér.] Deux.\n3. [Par métaph] Trois.' }), connues);
-    expect(r).toEqual([{ code: 'indication-inconnue', texte: `Indications inconnues${NBSP}: [vieilli.], [Fgi.], [littér.], [Par métaph].`, correction: null }]);
+    expect(r).toEqual([{ code: 'indication-inconnue', texte: `Indications inconnues${FINE}: [vieilli.], [Fgi.], [littér.], [Par métaph].`, correction: null }]);
   });
 
   it('indication connue : table, liste, termes combinés, nuances, notes', () => {
@@ -98,6 +98,16 @@ describe('verifierMot', () => {
     expect(codes(amenite)).not.toContain('indication-inconnue');
   });
 
+  it('étiquettes de domaine proches d’une connue : pas de remarque (relecture)', () => {
+    const c = new Set([...connues, 'méd.']);
+    for (const t of ['Pol.', 'Fin.', 'Fil.', 'Littérature', 'Médiév.', 'Médecine']) {
+      expect(verifierMot(mot({ definition: `[${t}] Un.` }), c).map((r) => r.code), t).toEqual([]);
+    }
+    for (const t of ['Fgi.', 'Litt', 'Pop', 'Méd', 'littér.', 'Par métaph', 'Familer']) {
+      expect(verifierMot(mot({ definition: `[${t}] Un.` }), new Set([...c, 'familier'])).map((r) => r.code), t).toEqual(['indication-inconnue']);
+    }
+  });
+
   it('indication nouvelle, employée une seule fois : pas de remarque (Sérendipité)', () => {
     expect(codes(serendipite)).not.toContain('indication-inconnue');
     expect(codes(mot({ definition: '1. [Phon.] Un.\n2. [Christianisme] Deux.\n3. [Myth. gr.] Trois.\n4. [Philosophie antique] Quatre.' }))).toEqual([]);
@@ -105,10 +115,10 @@ describe('verifierMot', () => {
 
   it('indication hors crochets : « fauconnerie Oiseau » (Béjaune) et « Par ext., » (Aménité)', () => {
     expect(verifierMot(bejaune, connues).filter((x) => x.code === 'indication-hors-crochets')).toEqual([
-      { code: 'indication-hors-crochets', texte: `Indication hors crochets en tête du sens 1${NBSP}: « fauconnerie ».`, correction: null },
+      { code: 'indication-hors-crochets', texte: `Indication hors crochets en tête du sens 1${FINE}: « fauconnerie ».`, correction: null },
     ]);
     expect(verifierMot(amenite, connues).filter((x) => x.code === 'indication-hors-crochets')).toEqual([
-      { code: 'indication-hors-crochets', texte: `Indication hors crochets en tête du sens 2${NBSP}: « Par ext. ».`, correction: null },
+      { code: 'indication-hors-crochets', texte: `Indication hors crochets en tête du sens 2${FINE}: « Par ext. ».`, correction: null },
     ]);
   });
 
@@ -116,7 +126,7 @@ describe('verifierMot', () => {
     for (const debut of ['Sens figuré', 'Au fig.', 'Fig.', 'Par ext.', 'Litt.', 'Vieilli', 'Vieux']) {
       expect(codes(mot({ definition: `${debut}, se dit d'un oiseau.` })), debut).toEqual(['indication-hors-crochets']);
     }
-    expect(verifierMot(mot({ definition: 'Vieux Homme âgé.' }), connues)[0]?.texte).toBe(`Indication hors crochets en tête de la définition${NBSP}: « Vieux ».`);
+    expect(verifierMot(mot({ definition: 'Vieux Homme âgé.' }), connues)[0]?.texte).toBe(`Indication hors crochets en tête de la définition${FINE}: « Vieux ».`);
   });
 
   it('indication hors crochets : pas pour un vrai début de définition', () => {
@@ -131,7 +141,7 @@ describe('verifierMot', () => {
     const saute = bejaune.definition.replace('2.', '3.');
     expect(verifierMot(mot({ definition: saute }), connues).find((x) => x.code === 'numerotation')).toEqual({
       code: 'numerotation',
-      texte: `Numérotation des sens à revoir${NBSP}: 1, 3.`,
+      texte: `Numérotation des sens à revoir${FINE}: 1, 3.`,
       correction: null,
     });
     expect(codes(mot({ definition: 'Chapeau.\n2. Un.\n3. Deux.' }))).toEqual(['numerotation']);
@@ -140,10 +150,10 @@ describe('verifierMot', () => {
   });
 
   it('non fermé : parenthèse en trop (Escogriffe), crochet (Aménité)', () => {
-    expect(verifierMot(escogriffe, connues)).toEqual([{ code: 'non-ferme', texte: `Signe ouvrant ou fermant sans pendant${NBSP}: ( ).`, correction: null }]);
-    expect(verifierMot(amenite, connues).find((x) => x.code === 'non-ferme')?.texte).toBe(`Signe ouvrant ou fermant sans pendant${NBSP}: [ ].`);
+    expect(verifierMot(escogriffe, connues)).toEqual([{ code: 'non-ferme', texte: `Signe ouvrant ou fermant sans pendant${FINE}: ( ).`, correction: null }]);
+    expect(verifierMot(amenite, connues).find((x) => x.code === 'non-ferme')?.texte).toBe(`Signe ouvrant ou fermant sans pendant${FINE}: [ ].`);
     expect(verifierMot(mot({ definition: 'Un « mot. (Deux [trois' }), connues).find((x) => x.code === 'non-ferme')?.texte).toBe(
-      `Signe ouvrant ou fermant sans pendant${NBSP}: [ ], ( ), « ».`,
+      `Signe ouvrant ou fermant sans pendant${FINE}: [ ], ( ), « ».`,
     );
   });
 
@@ -157,7 +167,7 @@ describe('verifierMot', () => {
 
   it('genre vide (Béjaune) ou inconnu', () => {
     expect(verifierMot(bejaune, connues).find((x) => x.code === 'genre-vide')).toEqual({ code: 'genre-vide', texte: 'Genre vide.', correction: null });
-    expect(verifierMot(genreInconnu, connues)).toEqual([{ code: 'genre-inconnu', texte: `Genre inconnu${NBSP}: « subst. C2223 ».`, correction: null }]);
+    expect(verifierMot(genreInconnu, connues)).toEqual([{ code: 'genre-inconnu', texte: `Genre inconnu${FINE}: « subst. C2223 ».`, correction: null }]);
     expect(codes(mot({ genre: 'adj + subst. masc.' }))).toEqual(['genre-inconnu']);
     expect(codes(mot({ genre: 'verbe défectif impers.' }))).toEqual([]);
   });
@@ -200,6 +210,25 @@ describe('corrigerBalises', () => {
     seulementDans(texte, corrigerBalises(texte), /(?<![\p{L}\p{N}])(?:ex|syn|us|anton|ant)[ \t  ]*:/giu, (z) => z.replace(/[ \t  ]/g, '').toUpperCase());
     expect(corrigerBalises(acratopege.definition).replace('EX:', 'EX :')).toBe(acratopege.definition);
     expect(corrigerBalises(amenite.definition)).toBe(amenite.definition);
+  });
+});
+
+describe('SYN.: et ses pareils (Billevesée)', () => {
+  it('reconnaît un point avant les deux-points pour SYN, US, ANTON, ANT, pas pour EX', () => {
+    expect(corrigerBalises('Niaiserie. SYN.: baliverne. US. : rien. ANTON.: sens. ANT.:x')).toBe('Niaiserie. SYN: baliverne. US: rien. ANTON: sens. ANT:x');
+    expect(corrigerBalises('Voir par ex. : la suite. Ex.: un.')).toBe('Voir par ex. : la suite. Ex.: un.');
+    const r = verifierMot(mot({ definition: '1. Propos frivole. SYN.: baliverne, faribole, sornette\n2. Sottise.' }), connues);
+    expect(r.map((x) => x.code)).toEqual(['balise', 'point-final']);
+    expect(r[0]).toEqual({ code: 'balise', texte: `Balise mal écrite${FINE}: « SYN.: ».`, correction: '1. Propos frivole. SYN: baliverne, faribole, sornette\n2. Sottise.' });
+  });
+});
+
+describe('textes des remarques', () => {
+  it('finissent tous par un point', () => {
+    const def = '1. fauconnerie Oiseau  jeune EX : \n3. [Litt] (Sot';
+    const r = verifierMot(mot({ genre: 'adj + subst.', definition: def }), connues);
+    expect(r.length).toBeGreaterThanOrEqual(8);
+    for (const x of r) expect(x.texte.endsWith('.'), x.texte).toBe(true);
   });
 });
 
@@ -251,12 +280,12 @@ describe('point final', () => {
   }
 
   it('un sens sans point', () => {
-    expect(pointFinal('Oiseau jeune et niais')).toEqual([{ code: 'point-final', texte: 'Point final manquant', correction: 'Oiseau jeune et niais.' }]);
+    expect(pointFinal('Oiseau jeune et niais')).toEqual([{ code: 'point-final', texte: 'Point final manquant.', correction: 'Oiseau jeune et niais.' }]);
   });
   it('le sens 2 sur 3', () => {
     const def = '1. [Fig.] Un.\n2. Deux\n3. Trois.';
-    expect(pointFinal(def)).toEqual([{ code: 'point-final', texte: 'Point final manquant (sens 2)', correction: '1. [Fig.] Un.\n2. Deux.\n3. Trois.' }]);
-    expect(pointFinal('1. Un\n2. Deux.\n3. Trois')[0]?.texte).toBe('Point final manquant (sens 1, 3)');
+    expect(pointFinal(def)).toEqual([{ code: 'point-final', texte: 'Point final manquant (sens 2).', correction: '1. [Fig.] Un.\n2. Deux.\n3. Trois.' }]);
+    expect(pointFinal('1. Un\n2. Deux.\n3. Trois')[0]?.texte).toBe('Point final manquant (sens 1, 3).');
   });
   it('texte suivi de EX: sur la même ligne', () => {
     expect(pointFinal('Oiseau jeune EX: Un béjaune.')[0]?.correction).toBe('Oiseau jeune. EX: Un béjaune.');
@@ -264,7 +293,7 @@ describe('point final', () => {
   });
   it('texte suivi d’un retour à la ligne puis SYN:', () => {
     const def = '1. Oiseau jeune \nSYN: niais.\n2. Sot.';
-    expect(pointFinal(def)).toEqual([{ code: 'point-final', texte: 'Point final manquant (sens 1)', correction: '1. Oiseau jeune. \nSYN: niais.\n2. Sot.' }]);
+    expect(pointFinal(def)).toEqual([{ code: 'point-final', texte: 'Point final manquant (sens 1).', correction: '1. Oiseau jeune. \nSYN: niais.\n2. Sot.' }]);
   });
   it('parenthèse, guillemet, crochet fermants', () => {
     expect(pointFinal('Jeune homme (sot.)')).toEqual([]);
@@ -275,7 +304,12 @@ describe('point final', () => {
   it('accepte un guillemet droit après la ponctuation, et ignore une note finale entre crochets (Neume, Allitération)', () => {
     expect(pointFinal('Comme dans "Pour qui sont ces serpents qui sifflent sur vos têtes?"')).toEqual([]);
     expect(pointFinal('1. Un.\n2. Courte mélodie.\n[Note: le mot existe aussi au masculin]')).toEqual([]);
-    expect(pointFinal('Chapeau:\n1. Un')[0]?.texte).toBe('Point final manquant (avant le sens 1, sens 1)');
+    expect(pointFinal('Chapeau:\n1. Un')[0]?.texte).toBe('Point final manquant (avant le sens 1, sens 1).');
+  });
+  it('après deux-points, virgule ou point-virgule : la remarque, sans correction (Musarder)', () => {
+    expect(pointFinal('Chapeau (p.264):\n1. Un')).toEqual([{ code: 'point-final', texte: 'Point final manquant (avant le sens 1, sens 1).', correction: null }]);
+    expect(pointFinal('Un, deux,')[0]?.correction).toBeNull();
+    expect(pointFinal('1. Un ;\n2. Deux')[0]?.correction).toBeNull();
   });
   it('accepte « ... », « … », « ! » et « ? »', () => {
     expect(pointFinal('1. Un...\n2. Deux…\n3. Trois !\n4. Quatre ?')).toEqual([]);
@@ -284,12 +318,12 @@ describe('point final', () => {
     expect(pointFinal('1. Un.\n2. EX: Un exemple sans point')).toEqual([]);
     expect(pointFinal('[Fig.]\n1. Un.\n2. Deux.')).toEqual([]);
     expect(pointFinal('1. [Fig.]')).toEqual([]);
-    expect(pointFinal('Chapeau\n1. Un.')[0]?.texte).toBe('Point final manquant (avant le sens 1)');
+    expect(pointFinal('Chapeau\n1. Un.')[0]?.texte).toBe('Point final manquant (avant le sens 1).');
   });
   it('la correction ne change aucun autre caractère', () => {
     const def = '[Litt.]\n1. Oiseau jeune  EX: Un béjaune\n\n2. [Fig.] Sot (rare)\t\nSYN: niais, sot\n3. Trois. US: rien\n4. Quatre';
     const [r] = pointFinal(def);
-    expect(r?.texte).toBe('Point final manquant (sens 1, 2, 4)');
+    expect(r?.texte).toBe('Point final manquant (sens 1, 2, 4).');
     seulementDesPoints(def, r!.correction!, 3);
     expect(r!.correction).toBe('[Litt.]\n1. Oiseau jeune.  EX: Un béjaune\n\n2. [Fig.] Sot (rare).\t\nSYN: niais, sot\n3. Trois. US: rien\n4. Quatre.');
   });
