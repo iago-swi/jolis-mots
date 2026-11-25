@@ -11,8 +11,9 @@
   let depart: { x: number; y: number } | null = null;
   let defilement: HTMLElement | undefined = $state();
 
+  /** Le doigt ou le stylet seulement : à la souris, glisser sélectionne le texte (pour le copier). */
   function poser(e: PointerEvent): void {
-    depart = { x: e.clientX, y: e.clientY };
+    depart = e.pointerType === 'mouse' ? null : { x: e.clientX, y: e.clientY };
   }
 
   function lever(e: PointerEvent): void {
