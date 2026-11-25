@@ -14,7 +14,8 @@ import { createServer, type AddressInfo, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { classer, enregistrer, envoyer, historique, historiqueEnCache, ouvrir, reprendre, synchroniser, type Depot } from './depot';
+import { historiqueDeListes, type FichierMots } from '@jolis-mots/core';
+import { classer, enregistrer, envoyer, historique, historiqueEnCache, ouvrir, parcourirVersions, reprendre, synchroniser, type Depot } from './depot';
 
 // Tout se passe dans un dossier temporaire : un dépôt nu `origine.git` tient lieu de GitHub.
 // Aucun test ne contacte le réseau ni ne touche au dépôt du projet.
@@ -385,6 +386,7 @@ describe('dépôt : cas à part', () => {
 describe('dépôt : l’histoire de la liste', () => {
   it('sans copie : null', { timeout: DELAI }, async () => {
     expect(await historique(preparer().d)).toBeNull();
+    expect(await parcourirVersions(preparer().d, () => undefined)).toBe(false);
   });
 
   it('les versions envoyées de mots.json, de la plus ancienne à la plus récente, sans réseau', { timeout: DELAI }, async () => {
@@ -408,12 +410,47 @@ describe('dépôt : l’histoire de la liste', () => {
     // L'adresse en ligne disparaît : la lecture n'en a pas besoin.
     renommer(f.origine, f.origine + '.absent');
     try {
-      const listes = await historique(d);
-      expect(listes?.map((l) => l.publie)).toEqual(['2026-11-24', '2026-11-25', '2026-11-26']);
-      expect(listes?.[2]?.mots[0]?.tri).toBe('abscons ');
+      const listes: FichierMots[] = [];
+      expect(await parcourirVersions(d, (l) => listes.push(l))).toBe(true);
+      expect(listes.map((l) => l.publie)).toEqual(['2026-11-24', '2026-11-25', '2026-11-26']);
+      expect(listes[2]?.mots[0]?.tri).toBe('abscons ');
+      // L'historique, plié version par version, est celui de toutes les listes lues d'un bloc.
+      const h = await historique(d);
+      expect(h).toEqual(historiqueDeListes(listes));
+      expect(h?.map((e) => [e.publie, e.debut, e.modifies.map((m) => m.mot)])).toEqual([
+        ['2026-11-24', true, []],
+        ['2026-11-25', false, ['abscons']],
+      ]);
     } finally {
       renommer(f.origine + '.absent', f.origine);
     }
+  });
+
+  it('le même historique que historiqueDeListes sur chaque version de la branche', { timeout: DELAI }, async () => {
+    const f = preparer();
+    const { d } = f;
+    // Ajouts, modifications, une version sans changement visible, une suppression, une date qui recule.
+    const avecMot = (texte: string, publie: string, ajout: string) =>
+      texte
+        .replace('"publie": "2026-11-24"', `"publie": "${publie}"`)
+        .replace('\n  ]\n}', `,\n    ${ajout}\n  ]\n}`);
+    const b2 = '{"id":"b2","mot":"béjaune","tri":"bejaune","genre":"subst. masc.","definition":"Oiseau jeune.","sources":[],"note":"","util":"","aCompleter":false}';
+    const c3 = '{"id":"c3","mot":"cacochyme","tri":"cacochyme","genre":"adj.","definition":"","sources":[],"note":"","util":"","aCompleter":true}';
+    const versions = [
+      avecMot(TEXTE_ORIGINE, '2026-11-25', b2),
+      avecMot(T3, '2026-11-26', b2),
+      avecMot(T3b, '2026-11-27', b2),
+      avecMot(T3, '2026-11-28', c3),
+      avecMot(T3, '2026-11-23', b2),
+      T6.replace('2026-11-26', '2026-11-29'),
+    ];
+    for (const v of versions) f.pousserDepuisUnAutreClone(v);
+    await synchroniser(d);
+    const hachages = git(d.dossier, 'log', '--format=%H', '--reverse', 'origin/donnees', '--', 'mots.json').trim().split('\n');
+    const listes = hachages.map((x) => JSON.parse(git(d.dossier, 'show', `${x}:mots.json`)) as FichierMots);
+    const attendu = historiqueDeListes(listes);
+    expect(attendu.length).toBeGreaterThanOrEqual(4);
+    expect(await historique(d)).toEqual(attendu);
   });
 });
 
