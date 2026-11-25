@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "publie": "2026-11-25T03:45:05Z",
+  "publie": "2026-11-25T03:49:19Z",
   "mots": [
     {"id":"r1p4yz","mot":"Abalourdir","tri":"abalourdir","genre":"verbe trans.","definition":"Rendre balourd, gauche, stupide. SYN: abêtir.","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
     {"id":"oku6ct","mot":"aberration","tri":"aberration","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
@@ -1017,7 +1017,6 @@
     {"id":"8kkb6g","mot":"Fluviatile","tri":"fluviatile","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"s4ecgr","mot":"À foison","tri":"foison","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"se11cs","mot":"Folâtre","tri":"folâtre","genre":"adj.","definition":"[Vieux] D'une gaieté légère. SYN: allègre, amusant, badin, bouffon, égayant, enjoué, espiègle, évaporé, folichon, follet, fou, foufou, frivole, gai, gaillard, guilleret, insouciant, joueur, joyeux, léger, plaisant, turlupin.","sources":["François Rollin: Les grands mots du professeur Rollin"],"note":"","util":"","aCompleter":false},
-    {"id":"ud5cuc","mot":"Folâtre","tri":"folâtre","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"wnefcj","mot":"Feu-follet","tri":"follet","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"wn12hk","mot":"Folliculaire","tri":"folliculaire","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"6z2399","mot":"Follicule","tri":"follicule","genre":"","definition":"","sources":["François Rollin: Les grands mots du professeur Rollin"],"note":"","util":"","aCompleter":true},
@@ -2334,7 +2333,6 @@
     {"id":"472a9n","mot":"En tapinois","tri":"tapinois","genre":"","definition":"","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":true},
     {"id":"k9t3kp","mot":"Tarabiscoté","tri":"tarabiscoté","genre":"adj.","definition":"1. [Par ext.] Façonné à l'excès, chargé d'ornements excessifs. US: Bague, bijou tarabiscoté(e); décoration tarabiscotée.\n2. [Fig., fam.] D'une recherche excessive et compliquée; affecté, inutilement contourné, maniéré. US: Style tarabiscoté. EX: Une œuvrette un peu tarabiscotée où vous coupiez les cheveux en quatre.","sources":[],"note":"","util":"","aCompleter":false},
     {"id":"pm7joy","mot":"Tarabuster","tri":"tarabuster","genre":"verbe trans.","definition":"1. Importuner en insistant à faire quelque chose.\n2. Provoquer de l'anxiété, un trouble.","sources":["Nicolas Bouvier: Journal d'Aran et d'autres lieux (33)","Nicolas Bouvier: L'Usage du Monde (101,290)"],"note":"","util":"","aCompleter":false},
-    {"id":"rgp80p","mot":"Tarabuster","tri":"tarabuster","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"t6h6bz","mot":"Tarauder","tri":"tarauder","genre":"verbe trans.","definition":"[Fig.] Tourmenter de manière lancinante au point de faire souffrir plus ou moins vivement. SYN: tarabuster.","sources":["Alexandre Poussin & Sylvain Tesson: Himalaya, visions de marcheurs des cimes (60)"],"note":"","util":"","aCompleter":false},
     {"id":"5q5eei","mot":"Tartarin","tri":"tartarin","genre":"subst. masc.","definition":"Personnage vantard, bouffon. SYN: fanfaron.","sources":["Nicolas Bouvier: L'Echappée belle. Eloge de quelques Pérégrins"],"note":"","util":"","aCompleter":false},
     {"id":"xptyer","mot":"Tartuferie","tri":"tartuferie","genre":"subst. fém.","definition":"Comportement, maintien, paroles de tartuffe, d'hypocrite. SYN: affectation, agenouillement, bigoterie, cabotinage, cafarderie, cagoterie, cagotisme, capucinade, comédie, déloyauté, dévotion, dissimulation, double-jeu, duplicité, escobarderie, fausseté, faux-semblant, feinte, félonie, flatterie, fourberie, fraude, grimace, hypocrisie, jésuitisme, jonglerie, mascarade, mensonge, momerie, pantalonnade, papelardise, patelinage, pharisaïsme, simagrée, simulation, singerie, tromperie. EX: L'hypocrisie est, chez une nation, le dernier degré du vice. C'est donc faire acte de citoyen que de s'opposer à cette tartuferie sous laquelle on couvre ses débordements.","sources":["Nicolas Bouvier: Chronique Japonaise"],"note":"","util":"","aCompleter":false},
