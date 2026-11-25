@@ -70,7 +70,7 @@ Une question à la fois, quatre réponses au choix : soit une définition à rat
 
 ### Recueil
 
-Tous les mots qui ont une définition, par ordre alphabétique. On peut chercher un mot, sans se soucier des accents ni des majuscules. Les filtres, sur une ligne, ne gardent que les mots rencontrés chez Bouvier, Tesson, Rollin ou Méral, les favoris (l'étoile), ou les mots d'un autre auteur : « Autres » ouvre la liste des auteurs, avec le nombre de mots de chacun. Un seul filtre est allumé à la fois ; le toucher de nouveau l'éteint. Toucher un mot ouvre sa fiche.
+Tous les mots qui ont une définition, par ordre alphabétique. On peut chercher un mot, sans se soucier des accents ni des majuscules. Les filtres, sur une ligne, ne gardent que les mots rencontrés chez Bouvier, Tesson ou Rollin, les favoris (l'étoile), ou les mots d'un autre auteur : « Autres » ouvre la liste des auteurs, avec le nombre de mots de chacun. Un seul filtre est allumé à la fois ; le toucher de nouveau l'éteint. Toucher un mot ouvre sa fiche.
 
 ### Réglages
 

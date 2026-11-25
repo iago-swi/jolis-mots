@@ -29,11 +29,6 @@ export function nomCourt(auteur: string): string {
   return mots[mots.length - 1] ?? auteur;
 }
 
-/** « 82,319 » devient « p. 82, 319 ». */
-export function afficherPages(pages: string): string {
-  return 'p. ' + pages.split(',').map((p) => p.trim()).join(', ');
-}
-
 /** Nombre de mots par auteur (un mot compte une fois par auteur), du plus au moins cité. */
 export function auteursParNombre(mots: Mot[]): { auteur: string; nombre: number }[] {
   const comptes = new Map<string, number>();

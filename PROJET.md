@@ -24,7 +24,7 @@ Le cœur est livré en TypeScript (`"exports": "./src/index.ts"`) : Vite le tran
 | `types.ts` | `Mot`, `FichierMots`, `estComplet`. |
 | `definition.ts` | `lireDefinition`, `developperIndication`, `indicationEstLongue`. |
 | `genre.ts` | `developperGenre` (« subst. masc. » devient « nom masculin »), `premierTerme`, `genreEstConnu`. |
-| `sources.ts` | `lireSource`, `auteursDe`, `nomCourt`, `afficherPages`, `auteursParNombre`. |
+| `sources.ts` | `lireSource`, `auteursDe`, `nomCourt`, `auteursParNombre`. |
 | `recherche.ts` | `normaliser`, `ordonner`, `lettrine`, `filtrer`. |
 | `typographie.ts` | `embellir` (apostrophe courbe, points de suspension), `entreGuillemets`, `tailleDuMot`. |
 | `fichier.ts` | `ecrireFichier`, `validerFichier`, `comparerMots`, `creerId`, `creerIdUnique`. |
@@ -60,7 +60,7 @@ Un mot est **complet** quand sa définition n'est pas vide et que `aCompleter` e
 - `id` : six caractères parmi `a-z0-9`, tirés par `creerId`. Un mot garde son identifiant, car les progrès sur l'appareil s'y rattachent. L'atelier tire un identifiant que ne porte aucun mot, ni dans sa liste, ni dans la dernière liste envoyée (`creerIdUnique`).
 - `mot` est le mot tel qu'affiché (« S'abolir ») ; `tri` sert au classement et à la recherche (« abolir »).
 - `genre` : nature grammaticale abrégée (`adj.`, `subst. masc.`, `verbe trans.`…), développée à l'affichage.
-- `sources` : une ligne par livre, de la forme `Auteur: Titre (pages)`. Les pages sont facultatives (`82,319` s'affiche « p. 82, 319 »). Un livre à deux auteurs s'écrit `A & B: Titre` et compte pour chacun dans le filtre par auteur.
+- `sources` : une ligne par livre, de la forme `Auteur: Titre (pages)`. Les pages sont facultatives ; l'application ne les affiche pas (décidé par Philippe pour la 1.0.1) : l'auteur et l'ouvrage suffisent. Un livre à deux auteurs s'écrit `A & B: Titre` et compte pour chacun dans le filtre par auteur.
 - `note` et `util` viennent de l'Excel ; seul l'atelier les montre (« Note », « Utilisé dans mes livres »).
 - `validerFichier` rend le fichier s'il a la bonne forme, sinon `null`. Un identifiant vide, ou porté par deux mots, rend le fichier invalide.
 
@@ -87,7 +87,7 @@ Sur la fiche, le mot a une seule grande taille, 54 px ; une expression passe à 
 - `App.svelte` : en-tête, écran courant, barre d'onglets. L'écran se choisit par l'adresse (`#mot`, `#quiz`, `#recueil`, `#reglages`, et `#atelier` sur bureau seulement) ; sans adresse, c'est Mot. Sur bureau, les écrans de lecture tiennent dans une colonne centrée de 560 px ; l'Atelier prend toute la largeur.
 - `ecrans/Mot.svelte` : la fiche du mot courant (`composants/Fiche.svelte`), un glissement horizontal de plus de 60 px, au doigt ou au stylet, pour changer de mot (à la souris, glisser sélectionne le texte), l'étoile des favoris, « Mot suivant ».
 - `ecrans/Quiz.svelte` : le choix « Tous les mots » ou « Les mots que j'ai vus », puis les questions ; voir plus bas.
-- `ecrans/Recueil.svelte` : la liste alphabétique avec lettrines, la recherche, les filtres sur une ligne (Bouvier, Tesson, Rollin, Méral, l'étoile des favoris, et « Autres », qui ouvre un volet avec les autres auteurs et le nombre de mots de chacun), la fiche ouverte dans un volet. Un seul filtre est allumé à la fois ; toucher le filtre allumé l'éteint. Quand un autre auteur est choisi, le bouton « Autres » prend son nom ; un nom trop long pour la ligne finit par « … », le nom entier restant dans `aria-label` et `title`.
+- `ecrans/Recueil.svelte` : la liste alphabétique avec lettrines, la recherche, les filtres sur une ligne (Bouvier, Tesson, Rollin, l'étoile des favoris, et « Autres », qui ouvre un volet avec les autres auteurs et le nombre de mots de chacun), la fiche ouverte dans un volet. Un seul filtre est allumé à la fois ; toucher le filtre allumé l'éteint. Quand un autre auteur est choisi, le bouton « Autres » prend son nom ; un nom trop long pour la ligne finit par « … », le nom entier restant dans `aria-label` et `title`.
 - `ecrans/Reglages.svelte` : questions par quiz, palette, version, date de la liste, « Effacer mes progrès » ; ce lien reste visible au-dessus de sa confirmation.
 - `ecrans/Atelier.svelte` : l'atelier, sur bureau seulement ; voir plus bas.
 - `composants/Entete.svelte`, `composants/Onglets.svelte` : l'en-tête (la marque et le bouton des réglages) et les onglets, trois sur le téléphone, quatre sur bureau.

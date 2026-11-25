@@ -241,6 +241,19 @@ describe('le démarrage', () => {
     expect(atelier.detail).toBe('git : sans-reseau');
   });
 
+  it('le message de git reste celui de l’alerte, même après une vérification muette', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    await atelier.enregistrer({ ...fiche, definition: 'Autre définition.' });
+    faux.pannes.envoyer = 'refus';
+    await atelier.envoyer();
+    expect(atelier.detail).toBe('git : refus');
+    faux.pannes.synchroniser = 'sans-reseau';
+    await atelier.reessayer();
+    expect(atelier.avis?.ton).toBe('alerte');
+    expect(atelier.detail).toBe('git : refus');
+  });
+
   it('la liste en ligne a changé ailleurs : avis de divergence', async () => {
     const faux = new FauxPont(ecrireFichier(locale));
     faux.pannes.synchroniser = 'divergence';
@@ -345,6 +358,20 @@ describe('la copie cassée, mise de côté', () => {
     faux.miseDeCote = 'C:\\Donnees\\sauvegardes\\donnees-2026-11-25-101500\\mots.json';
     const { atelier } = await demarrerSur(faux);
     expect(atelier.avis).toEqual({ ton: 'alerte', texte: `${CONNEXION} ${MISE_DE_COTE}`, chemin: faux.miseDeCote });
+  });
+
+  it('la liste reçue ensuite : la phrase sur la connexion s’efface, le chemin reste', async () => {
+    const faux = new FauxPont(null, null);
+    faux.pannes.synchroniser = 'sans-reseau';
+    faux.miseDeCote = 'C:\\Donnees\\sauvegardes\\donnees-2026-11-25-101500\\mots.json';
+    const { atelier } = await demarrerSur(faux);
+    const chemin = faux.miseDeCote;
+    delete faux.pannes.synchroniser;
+    faux.miseDeCote = null;
+    faux.enLigne = ecrireFichier(locale);
+    await atelier.reessayer();
+    expect(atelier.disponible).toBe(true);
+    expect(atelier.avis).toEqual({ ton: 'calme', texte: MISE_DE_COTE, chemin });
   });
 });
 

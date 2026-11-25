@@ -77,7 +77,7 @@ export function definitionPourQuiz(m: Mot): string {
   const avecTexte = numerotes.find((s) => s.texte !== '') ?? sens.find((s) => s.texte !== '');
   if (avecTexte) return masquer(avecTexte.texte, [m.mot, m.tri]);
   const avecSynonymes = sens.find((s) => s.synonymes.length > 0);
-  if (avecSynonymes) return `Synonymes : ${avecSynonymes.synonymes.join(', ')}`;
+  if (avecSynonymes) return `Synonymes : ${avecSynonymes.synonymes.join(', ')}`;
   return '';
 }
 

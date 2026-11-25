@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afficherPages, auteursDe, auteursParNombre, lireSource, nomCourt } from './sources';
+import { auteursDe, auteursParNombre, lireSource, nomCourt } from './sources';
 import type { Mot } from './types';
 
 const mot = (id: string, sources: string[]): Mot => ({
@@ -14,7 +14,6 @@ describe('sources', () => {
     expect(lireSource('Anne Marie Jaton: Nicolas Bouvier. Paroles du monde').auteur).toBe('Anne Marie Jaton');
   });
 
-  it('affiche les pages', () => expect(afficherPages('82,319')).toBe('p. 82, 319'));
 
   it('compte les mots par auteur, une fois par mot', () => {
     const mots = [

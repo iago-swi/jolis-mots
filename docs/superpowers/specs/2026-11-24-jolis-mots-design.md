@@ -94,7 +94,7 @@ L'application a trois écrans sur le téléphone (Mot, Quiz, Recueil), reliés p
 
 L'application s'ouvre directement ici, sur un mot.
 
-La fiche montre, de haut en bas : la nature du mot en toutes lettres (section 6.6), le mot en grand, puis chaque sens avec son numéro, son indication (littéraire, figuré…), son texte, ses synonymes et son exemple en italique entre guillemets. En bas, sous le titre « Rencontré chez », la liste des sources : auteur, titre en italique, page. Le mot est composé à une seule grande taille ; une expression passe à la ligne entre ses mots. Seul un mot d'un seul tenant trop long pour une ligne prend une seconde taille, plus petite : deux tailles, jamais un dégradé (décidé par Philippe pour la 1.0.0).
+La fiche montre, de haut en bas : la nature du mot en toutes lettres (section 6.6), le mot en grand, puis chaque sens avec son numéro, son indication (littéraire, figuré…), son texte, ses synonymes et son exemple en italique entre guillemets. En bas, sous le titre « Rencontré chez », la liste des sources : auteur et titre en italique, sans les pages (décidé par Philippe pour la 1.0.1). Le mot est composé à une seule grande taille ; une expression passe à la ligne entre ses mots. Seul un mot d'un seul tenant trop long pour une ligne prend une seconde taille, plus petite : deux tailles, jamais un dégradé (décidé par Philippe pour la 1.0.0).
 
 - Seuls les mots **complets** apparaissent sur les écrans Mot, Quiz et Recueil. Un mot est complet quand sa définition est remplie et qu'il n'est pas marqué « à compléter » (section 6.1).
 - **Mot suivant** passe au mot suivant ; un glissement vers la gauche fait de même, vers la droite revient au mot précédent, parmi ceux montrés depuis l'ouverture de l'application.
@@ -137,7 +137,7 @@ Le ton reste sobre : « Juste. » ou « C'était *baguenauder*. », sans score n
 La liste alphabétique des mots complets, classée selon la colonne Tri, avec une lettrine par lettre. Chaque ligne montre le mot, sa nature et le début de sa définition.
 
 - **Recherche** sur Mot et Tri, sans tenir compte des accents ni des majuscules.
-- **Filtres** (décidé par Philippe pour la 1.0.0) : de petits boutons qui tiennent sur une seule ligne d'un téléphone de 411 px de large : Bouvier, Tesson, Rollin, Méral, Favoris et « Autres », qui ouvre la liste complète des auteurs, classée par nombre de mots. Il n'y a pas de bouton « Tous » : toucher le filtre allumé l'éteint. Si les six libellés ne tiennent pas en toutes lettres, Favoris est remplacé par l'étoile de l'écran Mot.
+- **Filtres** (décidé par Philippe pour la 1.0.0) : de petits boutons qui tiennent sur une seule ligne d'un téléphone de 411 px de large : Bouvier, Tesson, Rollin, Favoris et « Autres » (Méral est passé sous « Autres » à la 1.0.1, décidé par Philippe, pour laisser la place au nom d'un autre auteur), qui ouvre la liste complète des auteurs, classée par nombre de mots. Il n'y a pas de bouton « Tous » : toucher le filtre allumé l'éteint. Si les six libellés ne tiennent pas en toutes lettres, Favoris est remplacé par l'étoile de l'écran Mot.
 - Toucher une ligne ouvre la fiche du mot.
 
 ### 5.4 Écran « Atelier » (Windows seulement)
@@ -217,7 +217,7 @@ Appliquée à l'affichage seulement, jamais au texte enregistré :
 
 ### 6.4 Les sources
 
-Chaque ligne de Source est lue comme `Auteur: Titre (pages)`. Sans deux-points, toute la ligne est un titre sans auteur. Les pages sont affichées « p. 334 ». L'auteur sert au filtre du Recueil.
+Chaque ligne de Source est lue comme `Auteur: Titre (pages)`. Sans deux-points, toute la ligne est un titre sans auteur. Les pages restent dans le texte saisi mais ne sont pas affichées (décidé par Philippe pour la 1.0.1). L'auteur sert au filtre du Recueil.
 
 ### 6.5 Ce que chaque appareil garde pour lui
 

@@ -2,6 +2,20 @@
 
 Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les règles sont dans [VERSIONING.md](VERSIONING.md).
 
+## [1.0.1] - 2026-11-25
+
+### Modifié
+
+- Les filtres du Recueil : Bouvier, Tesson, Rollin, l'étoile des favoris et « Autres ». Méral passe sous « Autres », ce qui laisse la place au nom de l'auteur choisi.
+- La fiche d'un mot n'affiche plus les pages : l'auteur et l'ouvrage suffisent.
+
+### Corrigé
+
+- Au quiz, « Synonymes » est suivi d'une espace fine avant les deux-points, comme les autres textes de l'application.
+- Dans l'atelier, une fois la liste reçue, la phrase « L'atelier a besoin d'une connexion une première fois… » s'efface ; le chemin de l'ancienne copie mise de côté reste affiché.
+- Dans l'atelier, le message de git affiché sous une alerte est celui de l'échec qu'elle raconte, et non celui d'une vérification faite plus tard.
+- Dans l'atelier, un envoi qui n'aboutit pas en cinq minutes est dit « L'envoi a échoué », et non « Pas de réseau ».
+
 ## [1.0.0] - 2026-11-25
 
 La version Windows, avec l'atelier pour ajouter, modifier et supprimer des mots, puis envoyer la liste au téléphone. Sur le téléphone, la lecture n'a plus de fin et le quiz se choisit.
@@ -64,5 +78,6 @@ Première version : l'application Android. La version Windows et l'atelier pour 
 - La mise à jour de la liste en ligne : quand le téléphone a du réseau, l'application récupère au démarrage la dernière liste des mots et l'adopte au prochain mot qu'elle tire. Sans réseau, elle fonctionne avec la liste qu'elle a.
 - Un fichier à installer sur Android (`Jolis-Mots-0.1.0.apk`), avec une icône et un écran de lancement.
 
+[1.0.1]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.1
 [1.0.0]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.0
 [0.1.0]: https://github.com/iago-swi/jolis-mots/releases/tag/v0.1.0
