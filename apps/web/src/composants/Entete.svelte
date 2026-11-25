@@ -1,14 +1,10 @@
 <script lang="ts">
   import { etat } from '../etat.svelte';
-
-  /** Position dans la séance (« 2 sur 3 »), ou rien hors de l'écran Mot. */
-  let { position = null }: { position?: string | null } = $props();
 </script>
 
 <header class="entete">
   <span class="marque">Jolis Mots</span>
   <span class="droite">
-    {#if position !== null}<span class="position">{position}</span>{/if}
     <button class="reglages" aria-label="Réglages" onclick={() => etat.allerA('reglages')}>
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
         <path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path>
@@ -26,6 +22,8 @@
     align-items: baseline;
     /* L'en-tête commence sous la barre d'état ; son fond (celui de la page) passe dessous. */
     padding: calc(30px + var(--marge-haut)) 28px 0;
+    /* Sur bureau, la marque et les réglages s'alignent sur la colonne de l'écran (--colonne-entete, posée par App.svelte). */
+    padding-inline: max(28px, calc((100% - var(--colonne-entete, 100%)) / 2 + 28px));
     color: var(--second);
   }
 
@@ -39,11 +37,6 @@
     display: flex;
     align-items: center;
     gap: 6px;
-  }
-
-  .position {
-    font-size: 16px;
-    font-style: italic;
   }
 
   /* Zone tactile de 44 px, sans pousser la mise en page : les marges négatives la ramènent à la hauteur du texte. */

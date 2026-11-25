@@ -5,6 +5,7 @@
     developperIndication,
     embellir,
     entreGuillemets,
+    indicationEstLongue,
     lireDefinition,
     lireSource,
     tailleDuMot,
@@ -34,14 +35,16 @@
       {#if s.numero !== null || s.indication !== null || s.texte !== ''}
         <p class="texte">
           {#if s.numero !== null}<span class="numero">{s.numero}.</span>{/if}
-          {#if s.indication !== null}<span class="intitule">{embellir(developperIndication(s.indication))}</span>{/if}
+          {#if s.indication !== null}<span class={indicationEstLongue(s.indication) ? 'note' : 'intitule'}
+              >{embellir(developperIndication(s.indication))}</span
+            >{/if}
           {#if s.texte !== ''}<span class="lignes">{embellir(s.texte)}</span>{/if}
         </p>
       {/if}
       {#if s.usages.length > 0}
         <p class="liste">
           <span class="intitule">{intitule('Usage', s.usages.length)}</span><span class="valeur"
-            >{embellir(s.usages.join(' '))}</span
+            >{embellir(s.usages.join('\n'))}</span
           >
         </p>
       {/if}
@@ -99,7 +102,7 @@
 
   .mot {
     margin-top: -8px;
-    line-height: 1;
+    line-height: 1.08;
     font-weight: 500;
     letter-spacing: -0.01em;
     overflow-wrap: anywhere;
@@ -134,6 +137,14 @@
     font-size: 12px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+    color: var(--second);
+  }
+
+  /* Une longue indication se lit en italique courant, non en petites capitales. */
+  .note {
+    margin-right: 8px;
+    font-size: 17px;
+    font-style: italic;
     color: var(--second);
   }
 

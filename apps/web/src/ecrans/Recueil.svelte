@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy } from 'svelte';
   import {
     auteursParNombre,
     developperGenre,
@@ -7,14 +7,16 @@
     filtrer,
     lettrine,
     lireDefinition,
+    nomCourt,
     ordonner,
     type Mot,
   } from '@jolis-mots/core';
   import Fiche from '../composants/Fiche.svelte';
   import { etat } from '../etat.svelte';
+  import { volet } from '../volet';
 
-  const BOUVIER = 'Nicolas Bouvier';
-  const TESSON = 'Sylvain Tesson';
+  /** Les auteurs qui ont leur propre filtre, dans l'ordre des boutons. */
+  const PRINCIPAUX = ['Nicolas Bouvier', 'Sylvain Tesson', 'François Rollin', 'Didier Méral'];
 
   interface Ligne {
     mot: Mot;
@@ -59,10 +61,8 @@
     }
     return res;
   });
-  const autresAuteurs = $derived(
-    auteursParNombre(etat.complets).filter((a) => a.auteur !== BOUVIER && a.auteur !== TESSON),
-  );
-  const autreChoisi = $derived(auteur !== null && auteur !== BOUVIER && auteur !== TESSON ? auteur : null);
+  const autresAuteurs = $derived(auteursParNombre(etat.complets).filter((a) => !PRINCIPAUX.includes(a.auteur)));
+  const autreChoisi = $derived(auteur !== null && !PRINCIPAUX.includes(auteur) ? auteur : null);
 
   const ouvert = $derived(etat.ficheOuverte === null ? null : (etat.complets.find((m) => m.id === etat.ficheOuverte) ?? null));
   const favoriOuvert = $derived(ouvert !== null && etat.favoris.includes(ouvert.id));
@@ -72,17 +72,35 @@
     return `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} ${n > 1 ? 'mots' : 'mot'}`;
   }
 
-  function choisir(a: string | null, favoris = false): void {
+  /** Un seul filtre allumé à la fois ; toucher le filtre allumé l'éteint. */
+  function basculerAuteur(a: string): void {
+    auteur = auteur === a ? null : a;
+    favorisSeuls = false;
+  }
+
+  function basculerFavoris(): void {
+    favorisSeuls = !favorisSeuls;
+    auteur = null;
+  }
+
+  /** « Autres » éteint l'auteur choisi s'il y en a un, sinon ouvre le volet des auteurs. */
+  function autres(): void {
+    if (autreChoisi !== null) auteur = null;
+    else etat.panneauAuteurs = true;
+  }
+
+  function choisirAutre(a: string): void {
     auteur = a;
-    favorisSeuls = favoris;
+    favorisSeuls = false;
     etat.panneauAuteurs = false;
   }
 
-  async function retour(): Promise<void> {
-    const id = etat.ficheOuverte;
+  function fermerFiche(): void {
     etat.ficheOuverte = null;
-    await tick();
-    document.querySelector<HTMLElement>(`[data-id="${id}"]`)?.focus({ preventScroll: true });
+  }
+
+  function fermerAuteurs(): void {
+    etat.panneauAuteurs = false;
   }
 
   // Quitter l'écran referme la fiche et le volet : on y revient sur la liste.
@@ -105,12 +123,25 @@
       <input id="recherche" type="search" placeholder="Chercher un mot" autocomplete="off" bind:value={requete} />
     </div>
     <div class="filtres">
-      <button aria-pressed={auteur === null && !favorisSeuls} onclick={() => choisir(null)}>Tous</button>
-      <button aria-pressed={auteur === BOUVIER} onclick={() => choisir(BOUVIER)}>Bouvier</button>
-      <button aria-pressed={auteur === TESSON} onclick={() => choisir(TESSON)}>Tesson</button>
-      <button aria-pressed={favorisSeuls} onclick={() => choisir(null, true)}>Favoris</button>
-      <button aria-pressed={autreChoisi !== null} aria-haspopup="dialog" onclick={() => (etat.panneauAuteurs = true)}>
-        {autreChoisi === null ? 'Autres auteurs' : embellir(autreChoisi)}
+      {#each PRINCIPAUX as a (a)}
+        <button aria-pressed={auteur === a} onclick={() => basculerAuteur(a)}><span>{nomCourt(a)}</span></button>
+      {/each}
+      <!-- « Favoris » en toutes lettres ne tient pas sur la ligne à 411 px : l'étoile de l'écran Mot le remplace. -->
+      <button aria-pressed={favorisSeuls} aria-label="Favoris" onclick={basculerFavoris}>
+        <span class="etoile-filtre">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill={favorisSeuls ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg>
+        </span>
+      </button>
+      <!-- Un nom long est coupé d'un « … » pour garder la ligne ; le nom entier reste dit et survolable. -->
+      <button
+        class="autre"
+        aria-pressed={autreChoisi !== null}
+        aria-haspopup={autreChoisi === null ? 'dialog' : undefined}
+        aria-label={autreChoisi === null ? undefined : embellir(autreChoisi)}
+        title={autreChoisi === null ? undefined : embellir(autreChoisi)}
+        onclick={autres}
+      >
+        <span>{autreChoisi === null ? 'Autres' : embellir(nomCourt(autreChoisi))}</span>
       </button>
     </div>
   </div>
@@ -139,7 +170,7 @@
 </div>
 
 {#if ouvert !== null}
-  <section class="volet" aria-label="Fiche du mot">
+  <div class="volet" role="dialog" aria-modal="true" aria-label="Fiche du mot" use:volet={{ fermer: fermerFiche }}>
     <div class="defilement"><Fiche mot={ouvert} /></div>
     <div class="actions">
       <button
@@ -151,22 +182,19 @@
       >
         <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill={favoriOuvert ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg>
       </button>
-      <button class="principal" onclick={retour}>Retour au recueil</button>
+      <button class="principal" data-depart onclick={fermerFiche}>Retour au recueil</button>
     </div>
-  </section>
+  </div>
 {/if}
 
 {#if etat.panneauAuteurs}
-  <section class="volet" role="dialog" aria-label="Autres auteurs">
+  <div class="volet" role="dialog" aria-modal="true" aria-label="Autres auteurs" use:volet={{ fermer: fermerAuteurs }}>
     <div class="defilement">
       <h2 class="intitule">Autres auteurs</h2>
       <ul>
-        <li>
-          <button class="auteur" onclick={() => choisir(null)}>Tous</button>
-        </li>
-        {#each autresAuteurs as a (a.auteur)}
+        {#each autresAuteurs as a, i (a.auteur)}
           <li>
-            <button class="auteur" aria-pressed={auteur === a.auteur} onclick={() => choisir(a.auteur)}>
+            <button class="auteur" data-depart={i === 0 ? '' : undefined} onclick={() => choisirAutre(a.auteur)}>
               <span>{embellir(a.auteur)}</span>
               <span class="nombre">{compte(a.nombre)}</span>
             </button>
@@ -175,9 +203,9 @@
       </ul>
     </div>
     <div class="actions">
-      <button class="principal" onclick={() => (etat.panneauAuteurs = false)}>Fermer</button>
+      <button class="principal" data-depart={autresAuteurs.length === 0 ? '' : undefined} onclick={fermerAuteurs}>Fermer</button>
     </div>
-  </section>
+  </div>
 {/if}
 
 <style>
@@ -254,31 +282,82 @@
     outline-offset: 2px;
   }
 
+  /*
+   * Une seule ligne : sur un écran trop étroit, elle défile de côté plutôt que de passer à la ligne.
+   * Les boutons gardent 44 px de zone tactile ; seule leur pastille (32 px) est dessinée.
+   */
   .filtres {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 4px;
+    /* 4 px de part et d'autre pour que le cadre du curseur ne soit pas rogné ; les pastilles restent alignées sur la recherche. */
+    margin: -6px -4px;
+    padding: 0 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
   .filtres button {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
     height: 44px;
-    max-width: 100%;
-    padding: 0 16px;
-    border: 1px solid var(--second);
-    border-radius: 22px;
+    padding: 0;
+    border: none;
     background: transparent;
-    color: var(--encre);
-    font-size: 17px;
     cursor: pointer;
+  }
+
+  .filtres span {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--second);
+    border-radius: 16px;
+    color: var(--encre);
+    font-size: 15px;
     white-space: nowrap;
+  }
+
+  /*
+   * Le filtre d'un autre auteur prend la place qui reste sur la ligne, et pas plus :
+   * un nom trop long (Houellebecq) finit par « … ».
+   */
+  .filtres .autre {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .filtres .autre span {
+    display: block;
+    min-width: 0;
+    line-height: 30px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .filtres button[aria-pressed='true'] {
+  /* L'étoile seule : une pastille de 44 px de large, la largeur minimale d'une zone tactile. */
+  .filtres .etoile-filtre {
+    justify-content: center;
+    width: 44px;
+  }
+
+  .filtres button[aria-pressed='true'] span {
     border-color: var(--encre);
     background: var(--encre);
     color: var(--papier);
+  }
+
+  /* Le cadre du curseur suit la pastille, et non la zone tactile invisible. */
+  .filtres button:focus-visible {
+    outline: none;
+  }
+
+  .filtres button:focus-visible span {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .liste {
@@ -412,10 +491,6 @@
     text-align: left;
     cursor: pointer;
     color: var(--encre);
-  }
-
-  .auteur[aria-pressed='true'] {
-    color: var(--accent);
   }
 
   .nombre {

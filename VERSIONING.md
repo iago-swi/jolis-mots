@@ -75,10 +75,10 @@ Quand Philippe dit **« publie »**, faire toutes les étapes ci-dessous. Quand 
    git push origin v1.2.0
    ```
 
-7. L'envoi de l'étiquette lance la [publication automatique](.github/workflows/release.yml). Elle lit dans le journal la section de cette version et la publie sur GitHub sous le titre « Jolis Mots 1.2.0 ». Joindre ensuite les fichiers à télécharger :
+7. L'envoi de l'étiquette lance la [publication automatique](.github/workflows/release.yml). Elle lit dans le journal la section de cette version et la publie sur GitHub sous le titre « Jolis Mots 1.2.0 ». Joindre ensuite les trois fichiers à télécharger : l'APK signé (`npm run package:android`), l'installeur et la version portable pour Windows (`npm run package:desktop`) :
 
    ```bash
-   gh release upload v1.2.0 chemin/vers/Jolis-Mots-1.2.0.apk chemin/vers/Jolis-Mots-1.2.0-setup.exe
+   gh release upload v1.2.0 apps/android/release/Jolis-Mots-1.2.0.apk apps/desktop/release/Jolis-Mots-1.2.0-setup.exe apps/desktop/release/Jolis-Mots-1.2.0-portable.exe
    gh release view v1.2.0
    ```
 

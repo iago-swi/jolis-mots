@@ -16,11 +16,13 @@
  *   compris, cadrées sur la partie visible d'une icône adaptative.
  * - la couleur de fond, que l'icône adaptative pose sous la couche.
  *
- * Il réécrit aussi l'écran de lancement : chaque `splash.png` que Capacitor a
- * créé (`drawable*`, `drawable-night*`) devient un fond papier avec la marque
- * « jm » au centre, large d'un quart du petit côté, aux mêmes dimensions que
- * l'image remplacée. Et le thème de lancement d'Android 12 et plus reçoit le
- * même fond papier. Le fond de la fenêtre de l'application devient le papier
+ * Il réécrit aussi l'écran de lancement, aux couleurs de Papier le jour et de
+ * Nuit en mode sombre : chaque `splash.png` que Capacitor a créé (`drawable*`)
+ * devient un fond papier avec la marque « jm » au centre, large d'un quart du
+ * petit côté, aux mêmes dimensions que l'image remplacée, et reçoit sa version
+ * Nuit dans le dossier `-night` correspondant. Le thème de lancement d'Android 12
+ * et plus prend le fond `fond_lancement` et la marque `marque_lancement`, qui
+ * ont chacun leur version Nuit. Le fond de la fenêtre de l'application devient le papier
  * de Papier le jour et celui de Nuit en mode sombre. Le dossier `android/` étant généré, un nouveau
  * `npx cap add android` suivi de ce script redonne le même résultat.
  */
@@ -39,6 +41,10 @@ const SVG = path.join(ICI, 'assets', 'icone.svg');
 const PAPIER = '#F3F4EF';
 const ENCRE = '#1A2230';
 const VERMILLON = '#B8321E';
+
+/** Les couleurs de la marque : celles de Papier, et celles de Nuit pour l'écran de lancement en mode sombre. */
+const JOUR = { papier: PAPIER, encre: ENCRE, accent: VERMILLON };
+const NUIT = { papier: '#14181F', encre: '#ECE9E0', accent: '#E8765F' };
 
 /** Canevas d'une icône adaptative (dp) et diamètre du cercle toujours visible. */
 const CANEVAS = 108;
@@ -79,7 +85,10 @@ async function finDeLaQueue(lettres, y) {
   return x / PAR_DP;
 }
 
-/** Dessine « jm » souligné ; rend le SVG complet (fond papier) et la seule couche de premier plan. */
+/**
+ * Dessine « jm » souligné ; rend le SVG complet (fond papier), la seule couche de premier plan,
+ * et cette couche aux couleurs de Nuit.
+ */
 async function dessiner() {
   const octets = await readFile(fichierPolice);
   const police = opentype.parse(
@@ -109,14 +118,16 @@ async function dessiner() {
   const fin = x0 + mesure.x2 * echelle;
   const trait = { x: r(debut), y: r(y), l: r(fin - debut), h: r(h) };
   // Le contour papier des lettres détache le filet de la queue du j.
-  const premierPlan = [
-    `<rect x="${trait.x}" y="${trait.y}" width="${trait.l}" height="${trait.h}" fill="${VERMILLON}"/>`,
-    `<path d="${lettres}" fill="${ENCRE}" stroke="${PAPIER}" stroke-width="${HALO}" stroke-linejoin="round" paint-order="stroke"/>`,
-  ].join('\n  ');
+  const couche = ({ papier, encre, accent }) =>
+    [
+      `<rect x="${trait.x}" y="${trait.y}" width="${trait.l}" height="${trait.h}" fill="${accent}"/>`,
+      `<path d="${lettres}" fill="${encre}" stroke="${papier}" stroke-width="${HALO}" stroke-linejoin="round" paint-order="stroke"/>`,
+    ].join('\n  ');
   const ouvrir = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CANEVAS} ${CANEVAS}" width="${CANEVAS}" height="${CANEVAS}">`;
   return {
-    complet: `${ouvrir}\n  <rect width="${CANEVAS}" height="${CANEVAS}" fill="${PAPIER}"/>\n  ${premierPlan}\n</svg>\n`,
-    premierPlan: `${ouvrir}\n  ${premierPlan}\n</svg>\n`,
+    complet: `${ouvrir}\n  <rect width="${CANEVAS}" height="${CANEVAS}" fill="${PAPIER}"/>\n  ${couche(JOUR)}\n</svg>\n`,
+    premierPlan: `${ouvrir}\n  ${couche(JOUR)}\n</svg>\n`,
+    premierPlanNuit: `${ouvrir}\n  ${couche(NUIT)}\n</svg>\n`,
     /** Largeur du dessin (dp), queue du j comprise. */
     largeur: largeur * echelle,
   };
@@ -134,17 +145,45 @@ function cadrer(svg) {
   return svg.replace(`viewBox="0 0 ${CANEVAS} ${CANEVAS}"`, `viewBox="${marge} ${marge} 72 72"`);
 }
 
-const { complet, premierPlan, largeur } = await dessiner();
+const { complet, premierPlan, premierPlanNuit, largeur } = await dessiner();
 await writeFile(SVG, complet, 'utf8');
 console.log(`dessin écrit : ${path.relative(process.cwd(), SVG)}`);
 
-/** Écran de lancement : fond papier, la marque au centre, large d'un quart du petit côté. */
-async function ecranDeLancement(l, h) {
+/**
+ * Écran de lancement : fond papier, la marque au centre, large d'un quart du petit côté.
+ * `nuit` : le papier, l'encre et l'accent de Nuit.
+ */
+async function ecranDeLancement(l, h, nuit = false) {
   const cote = Math.round(((Math.min(l, h) / 4) * CANEVAS) / largeur);
-  return sharp({ create: { width: l, height: h, channels: 3, background: PAPIER } })
-    .composite([{ input: await rendre(premierPlan, cote), gravity: 'centre' }])
+  const fond = nuit ? NUIT.papier : PAPIER;
+  return sharp({ create: { width: l, height: h, channels: 3, background: fond } })
+    .composite([{ input: await rendre(nuit ? premierPlanNuit : premierPlan, cote), gravity: 'centre' }])
     .png({ compressionLevel: 9 })
     .toBuffer();
+}
+
+/**
+ * Dossier `-night` d'un dossier de ressources : Android veut le qualificatif après l'orientation
+ * et avant la densité (`drawable-port-xxhdpi` → `drawable-port-night-xxhdpi`).
+ */
+function dossierNuit(dossier) {
+  const parties = dossier.split('-');
+  const apres = parties[1] === 'port' || parties[1] === 'land' ? 2 : 1;
+  parties.splice(apres, 0, 'night');
+  return parties.join('-');
+}
+
+/** Pose `<item name="…">valeur</item>` dans un style de `styles.xml` : remplace l'item s'il y est, l'ajoute sinon. */
+function poserItem(xml, style, nom, valeur) {
+  const bloc = new RegExp(`<style name="${style.replace('.', '\\.')}"[^>]*>[\\s\\S]*?</style>`);
+  const trouve = xml.match(bloc);
+  if (!trouve) return null;
+  const item = `<item name="${nom}">${valeur}</item>`;
+  const existant = new RegExp(`<item name="${nom}">[^<]*</item>`);
+  const nouveau = existant.test(trouve[0])
+    ? trouve[0].replace(existant, item)
+    : trouve[0].replace(/(<style[^>]*>)/, `$1\n        ${item}`);
+  return xml.replace(trouve[0], nouveau);
 }
 
 /** `--apercu <fichier>` : l'icône en 512 px ; `--apercu-accueil <fichier>` : l'écran de lancement en 1080 × 1920. */
@@ -183,14 +222,18 @@ console.log(
   `icônes Android écrites pour ${DENSITES.map((d) => d.dir).join(', ')} ; fond adaptatif ${PAPIER}`,
 );
 
-// Chaque image de lancement créée par Capacitor est remplacée, à ses dimensions.
-const dossiers = (await readdir(RES)).filter((d) => d.startsWith('drawable'));
+// Chaque image de lancement créée par Capacitor est remplacée, à ses dimensions, et reçoit sa
+// version Nuit dans le dossier `-night` correspondant (ceux-là sont réécrits, pas relus).
+const dossiers = (await readdir(RES)).filter((d) => d.startsWith('drawable') && !d.split('-').includes('night'));
 let remplacees = 0;
 for (const dossier of dossiers) {
   const fichier = path.join(RES, dossier, 'splash.png');
   if (!existsSync(fichier)) continue;
   const { width, height } = await sharp(fichier).metadata();
   await writeFile(fichier, await ecranDeLancement(width, height));
+  const nuit = path.join(RES, dossierNuit(dossier));
+  await mkdir(nuit, { recursive: true });
+  await writeFile(path.join(nuit, 'splash.png'), await ecranDeLancement(width, height, true));
   remplacees += 1;
 }
 if (remplacees === 0) {
@@ -198,28 +241,64 @@ if (remplacees === 0) {
   process.exit(1);
 }
 
-// Android 12 et plus dessinent leur propre écran de lancement : même fond papier.
+// Android 12 et plus dessinent leur propre écran de lancement, avec le fond `fond_lancement` et la
+// marque `marque_lancement` : une icône adaptative faite des mêmes couches que celle du lanceur le
+// jour, et de la couche aux couleurs de Nuit en mode sombre. Les icônes du lanceur ne changent pas.
+for (const [dossier, couleur] of [
+  ['values', PAPIER],
+  ['values-night', NUIT.papier],
+]) {
+  await mkdir(path.join(RES, dossier), { recursive: true });
+  await writeFile(
+    path.join(RES, dossier, 'fond_lancement.xml'),
+    `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="fond_lancement">${couleur}</color>\n</resources>\n`,
+    'utf8',
+  );
+}
+for (const { dir, adaptative } of DENSITES) {
+  for (const [dossier, couche] of [
+    [`mipmap-${dir}`, premierPlan],
+    [`mipmap-night-${dir}`, premierPlanNuit],
+  ]) {
+    await mkdir(path.join(RES, dossier), { recursive: true });
+    await writeFile(path.join(RES, dossier, 'marque_lancement.png'), await rendre(couche, adaptative));
+  }
+}
+await mkdir(path.join(RES, 'drawable-anydpi-v31'), { recursive: true });
+await writeFile(
+  path.join(RES, 'drawable-anydpi-v31', 'marque_lancement.xml'),
+  `<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/fond_lancement"/>\n    <foreground android:drawable="@mipmap/marque_lancement"/>\n</adaptive-icon>\n`,
+  'utf8',
+);
+// Avant Android 12, la bibliothèque de lancement garde son icône par défaut, comme jusqu'ici.
+await writeFile(
+  path.join(RES, 'values', 'marque_lancement.xml'),
+  `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <item name="marque_lancement" type="drawable">@android:drawable/sym_def_app_icon</item>\n</resources>\n`,
+  'utf8',
+);
+
 const styles = path.join(RES, 'values', 'styles.xml');
-const theme = await readFile(styles, 'utf8');
-const fond = '<item name="windowSplashScreenBackground">@color/ic_launcher_background</item>';
-if (!theme.includes(fond)) {
-  const lancement = /(<style name="AppTheme\.NoActionBarLaunch"[^>]*>)/;
-  if (!lancement.test(theme)) {
+let theme = await readFile(styles, 'utf8');
+for (const [nom, valeur] of [
+  ['windowSplashScreenBackground', '@color/fond_lancement'],
+  ['windowSplashScreenAnimatedIcon', '@drawable/marque_lancement'],
+]) {
+  theme = poserItem(theme, 'AppTheme.NoActionBarLaunch', nom, valeur);
+  if (theme === null) {
     console.error(`Thème AppTheme.NoActionBarLaunch introuvable dans ${styles}`);
     process.exit(1);
   }
-  await writeFile(styles, theme.replace(lancement, `$1\n        ${fond}`), 'utf8');
 }
+await writeFile(styles, theme, 'utf8');
 
-console.log(`écran de lancement écrit : ${remplacees} images, fond ${PAPIER}`);
+console.log(`écran de lancement écrit : ${remplacees} images, fond ${PAPIER} le jour, ${NUIT.papier} en mode sombre`);
 
 // Fond de la fenêtre : sur une WebView d'avant Chromium 140, Capacitor décale la page sous les
 // barres du système, qui restent posées sur ce fond. Il prend le papier de Papier le jour et celui
 // de Nuit en mode sombre, comme « Comme le système ».
-const NUIT = '#14181F';
 for (const [dossier, couleur] of [
   ['values', PAPIER],
-  ['values-night', NUIT],
+  ['values-night', NUIT.papier],
 ]) {
   await mkdir(path.join(RES, dossier), { recursive: true });
   await writeFile(
@@ -238,4 +317,4 @@ if (!themeApp.includes(fondFenetre)) {
   }
   await writeFile(styles, themeApp.replace(application, `$1\n        ${fondFenetre}`), 'utf8');
 }
-console.log(`fond de la fenêtre : ${PAPIER} le jour, ${NUIT} en mode sombre`);
+console.log(`fond de la fenêtre : ${PAPIER} le jour, ${NUIT.papier} en mode sombre`);

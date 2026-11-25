@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { etat, SEANCES_POSSIBLES, type Palette } from '../etat.svelte';
+  import { QUESTIONS_POSSIBLES } from '@jolis-mots/core';
+  import { etat, type Palette } from '../etat.svelte';
+  import { volet } from '../volet';
 
   const PALETTES: { id: Palette; nom: string }[] = [
     { id: 'systeme', nom: 'Comme le système' },
@@ -26,6 +28,10 @@
     etat.effacerProgres();
     confirmation = false;
   }
+
+  function annuler(): void {
+    confirmation = false;
+  }
 </script>
 
 <div class="reglages">
@@ -39,11 +45,11 @@
     </header>
 
     <fieldset>
-      <legend>Mots par séance</legend>
+      <legend>Questions par quiz</legend>
       <div class="choix">
-        {#each SEANCES_POSSIBLES as n (n)}
+        {#each QUESTIONS_POSSIBLES as n (n)}
           <label class="pastille">
-            <input type="radio" name="seance" value={n} checked={etat.reglages.motsParSeance === n} onchange={() => etat.reglerSeance(n)} />
+            <input type="radio" name="questions" value={n} checked={etat.reglages.questionsParQuiz === n} onchange={() => etat.reglerQuestions(n)} />
             <span>{n}</span>
           </label>
         {/each}
@@ -72,16 +78,19 @@
     </dl>
 
     <div class="effacer">
+      <!--
+        Le lien reste affiché au-dessus de la question : le curseur y revient quand elle se ferme.
+        (Caché, il perdrait le curseur avant que le volet ne le retienne.)
+      -->
+      <button class="lien" onclick={() => (confirmation = true)}>Effacer mes progrès</button>
       {#if confirmation}
-        <div role="alertdialog" aria-labelledby="question-effacer" bind:this={question}>
-          <p id="question-effacer">Effacer les mots vus, les révisions et les favoris ?</p>
+        <div role="alertdialog" aria-labelledby="question-effacer" bind:this={question} use:volet={{ fermer: annuler }}>
+          <p id="question-effacer">Effacer les mots vus, les révisions et les favoris&#x202F;?</p>
           <div class="boutons">
             <button class="danger" onclick={effacer}>Effacer</button>
-            <button onclick={() => (confirmation = false)}>Annuler</button>
+            <button data-depart onclick={annuler}>Annuler</button>
           </div>
         </div>
-      {:else}
-        <button class="lien" onclick={() => (confirmation = true)}>Effacer mes progrès</button>
       {/if}
     </div>
   </div>

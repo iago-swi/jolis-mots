@@ -1,10 +1,10 @@
 {
   "name": "@jolis-mots/android",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "sync": "cap sync android && node make-icons.mjs",
+    "sync": "cap sync android && node make-icons.mjs && node ajuster-projet.mjs",
     "open": "cap open android",
     "icons": "node make-icons.mjs",
     "apk": "node build-apk.mjs"

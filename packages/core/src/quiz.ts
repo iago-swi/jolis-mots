@@ -1,6 +1,7 @@
 import { lireDefinition } from './definition';
 import { premierTerme } from './genre';
-import { motsDus } from './memoire';
+import { melanger } from './hasard';
+import { motsARevoir } from './memoire';
 import type { Progres } from './memoire';
 import { normaliser } from './recherche';
 import type { Mot } from './types';
@@ -19,8 +20,11 @@ export interface Question {
   bonne: string;
 }
 
-/** Nombre de mots dus (hors séance) ajoutés au quiz, au plus. */
-export const DUS_MAX = 5;
+/** Sur quels mots porte un quiz : tous les mots, ou ceux déjà vus et pas encore acquis. */
+export type Portee = 'tous' | 'vus';
+/** Nombres de questions proposés. */
+export const QUESTIONS_POSSIBLES: readonly number[] = [5, 10, 15, 20];
+export const QUESTIONS_PAR_DEFAUT = 10;
 const MAUVAISES = 3;
 const MASQUE = '—';
 
@@ -63,25 +67,18 @@ function masquer(texte: string, termes: string[]): string {
 }
 
 /**
- * Texte de définition présenté au quiz : le premier texte non vide, mot masqué ;
+ * Texte de définition présenté au quiz : le premier texte non vide (celui d'un sens numéroté, s'il en existe), mot masqué ;
  * à défaut, les synonymes du premier sens qui en a ; sinon une chaîne vide (le mot n'est alors pas interrogé).
  */
 export function definitionPourQuiz(m: Mot): string {
   const sens = lireDefinition(m.definition);
-  const avecTexte = sens.find((s) => s.texte !== '');
+  // Un chapeau (sens sans numéro) précède les sens numérotés : le quiz interroge sur le premier d'entre eux.
+  const numerotes = sens.filter((s) => s.numero !== null);
+  const avecTexte = numerotes.find((s) => s.texte !== '') ?? sens.find((s) => s.texte !== '');
   if (avecTexte) return masquer(avecTexte.texte, [m.mot, m.tri]);
   const avecSynonymes = sens.find((s) => s.synonymes.length > 0);
   if (avecSynonymes) return `Synonymes : ${avecSynonymes.synonymes.join(', ')}`;
   return '';
-}
-
-function melanger<T>(liste: readonly T[], alea: () => number): T[] {
-  const r = [...liste];
-  for (let i = r.length - 1; i > 0; i--) {
-    const j = Math.floor(alea() * (i + 1));
-    [r[i], r[j]] = [r[j] as T, r[i] as T];
-  }
-  return r;
 }
 
 /**
@@ -125,29 +122,46 @@ function mauvaisesReponses(
   return prises;
 }
 
-/** Compose les questions : tous les mots de la séance d'abord, puis cinq mots dus au plus (hors séance). */
+/** Mots complets dont le texte au quiz n'est pas vide, avec ce texte calculé une seule fois. */
+function interrogeablesDe(complets: Mot[]): { interrogeables: Mot[]; definitionAuQuiz: (m: Mot) => string } {
+  const textes = new Map(complets.map((m) => [m, definitionPourQuiz(m)]));
+  const definitionAuQuiz = (m: Mot) => textes.get(m) ?? definitionPourQuiz(m);
+  return { interrogeables: complets.filter((m) => definitionAuQuiz(m) !== ''), definitionAuQuiz };
+}
+
+/** Nombre de mots que chaque portée permet d'interroger ; un progrès qui cite un mot absent de la liste est ignoré. */
+export function compterPortees(complets: Mot[], progres: Progres): Record<Portee, number> {
+  const { interrogeables } = interrogeablesDe(complets);
+  const vus = interrogeables.filter((m) => Object.hasOwn(progres, m.id) && !progres[m.id]?.acquis).length;
+  return { tous: interrogeables.length, vus };
+}
+
+/**
+ * Compose les questions : les `nombre` premiers mots de la portée choisie pour lesquels une mauvaise réponse existe.
+ * « tous » : les mots interrogeables, mélangés. « vus » : les mots à revoir (les dus d'abord), interrogeables.
+ */
 export function composerQuiz(a: {
   complets: Mot[];
-  seance: string[];
   progres: Progres;
+  portee: Portee;
+  nombre: number;
   maintenant: Date;
   alea: () => number;
 }): Question[] {
-  // Texte au quiz de chaque mot, calculé une seule fois.
-  const textesAuQuiz = new Map(a.complets.map((m) => [m, definitionPourQuiz(m)]));
-  const definitionAuQuiz = (m: Mot) => textesAuQuiz.get(m) ?? definitionPourQuiz(m);
-  const interrogeables = a.complets.filter((m) => definitionAuQuiz(m) !== '');
-  const parId = new Map(interrogeables.map((m) => [m.id, m]));
-  const dansSeance = new Set(a.seance);
-  const dus = motsDus(a.progres, a.maintenant).filter((id) => !dansSeance.has(id));
-  const ordre = [...dansSeance, ...dus];
-  const aInterroger = ordre.map((id) => parId.get(id)).filter((m): m is Mot => m !== undefined);
+  const { interrogeables, definitionAuQuiz } = interrogeablesDe(a.complets);
+  let aInterroger: Mot[];
+  if (a.portee === 'tous') {
+    aInterroger = melanger(interrogeables, a.alea);
+  } else {
+    const parId = new Map(interrogeables.map((m) => [m.id, m]));
+    aInterroger = motsARevoir(a.progres, a.maintenant, a.alea)
+      .map((id) => parId.get(id))
+      .filter((m): m is Mot => m !== undefined);
+  }
 
   const questions: Question[] = [];
-  let dusPoses = 0;
   for (const m of aInterroger) {
-    const estDu = !dansSeance.has(m.id);
-    if (estDu && dusPoses === DUS_MAX) break;
+    if (questions.length === a.nombre) break;
     const forme: Forme = questions.length % 2 === 0 ? 'definition-vers-mot' : 'mot-vers-definition';
     const texte = (c: Mot) => (forme === 'definition-vers-mot' ? c.mot : definitionAuQuiz(c));
     const mauvaises = mauvaisesReponses(m, interrogeables, a.alea, texte, definitionAuQuiz);
@@ -161,7 +175,6 @@ export function composerQuiz(a: {
       choix,
       bonne: m.id,
     });
-    if (estDu) dusPoses++;
   }
   return questions;
 }

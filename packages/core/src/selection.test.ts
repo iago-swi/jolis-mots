@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { marquerMontre, type EtatMot, type Progres } from './memoire';
+import { marquerMontre, repondre, type EtatMot, type Progres } from './memoire';
 import { prochainMot } from './selection';
 import type { Mot } from './types';
 
@@ -54,4 +54,19 @@ it('parmi les mots déjà vus, ignore ceux de la séance', () => {
   const [a, b] = [mot('A', 'a'), mot('B', 'b')];
   const progres = { [a.id]: etat('2026-01-01'), [b.id]: etat('2026-02-01') };
   expect(prochainMot([a, b], progres, [a.id], () => 0)?.id).toBe(b.id);
+});
+
+it('un mot rencontré seulement au quiz reste à lire, comme un mot neuf', () => {
+  const [m1, m2] = [mot('A', 'a'), mot('B', 'b')];
+  const quizSeul = repondre({}, m1.id, true, new Date(Date.UTC(2026, 10, 24)));
+  expect(prochainMot([m1], quizSeul, [], () => 0)).toBe(m1);
+  // m2 est neuf, m1 vu seulement au quiz : les deux sont à lire, le hasard tranche
+  expect(prochainMot([m1, m2], quizSeul, [], () => 0)).toBe(m1);
+  expect(prochainMot([m1, m2], quizSeul, [], () => 0.99)).toBe(m2);
+});
+
+it('parmi des mots tous montrés, sort le plus anciennement vu', () => {
+  const [m1, m2] = [mot('A', 'a'), mot('B', 'b')];
+  const tousVus = { [m1.id]: etat('2026-11-23'), [m2.id]: etat('2026-11-21') };
+  expect(prochainMot([m1, m2], tousVus, [], () => 0)).toBe(m2);
 });

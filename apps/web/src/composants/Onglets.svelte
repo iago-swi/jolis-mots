@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { atelier } from '../atelier.svelte';
   import { etat, type Ecran } from '../etat.svelte';
 
   const onglets: { ecran: Ecran; nom: string }[] = [
     { ecran: 'mot', nom: 'Mot' },
     { ecran: 'quiz', nom: 'Quiz' },
     { ecran: 'recueil', nom: 'Recueil' },
+    // Sur bureau seulement.
+    ...(atelier === null ? [] : [{ ecran: 'atelier' as const, nom: 'Atelier' }]),
   ];
 </script>
 
@@ -23,8 +26,10 @@
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 5.5c2.5-1 5.5-1 8 .5 2.5-1.5 5.5-1.5 8-.5v13c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"></path><path d="M12 6v13"></path></svg>
       {:else if o.ecran === 'quiz'}
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M8.5 12.2l2.4 2.4 4.6-5"></path></svg>
-      {:else}
+      {:else if o.ecran === 'recueil'}
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"></path></svg>
+      {:else}
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19l1-4.5L15.5 5a2.1 2.1 0 0 1 3 3L9 17.5z"></path><path d="M13.5 7l3 3"></path><path d="M13 19h6"></path></svg>
       {/if}
       <span>{o.nom}</span>
     </a>
@@ -38,6 +43,8 @@
     /* Les onglets restent au-dessus de la barre de gestes ; le fond s'étend dessous. */
     height: calc(66px + var(--marge-bas));
     padding-bottom: var(--marge-bas);
+    /* Sur bureau, les onglets se rangent dans la colonne de lecture (--colonne, posée par App.svelte). */
+    padding-inline: max(0px, calc((100% - var(--colonne, 100%)) / 2));
     border-top: 1px solid var(--filet);
   }
 

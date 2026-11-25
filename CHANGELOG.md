@@ -2,6 +2,52 @@
 
 Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les règles sont dans [VERSIONING.md](VERSIONING.md).
 
+## [1.0.0] - 2026-11-25
+
+La version Windows, avec l'atelier pour ajouter, modifier et supprimer des mots, puis envoyer la liste au téléphone. Sur le téléphone, la lecture n'a plus de fin et le quiz se choisit.
+
+**Sur Android, il faut désinstaller la version 0.1.0 avant d'installer la 1.0.0. L'application est maintenant signée avec une nouvelle clé, et Android refuse d'installer la 1.0.0 par-dessus la 0.1.0. La désinstallation efface les progrès et les favoris gardés sur le téléphone. Ce n'est à faire qu'une fois.**
+
+### Ajouté
+
+- L'application pour Windows, en deux fichiers au choix : un installeur (`Jolis-Mots-1.0.0-setup.exe`) et une version portable, qui se lance sans installation (`Jolis-Mots-1.0.0-portable.exe`). On y trouve les écrans Mot, Quiz et Recueil, et un quatrième onglet : l'Atelier.
+- L'application Windows n'est pas signée : à l'installation, Windows prévient que l'éditeur est inconnu.
+- La fenêtre de Windows retrouve sa taille et sa place d'une fois à l'autre. L'application ne s'ouvre qu'une fois : la relancer ramène la fenêtre déjà ouverte.
+- L'atelier montre tous les mots, complets ou non, avec une recherche et quatre filtres : Tous les mots, Complets, À compléter et Doublons. Chaque filtre indique son nombre de mots.
+- Le filtre Doublons réunit côte à côte les mots qui ont le même mot ou le même tri, pour choisir lequel garder. Une recherche y garde les groupes entiers.
+- La fiche de l'atelier : Mot, Tri, Genre, Définition, Source, Note, « Utilisé dans mes livres », et la case « À compléter ». Le tri est proposé à partir du mot. Un avertissement apparaît si le mot ou le tri existe déjà.
+- Un mot coché « À compléter » reste dans l'atelier et n'apparaît pas sur le téléphone. La case est cochée d'office pour un nouveau mot.
+- L'aperçu, à côté de la fiche, montre le mot tel qu'il apparaîtra sur le téléphone, pendant la saisie.
+- « Ouvrir dans le CNRTL » ouvre l'article du mot dans le navigateur.
+- Les boutons de la fiche restent visibles en bas. « Enregistrer » est inactif tant que rien n'a changé ; Ctrl+S enregistre aussi.
+- Quitter une fiche modifiée sans l'enregistrer demande confirmation, de même que recharger ou fermer la fenêtre. Supprimer un mot demande confirmation.
+- « Envoyer au téléphone » publie la liste modifiée. À côté, un compteur dit combien de mots ont été ajoutés, modifiés ou supprimés depuis le dernier envoi. Après l'envoi, l'atelier dit : « Liste envoyée. Le téléphone la verra dans quelques minutes. »
+- L'atelier refuse d'envoyer une liste vide, ou une liste où deux mots portent le même identifiant.
+- Quand l'envoi échoue, faute de réseau ou parce que GitHub le refuse, l'atelier le dit en clair, et les modifications restent en attente.
+- Si la liste en ligne a changé ailleurs, rien n'est envoyé. « Reprendre la liste en ligne » met d'abord la version de l'atelier de côté, dans un fichier daté, puis prend la liste en ligne. L'atelier n'écrase jamais la liste en ligne.
+- L'atelier a besoin de `git`, installé sur la machine et autorisé à envoyer sur le dépôt de Jolis Mots. Sans `git`, les écrans Mot, Quiz et Recueil fonctionnent avec la liste fournie avec l'application.
+- Le quiz au choix : « Tous les mots » ou « Les mots que j'ai vus ». Chaque choix indique combien de mots il couvre. Dans « Les mots que j'ai vus », les mots à revoir passent d'abord.
+- Le nombre de questions par quiz, dans les réglages : 5, 10, 15 ou 20 (10 au départ). À la fin d'un quiz, « Encore un quiz » ou « Lire des mots ».
+- Les filtres Rollin et Méral dans le Recueil.
+
+### Modifié
+
+- La lecture n'a plus de séance ni de compteur : « Mot suivant » montre toujours un autre mot. L'écran Mot ne propose plus le quiz, et le réglage du nombre de mots par séance disparaît.
+- Une bonne réponse ne fait monter un mot que s'il est à revoir ce jour-là. Refaire un quiz le même jour ne fait plus brûler les étapes.
+- Un mot rencontré pour la première fois dans un quiz reste à lire sur l'écran Mot.
+- Les filtres du Recueil sont plus petits et tiennent sur une ligne : Bouvier, Tesson, Rollin, Méral, l'étoile des favoris et « Autres ». Le bouton « Tous » disparaît : toucher le filtre allumé l'éteint.
+- Le mot s'affiche toujours à la même grande taille, et une expression passe à la ligne entre ses mots. Seul un mot d'un seul tenant trop long pour une ligne prend une taille plus petite.
+- Sur le téléphone, l'application reste en portrait.
+
+### Corrigé
+
+- Une définition qui commence par une phrase placée avant le « 1. » (« Éployer », « Musarder ») est maintenant découpée en sens numérotés. La phrase s'affiche au-dessus des sens.
+- Une longue indication entre crochets s'affiche en italique, plus facile à lire que les petites capitales.
+- En mode sombre, l'écran de lancement est sombre lui aussi, et l'éclair clair au lancement a disparu.
+- Au clavier, les volets et les questions reçoivent le curseur à l'ouverture et le rendent à la fermeture. La touche Échap les ferme.
+- Le téléphone refuse une liste en ligne vide, ou dont deux mots portent le même identifiant.
+- Dans les textes de l'application, une espace fine insécable précède « ? », « : » et « ; » : un point d'interrogation ne se retrouve plus seul au début d'une ligne.
+
 ## [0.1.0] - 2026-11-24
 
 Première version : l'application Android. La version Windows et l'atelier pour modifier les mots viendront avec la version 1.0.0.
@@ -18,4 +64,5 @@ Première version : l'application Android. La version Windows et l'atelier pour 
 - La mise à jour de la liste en ligne : quand le téléphone a du réseau, l'application récupère au démarrage la dernière liste des mots et l'adopte au prochain mot qu'elle tire. Sans réseau, elle fonctionne avec la liste qu'elle a.
 - Un fichier à installer sur Android (`Jolis-Mots-0.1.0.apk`), avec une icône et un écran de lancement.
 
+[1.0.0]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.0
 [0.1.0]: https://github.com/iago-swi/jolis-mots/releases/tag/v0.1.0

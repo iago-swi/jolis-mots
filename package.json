@@ -1,6 +1,6 @@
 {
   "name": "jolis-mots",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -12,8 +12,13 @@
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
     "dev": "npm run dev -w @jolis-mots/web",
     "build": "npm run build -w @jolis-mots/web",
+    "build:desktop": "npm run build && npm run build -w @jolis-mots/desktop",
+    "start:desktop": "npm run build:desktop && npm run start -w @jolis-mots/desktop",
     "build:android": "npm run build && npm run sync -w @jolis-mots/android",
-    "package:android": "npm run build:android && npm run apk -w @jolis-mots/android",
+    "package:desktop": "node scripts/maj-donnees.mjs && npm run build:desktop && npm run package -w @jolis-mots/desktop",
+    "package:android": "node scripts/maj-donnees.mjs && npm run build:android && npm run apk -w @jolis-mots/android",
+    "cle:android": "npm run apk -w @jolis-mots/android -- --creer-cle",
+    "package:android:debug": "node scripts/maj-donnees.mjs && npm run build:android && npm run apk -w @jolis-mots/android -- --debug",
     "check": "npm run typecheck && npm run build",
     "import": "python -I tools/import/extraire.py vocabulaire.xlsx tools/import/sortie/lignes.json && tsx tools/import/importer.ts",
     "captures": "node scripts/captures.mjs"
@@ -21,6 +26,7 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/node": "^26.2.0",
+    "happy-dom": "^21.0.4",
     "sharp": "^0.35.3",
     "svelte": "^5.56.10",
     "tsx": "^4.23.12",

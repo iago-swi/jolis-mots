@@ -13,8 +13,10 @@ const config: CapacitorConfig = {
   appName: 'Jolis Mots',
   webDir: '../web/dist',
   android: {
-    // Le papier de la palette par défaut : pas d'éclair blanc avant le premier affichage.
-    backgroundColor: '#F3F4EF',
+    // WebView transparente (#RRGGBBAA) : avant le premier affichage de la page, on voit le fond de la
+    // fenêtre (`fond_fenetre`, écrit par make-icons.mjs), papier le jour et Nuit en mode sombre,
+    // plutôt qu'un papier clair fixe en mode sombre ou le blanc par défaut de la WebView.
+    backgroundColor: '#00000000',
   },
   server: {
     androidScheme: 'https',

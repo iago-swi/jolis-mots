@@ -1,0 +1,2 @@
+# Le dessin de l'icône est réécrit en LF par make-icons.mjs : il garde ces fins de ligne une fois extrait.
+apps/android/assets/icone.svg text eol=lf
