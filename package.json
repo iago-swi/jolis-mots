@@ -15,9 +15,10 @@
     "build:desktop": "npm run build && npm run build -w @jolis-mots/desktop",
     "start:desktop": "npm run build:desktop && npm run start -w @jolis-mots/desktop",
     "build:android": "npm run build && npm run sync -w @jolis-mots/android",
-    "package:android": "npm run build:android && npm run apk -w @jolis-mots/android",
+    "package:desktop": "node scripts/maj-donnees.mjs && npm run build:desktop && npm run package -w @jolis-mots/desktop",
+    "package:android": "node scripts/maj-donnees.mjs && npm run build:android && npm run apk -w @jolis-mots/android",
     "cle:android": "npm run apk -w @jolis-mots/android -- --creer-cle",
-    "package:android:debug": "npm run build:android && npm run apk -w @jolis-mots/android -- --debug",
+    "package:android:debug": "node scripts/maj-donnees.mjs && npm run build:android && npm run apk -w @jolis-mots/android -- --debug",
     "check": "npm run typecheck && npm run build",
     "import": "python -I tools/import/extraire.py vocabulaire.xlsx tools/import/sortie/lignes.json && tsx tools/import/importer.ts",
     "captures": "node scripts/captures.mjs"

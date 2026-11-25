@@ -9,13 +9,11 @@
   "scripts": {
     "build": "node build.mjs",
     "start": "electron .",
-    "package": "electron-builder --win --publish never",
+    "package": "node package.mjs",
     "icons": "node make-icons.mjs"
   },
-  "dependencies": {
-    "@jolis-mots/core": "*"
-  },
   "devDependencies": {
+    "@jolis-mots/core": "*",
     "electron": "45.4.1",
     "electron-builder": "^26.0.0",
     "esbuild": "^0.25.0",
@@ -55,11 +53,11 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "Jolis Mots",
-      "artifactName": "${productName}-${version}-setup.${ext}"
+      "artifactName": "Jolis-Mots-${version}-setup.${ext}"
     },
-    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "artifactName": "Jolis-Mots-${version}-${arch}.${ext}",
     "portable": {
-      "artifactName": "${productName}-${version}-portable.${ext}"
+      "artifactName": "Jolis-Mots-${version}-portable.${ext}"
     }
   },
   "author": "Philippe Noth"

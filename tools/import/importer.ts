@@ -1,6 +1,14 @@
-// Import de l'Excel vers donnees/mots.json. Lancé par `npm run import`, depuis la racine du projet.
+// Import de l'Excel vers donnees/mots.json. Lancé par `npm run import -- --ecraser`, depuis la racine du projet.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { creerId, ecrireFichier, importer, lireDefinition, rapportEnMarkdown, validerFichier, type LigneExcel } from '@jolis-mots/core';
+
+// Garde : depuis l'atelier, mots.json est retouché dans l'application ; un import le remplacerait.
+if (!process.argv.slice(2).includes('--ecraser')) {
+  console.error(
+    "L'atelier est désormais la source des mots : relancer l'import écraserait son travail. Pour le faire quand même : npm run import -- --ecraser",
+  );
+  process.exit(1);
+}
 
 const LIGNES = 'tools/import/sortie/lignes.json';
 const RAPPORT = 'tools/import/sortie/rapport-import.md';
