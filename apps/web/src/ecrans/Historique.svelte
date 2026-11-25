@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { atelier } from '../atelier.svelte';
   import { embellir, normaliser, type EntreeHistorique } from '@jolis-mots/core';
   import Fiche from '../composants/Fiche.svelte';
   import { etat } from '../etat.svelte';
@@ -14,14 +15,29 @@
 
   const format = new Intl.DateTimeFormat('fr-CH', { dateStyle: 'long', timeStyle: 'short' });
 
+  /**
+   * Sur bureau, l'historique lu dans l'histoire de la liste en ligne (conception, section 15.5) ;
+   * en l'attendant, ou s'il manque, celui noté sur l'ordinateur.
+   */
+  let duDepot = $state.raw<EntreeHistorique[] | null>(null);
+  let affiche = true;
+  onMount(() => {
+    atelier
+      ?.historiqueDuDepot()
+      .then((h) => {
+        if (affiche) duDepot = h;
+      })
+      .catch(() => undefined);
+  });
   /** Du plus récent au plus ancien. */
-  const entrees = $derived([...etat.historique].reverse());
+  const entrees = $derived([...(duDepot ?? etat.historique)].reverse());
   let deplie = $state<string | null>(null);
   /** Les mots encore dans la liste : eux seuls ouvrent une fiche. */
   const presents = $derived(new Set(etat.complets.map((m) => m.id)));
   // La fiche ouverte passe par l'état, comme au Recueil : le bouton retour d'Android la ferme d'abord.
   const ouvert = $derived(etat.ficheOuverte === null ? null : (etat.complets.find((m) => m.id === etat.ficheOuverte) ?? null));
   onDestroy(() => {
+    affiche = false;
     etat.ficheOuverte = null;
   });
 

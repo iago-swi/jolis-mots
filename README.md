@@ -14,9 +14,9 @@ Un recueil de mots français rares ou beaux, à apprendre dans les moments creux
 
 *Les écrans Mot, Quiz (le choix, puis une question), Recueil et Réglages, dans la palette Papier.*
 
-![L'atelier sous Windows : la liste des mots à gauche, la fiche de « Vénuste » au centre, l'aperçu sur le téléphone à droite](docs/captures/atelier.png)
+![L'atelier sous Windows : la liste des mots et ses cinq filtres à gauche ; au centre, la fiche de « Vénuste », avec Note et Util. sur la première ligne, une remarque du vérificateur et la barre de balises au-dessus de la définition ; l'aperçu sur le téléphone à droite](docs/captures/atelier.png)
 
-*L'atelier, sous Windows : la liste des mots, la fiche à remplir et l'aperçu sur le téléphone.*
+*L'atelier, sous Windows : la liste des mots, la fiche à remplir, avec la barre de balises et une remarque du vérificateur, et l'aperçu sur le téléphone.*
 
 ![L'écran Mot dans les quatre palettes : Papier, Nuit, Ivoire et Céruléen](docs/captures/palettes.png)
 
@@ -77,18 +77,67 @@ Tous les mots qui ont une définition, par ordre alphabétique. On peut chercher
 - **Questions par quiz** : 5, 10, 15 ou 20.
 - **Palette** : Comme le système, Papier, Nuit, Ivoire ou Céruléen.
 - La version de l'application, et la date et l'heure de la liste des mots.
-- **Historique de la liste** : chaque liste reçue, de la plus récente à la plus ancienne, avec sa date, ce qui a changé (« +3 · ~1 · −1 ») et le nombre de mots. Une entrée se déplie : « + » pour un mot ajouté, « ~ » pour un mot modifié, « − » pour un mot supprimé. Toucher un mot ajouté ou modifié ouvre sa fiche. L'historique commence quand la version 1.0.2 s'installe ; une réinstallation le remet à zéro.
+- **Historique de la liste** : chaque liste reçue, de la plus récente à la plus ancienne, avec sa date, ce qui a changé (« +3 · ~1 · −1 ») et le nombre de mots. Une entrée se déplie : « + » pour un mot ajouté, « ~ » pour un mot modifié, « − » pour un mot supprimé. Toucher un mot ajouté ou modifié ouvre sa fiche. Sur le téléphone, l'historique commence quand la version 1.0.2 s'installe ; une réinstallation le remet à zéro. Sous Windows, il est tiré de la liste en ligne (voir l'atelier, plus bas).
 - **Effacer mes progrès** : efface les mots vus, les révisions et les favoris, après confirmation.
 
 ### Atelier (Windows)
 
 L'atelier tient sur trois colonnes.
 
-- **À gauche, la liste** de tous les mots, complets ou non, avec une recherche et quatre filtres, chacun avec son nombre de mots : Tous les mots, Complets, À compléter et Doublons. Doublons réunit côte à côte les mots qui ont le même mot ou le même tri, pour choisir lequel garder ; une recherche y garde les groupes entiers. « Nouveau mot » ouvre une fiche vide.
-- **Au centre, la fiche** : Mot, Tri, Genre, Définition, Source, Note, « Utilisé dans mes livres ». Le tri est proposé à partir du mot et reste modifiable ; le genre propose les valeurs déjà employées. La définition s'écrit comme dans l'Excel, avec les balises habituelles (`1.`, `2.`, `[Litt.]`, `EX:`, `SYN:`, `US:`), et la source prend une ligne par livre, sous la forme `Auteur: Titre (page)`. Un avertissement apparaît si le mot ou le tri existe déjà.
+- **À gauche, la liste** de tous les mots, complets ou non, avec une recherche et cinq filtres, chacun avec son nombre de mots : Tous les mots, Complets, À compléter, À vérifier et Doublons. À vérifier réunit les mots complets qui ont une remarque du vérificateur, et les mots qui ont une proposition de correction (voir plus bas). Doublons réunit côte à côte les mots qui ont le même mot ou le même tri, pour choisir lequel garder ; une recherche y garde les groupes entiers. « Nouveau mot » ouvre une fiche vide ; « Charger des propositions… » est juste en dessous.
+- **Au centre, la fiche** : sur la première ligne Mot, Tri, Genre, puis deux petits champs, **Note** et **Util.** (« Utilisé dans mes livres » : L, LL, LLL ou X), dont le nom entier apparaît au survol ; ensuite Définition et Source. Dans une fenêtre étroite, Genre, Note et Util. passent sur une deuxième ligne, pour que le genre le plus long tienne en entier. Le tri est proposé à partir du mot et reste modifiable ; le genre propose les valeurs déjà employées. La définition s'écrit comme dans l'Excel, avec les balises habituelles (`1.`, `2.`, `[Litt.]`, `EX:`, `SYN:`, `US:`), rappelées au survol du titre « Définition », et la source prend une ligne par livre, sous la forme `Auteur: Titre (page)`. Un avertissement apparaît si le mot ou le tri existe déjà.
 - **À droite, l'aperçu** : la fiche telle qu'elle apparaîtra sur le téléphone, mise à jour pendant la saisie.
 
-Sous la fiche, toujours visibles : la case **À compléter**, **Enregistrer** (ou Ctrl+S), inactif tant que rien n'a changé, **Ouvrir dans le CNRTL**, qui ouvre l'article du mot dans le navigateur, et **Supprimer ce mot**, après confirmation. Tant que la case « À compléter » est cochée, le mot reste dans l'atelier et n'apparaît pas sur le téléphone ; elle est cochée d'office pour un nouveau mot. Quitter une fiche modifiée sans l'enregistrer demande confirmation, de même que recharger ou fermer la fenêtre.
+Sous la fiche, toujours visibles et sur une ligne : la case **À compléter**, **Ouvrir dans le CNRTL**, qui ouvre l'article du mot dans le navigateur, **Supprimer ce mot**, après confirmation, et **Enregistrer** (ou Ctrl+S), inactif tant que rien n'a changé. Dans une fenêtre étroite, les deux liens se disent « CNRTL » et « Supprimer ». Tant que la case « À compléter » est cochée, le mot reste dans l'atelier et n'apparaît pas sur le téléphone ; elle est cochée d'office pour un nouveau mot. Quitter une fiche modifiée sans l'enregistrer demande confirmation, de même que recharger ou fermer la fenêtre.
+
+#### Saisie rapide
+
+Au-dessus de la définition, une barre de balises : `1.`, `[Litt.]`, `[Fig.]`, `[Par ext.]`, `[Vieux]`, `[Fam.]`, `EX:`, `SYN:`, `US:`, et « ⋯ », qui montre les autres. Un clic insère la balise au curseur, et le curseur reste dans la définition. Au survol, chaque bouton montre son abréviation.
+
+Les mêmes balises se tapent au clavier : écrire l'abréviation, puis appuyer sur Tab. Elle est remplacée quand elle suit une espace, un début de ligne ou le début du texte, en minuscules ou en majuscules. Sinon, Tab passe au champ suivant, comme d'habitude. Ctrl+Z annule une insertion comme une frappe.
+
+| Abréviation | Devient |
+| --- | --- |
+| `litt`, `fig`, `ext` | `[Litt.] `, `[Fig.] `, `[Par ext.] ` |
+| `anal`, `meto`, `meta` | `[Par anal.] `, `[Par méton.] `, `[Par métaph.] ` |
+| `vx`, `vi`, `fam` | `[Vieux] `, `[Vieilli] `, `[Fam.] ` |
+| `pej`, `pop`, `rare` | `[Péj.] `, `[Pop.] `, `[Rare] ` |
+| `ex`, `syn`, `us`, `ant` | `EX: `, `SYN: `, `US: `, `ANTON: ` |
+| `n` | un retour à la ligne et le numéro du sens suivant (`2. ` après un `1.`) |
+
+Le bouton `1.` fait comme `n` : en début de ligne, il ne pose que le numéro.
+
+#### Vérificateur
+
+Le vérificateur relit les mots complets. Dans la fiche, entre la première ligne et la définition, une ligne par remarque :
+
+- balise mal écrite (`EX :`, `Ex:`, `Syn:`, `SYN.:`) ;
+- indication entre crochets écrite autrement que d'habitude (`[littér.]` quand `[Litt.]` est connu) ;
+- indication hors crochets en tête d'un sens (« Fig. », « Sens figuré », « fauconnerie Oiseau ») ;
+- numérotation des sens qui saute ou ne commence pas à 1 ;
+- crochet, parenthèse ou guillemet sans pendant ; `EX:` sans exemple ;
+- genre vide, ou inconnu ;
+- espace double, ou espace avant un point ou une virgule (la remarque cite les passages, trois au plus) ;
+- point final manquant à la fin d'un sens ;
+- mots inconnus du dictionnaire français (sous Windows ; voir plus bas).
+
+**Corriger** répare une balise mal écrite, des espaces en trop ou un point final manquant. Le texte ne change que sur ce clic, rien n'est enregistré avant **Enregistrer**, et Ctrl+Z rend le texte d'avant. **C'est voulu** fait taire cette sorte de remarque pour ce mot, durablement : elle ne revient pas, même si la définition change encore. Cela vaut sur cet ordinateur ; pour un mot inconnu du dictionnaire, seuls les mots signalés à ce moment se taisent. Au-delà de trois lignes, « et N autres » montre le reste.
+
+#### Propositions de correction
+
+Une relecture des définitions peut donner un fichier de propositions de correction (un fichier `.json`). Pour le charger : **Charger des propositions…**, sous la liste, puis choisir le fichier. L'atelier dit combien de propositions sont à traiter, et le filtre À vérifier les compte.
+
+Chaque proposition apparaît dans la fiche de son mot, avec les remarques : le passage tel qu'il est, une flèche, le passage corrigé, puis la raison. Un « ? » signale une proposition incertaine. **Corriger** l'applique à la fiche, qu'il faut ensuite enregistrer ; **Non** l'écarte, et elle ne revient pas, même si le fichier est chargé de nouveau. Une proposition dont le passage n'est plus dans la définition ne s'affiche pas. Les propositions chargées restent gardées sur l'ordinateur.
+
+#### Orthographe
+
+Sous Windows, le correcteur souligne les fautes en français pendant la saisie. Le vérificateur demande au même dictionnaire les mots de chaque définition, et ajoute une remarque « Mot inconnu du dictionnaire » ; les mots rares de la liste y tombent souvent, d'où **C'est voulu**. Les noms propres en cours de phrase, les abréviations (« fam. », « qqn ») et les formes du mot de la fiche ne sont pas signalés.
+
+Ce dictionnaire est celui de Windows : il n'y a rien à installer si le français fait partie des langues de Windows. Sinon, l'ajouter depuis les Paramètres de Windows, Heure et langue, Langue et région, puis Ajouter une langue (les libellés peuvent varier un peu selon la version de Windows) ; choisir **Français (Suisse)**, **décocher « Définir comme langue d'affichage de Windows »**, installer, puis relancer Jolis Mots. Sans français, le vérificateur ne signale aucun mot inconnu, et tout le reste fonctionne.
+
+#### Historique sous Windows
+
+Sous Windows, l'écran « Historique de la liste » des Réglages est tiré de la copie de la liste en ligne que garde l'atelier : chaque liste envoyée y est comparée à la précédente, depuis le premier import (les 200 dernières au plus). La lecture se fait sans réseau, sur ce que l'atelier a déjà reçu. Sans copie, ou si la lecture échoue, l'écran montre l'historique noté sur l'ordinateur. Le téléphone garde le sien.
 
 Un mot enregistré apparaît aussitôt dans les écrans Mot, Quiz et Recueil de Windows. Pour le téléphone, il faut l'envoyer : en haut, l'atelier compte les mots ajoutés, modifiés ou supprimés depuis le dernier envoi, à côté du bouton **Envoyer au téléphone**. Après l'envoi, il dit : « Liste envoyée. Le téléphone la verra dans quelques minutes. »
 

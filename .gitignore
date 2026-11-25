@@ -26,3 +26,6 @@ apps/android/android/
 # Clé de signature Android : jamais dans le dépôt
 *.jks
 *.keystore
+
+# Propositions de correction produites par Claude : un fichier de travail, hors du dépôt
+propositions-de-correction*.json

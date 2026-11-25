@@ -9,12 +9,15 @@
     { id: 'tous', nom: 'Tous les mots' },
     { id: 'complets', nom: 'Complets' },
     { id: 'aCompleter', nom: 'À compléter' },
+    { id: 'aVerifier', nom: 'À vérifier' },
     { id: 'doublons', nom: 'Doublons' },
   ];
 
   // Chaque calcul une fois par liste, ou par liste, filtre et recherche ; jamais par ligne.
-  const comptes = $derived(compterFiltres(etat.liste.mots));
-  const lignes = $derived(listerAtelier(etat.liste.mots, { filtre: atelier.filtre, requete: atelier.requete }));
+  const comptes = $derived(compterFiltres(etat.liste.mots, atelier.aVerifier));
+  const lignes = $derived(
+    listerAtelier(etat.liste.mots, { filtre: atelier.filtre, requete: atelier.requete, aVerifier: atelier.aVerifier }),
+  );
   /** Dans le filtre Doublons, le numéro de groupe de chaque mot, pour tirer un filet entre les groupes. */
   const groupeDe = $derived.by(() => {
     const groupes = new Map<string, number>();
@@ -45,6 +48,19 @@
     if (cible === null || tous.length === 0) return;
     e.preventDefault();
     tous[Math.max(0, Math.min(tous.length - 1, cible))]!.focus();
+  }
+
+  /** Le fichier de propositions choisi est lu, puis le sélecteur est remis à zéro (le même fichier peut revenir). */
+  async function chargerPropositions(e: Event & { currentTarget: HTMLInputElement }): Promise<void> {
+    const champ = e.currentTarget;
+    const fichier = champ.files?.[0];
+    champ.value = '';
+    if (fichier === undefined) return;
+    try {
+      atelier.chargerPropositions(await fichier.text());
+    } catch {
+      atelier.chargerPropositions('');
+    }
   }
 
   /** Depuis la recherche, la flèche du bas descend dans la liste. */
@@ -91,7 +107,13 @@
     {/each}
   </ul>
 
-  <button class="nouveau" onclick={onnouveau}>Nouveau mot</button>
+  <div class="bas">
+    <button class="nouveau" onclick={onnouveau}>Nouveau mot</button>
+    <label class="propositions">
+      <input type="file" accept=".json,application/json" onchange={chargerPropositions} />
+      <span>Charger des propositions…</span>
+    </label>
+  </div>
 </section>
 
 <style>
@@ -279,8 +301,39 @@
     color: var(--second);
   }
 
+  .bas {
+    flex-shrink: 0;
+    margin-right: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+  }
+
+  /* Un lien discret ; le sélecteur de fichier du navigateur reste caché, la ligne l'ouvre. */
+  .propositions {
+    font-size: 15px;
+    color: var(--second);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .propositions input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  .propositions:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
   .nouveau {
-    align-self: flex-start;
     flex-shrink: 0;
     height: 44px;
     padding: 0 20px;

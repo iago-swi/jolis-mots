@@ -1,3 +1,4 @@
+import { validerFichier } from './fichier';
 import { normaliser } from './recherche';
 import { estComplet, type FichierMots, type Mot } from './types';
 
@@ -100,6 +101,22 @@ export function noterListe(
     supprimes: supprimes.sort(ordre),
   };
   return { historique: [...historique, entree].slice(-HISTORIQUE_MAX), reference: nouvelle };
+}
+
+/**
+ * L'historique d'une suite de listes rangées de la plus ancienne à la plus récente, comme
+ * l'appareil l'aurait noté en les recevant l'une après l'autre (sous Windows, l'histoire de la
+ * branche `donnees`). Une liste invalide (forme fautive, date illisible) est sautée.
+ */
+export function historiqueDeListes(listes: readonly FichierMots[]): EntreeHistorique[] {
+  let historique: EntreeHistorique[] = [];
+  let reference: Reference | null = null;
+  for (const brute of listes) {
+    const f = validerFichier(brute);
+    if (f === null || Number.isNaN(Date.parse(f.publie))) continue;
+    ({ historique, reference } = noterListe(historique, reference, f));
+  }
+  return historique;
 }
 
 function estMotNote(x: unknown): x is MotNote {

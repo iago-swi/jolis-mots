@@ -13,11 +13,13 @@ import {
   Menu,
   nativeTheme,
   screen,
+  session,
   shell,
   type IpcMainEvent,
   type IpcMainInvokeEvent,
 } from 'electron';
-import { ADRESSE_DEPOT, enregistrer, envoyer, ouvrir, reprendre, synchroniser, type Depot } from './depot';
+import { ADRESSE_DEPOT, enregistrer, envoyer, historiqueEnCache, ouvrir, reprendre, synchroniser, type Depot } from './depot';
+import { creerCorrecteur } from './orthographe';
 
 // Une version de développement ne travaille jamais sur les vraies données : sans dossier de
 // données à part, elle s'arrête avant d'ouvrir une fenêtre ou de créer un dossier.
@@ -43,6 +45,18 @@ const depot: Depot = {
   sauvegardes: path.join(app.getPath('userData'), 'sauvegardes'),
   adresse: process.env.JOLISMOTS_DEPOT ?? ADRESSE_DEPOT,
 };
+
+/** L'historique de la liste, recalculé seulement quand la liste en ligne de la copie a changé. */
+const historiqueDuDepot = historiqueEnCache();
+
+/** Le dictionnaire du vérificateur : le correcteur de Windows, lancé à la première demande. */
+const correcteur = creerCorrecteur();
+
+/**
+ * La langue du correcteur de la fenêtre. Electron n'accepte que les codes de sa liste
+ * (`fr` ou `fr-FR`, pas `fr-CH`) ; sous Windows, c'est le correcteur du système qui souligne.
+ */
+const LANGUES_CORRECTEUR = ['fr'];
 
 /** Seules adresses que « Ouvrir dans le CNRTL » peut ouvrir dans le navigateur. */
 const PREFIXE_CNRTL = 'https://www.cnrtl.fr/definition/';
@@ -194,6 +208,10 @@ function brancherPont(): void {
       ? envoyer(depot, texte, message)
       : undefined,
   );
+  ipcMain.handle('depot:historique', (e) => (vientDeLaPage(e) ? historiqueDuDepot(depot) : null));
+  ipcMain.handle('orthographe:inconnus', (e, mots: unknown) =>
+    vientDeLaPage(e) && Array.isArray(mots) && mots.every((m) => typeof m === 'string') ? correcteur.inconnus(mots) : [],
+  );
   ipcMain.handle('depot:reprendre', (e) => (vientDeLaPage(e) ? reprendre(depot, new Date()) : undefined));
   ipcMain.handle('cnrtl:ouvrir', async (e, adresse: unknown) => {
     if (vientDeLaPage(e) && typeof adresse === 'string' && adresse.startsWith(PREFIXE_CNRTL)) {
@@ -318,6 +336,12 @@ if (!app.requestSingleInstanceLock()) {
   app
     .whenReady()
     .then(async () => {
+      try {
+        session.defaultSession.setSpellCheckerLanguages(LANGUES_CORRECTEUR);
+      } catch (erreur) {
+        // Sans français, la fenêtre garde le correcteur par défaut : rien d'autre n'en dépend.
+        console.error('Correcteur en français indisponible\u202F:', erreur);
+      }
       brancherPont();
       poserMenu();
       await ouvrirFenetre();
@@ -328,4 +352,5 @@ if (!app.requestSingleInstanceLock()) {
     });
 
   app.on('window-all-closed', () => app.quit());
+  app.on('will-quit', () => correcteur.fermer());
 }

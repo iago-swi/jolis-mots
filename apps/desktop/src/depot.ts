@@ -6,7 +6,16 @@ import { execFile } from 'node:child_process';
 import { constants, existsSync } from 'node:fs';
 import { copyFile, mkdir, open, readFile, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { EtatDepot, RaisonDepot } from '@jolis-mots/core';
+import {
+  HISTORIQUE_MAX,
+  noterListe,
+  validerFichier,
+  type EntreeHistorique,
+  type EtatDepot,
+  type FichierMots,
+  type RaisonDepot,
+  type Reference,
+} from '@jolis-mots/core';
 
 export const ADRESSE_DEPOT = 'https://github.com/iago-swi/jolis-mots.git';
 export const BRANCHE = 'donnees';
@@ -367,4 +376,145 @@ export function reprendre(d: Depot, maintenant: Date): Promise<EtatDepot> {
     }
     return etat(d, 'pret', '', sauvegarde);
   });
+}
+
+/** Le délai de lecture de l'histoire, tout en local. */
+const DELAI_HISTOIRE = 60_000;
+
+/**
+ * Lit des objets de la copie en une seule fois (`git cat-file --batch`) et passe à `chaque`, dans
+ * l'ordre, le contenu de chacun, ou null s'il manque : rien n'est gardé d'un objet au suivant.
+ * Rejette si git échoue, dépasse le délai, ou si `chaque` lève.
+ */
+function lireObjets(d: Depot, noms: string[], chaque: (contenu: Buffer | null) => void): Promise<void> {
+  return new Promise((resoudre, rejeter) => {
+    const enfant = execFile(
+      d.git ?? 'git',
+      ['cat-file', '--batch'],
+      {
+        cwd: d.dossier,
+        windowsHide: true,
+        encoding: 'buffer',
+        maxBuffer: 1024 * 1024 * 1024,
+        timeout: DELAI_HISTOIRE,
+        env: { ...process.env, LC_ALL: 'C', GIT_TERMINAL_PROMPT: '0' },
+      },
+      (erreur, stdout) => {
+        if (erreur) {
+          rejeter(erreur);
+          return;
+        }
+        // Chaque objet : une ligne « <nom> <type> <taille> », le contenu, un saut de ligne ;
+        // ou la seule ligne « <demande> missing ».
+        try {
+          let pos = 0;
+          for (let i = 0; i < noms.length; i++) {
+            const fin = stdout.indexOf(0x0a, pos);
+            if (fin === -1) throw new Error('git cat-file: réponse incomplète');
+            const tete = stdout.subarray(pos, fin).toString('utf8').split(' ');
+            pos = fin + 1;
+            if (tete.length !== 3 || tete[1] !== 'blob') {
+              chaque(null);
+              continue;
+            }
+            const taille = Number(tete[2]);
+            chaque(stdout.subarray(pos, pos + taille));
+            pos += taille + 1;
+          }
+          resoudre();
+        } catch (e) {
+          rejeter(e);
+        }
+      },
+    );
+    enfant.stdin?.on('error', () => undefined);
+    enfant.stdin?.end(noms.map((n) => `${n}\n`).join(''));
+  });
+}
+
+/**
+ * Passe à `chaque`, une à une, les versions envoyées de mots.json (la branche `donnees` telle que
+ * la copie l'a reçue), de la plus ancienne à la plus récente, sans réseau ; une version illisible
+ * ou invalide est sautée. Seules les HISTORIQUE_MAX + 1 dernières sont lues : l'historique n'en
+ * garde pas plus. Rend false sans copie ou si git échoue. Hors de la file des opérations : la
+ * lecture n'attend pas une synchronisation lente, et ne touche à rien.
+ */
+export async function parcourirVersions(d: Depot, chaque: (f: FichierMots) => void): Promise<boolean> {
+  try {
+    if (!(await aUneCopie(d))) return false;
+    const s = await lancer(
+      d,
+      d.dossier,
+      ['log', '--format=%H', '--reverse', '-n', String(HISTORIQUE_MAX + 1), DISTANTE, '--', FICHIER],
+      DELAI_HISTOIRE,
+    );
+    if (s.code !== 0) return false;
+    const versions = s.stdout.split('\n').filter((h) => /^[0-9a-f]{40,64}$/.test(h));
+    if (versions.length === 0) return true;
+    await lireObjets(
+      d,
+      versions.map((h) => `${h}:${FICHIER}`),
+      (c) => {
+        if (c === null) return;
+        let f: FichierMots | null;
+        try {
+          f = validerFichier(JSON.parse(c.toString('utf8')));
+        } catch {
+          // Une version qui ne se lit pas est sautée.
+          return;
+        }
+        if (f !== null) chaque(f);
+      },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * L'historique de la liste d'après les versions envoyées (conception, section 15.5) : le même que
+ * `historiqueDeListes` sur toutes les versions, mais plié version par version, en ne gardant que
+ * la référence de la dernière, jamais toutes les listes à la fois. null sans copie ou si git échoue.
+ */
+export async function historique(d: Depot): Promise<EntreeHistorique[] | null> {
+  let entrees: EntreeHistorique[] = [];
+  let reference: Reference | null = null;
+  const lu = await parcourirVersions(d, (f) => {
+    // Comme `historiqueDeListes` : une liste à la date illisible est sautée.
+    if (Number.isNaN(Date.parse(f.publie))) return;
+    ({ historique: entrees, reference } = noterListe(entrees, reference, f));
+  });
+  return lu ? entrees : null;
+}
+
+/**
+ * L'historique de la liste (conception, section 15.5), gardé tant que la liste en ligne de la
+ * copie (`origin/donnees`) reste la même version : rouvrir l'écran ne relit ni ne recalcule rien.
+ * Deux demandes pendant un calcul partagent le même. null sans copie ou si la lecture échoue
+ * (rien n'est alors gardé). `lire` sert aux essais.
+ */
+export function historiqueEnCache(
+  lire: (d: Depot) => Promise<EntreeHistorique[] | null> = historique,
+): (d: Depot) => Promise<EntreeHistorique[] | null> {
+  let garde: { cle: string; resultat: Promise<EntreeHistorique[] | null> } | null = null;
+  return async (d) => {
+    try {
+      if (!(await aUneCopie(d))) return null;
+      const s = await lancer(d, d.dossier, ['rev-parse', '--verify', '--quiet', `${DISTANTE}^{commit}`]);
+      if (s.code !== 0) return null;
+      const cle = `${d.dossier}\u0000${s.stdout.trim()}`;
+      if (garde === null || garde.cle !== cle) {
+        const resultat = lire(d);
+        garde = { cle, resultat };
+        // Un échec n'est pas gardé : la prochaine demande relit.
+        void resultat.then((h) => {
+          if (h === null && garde?.resultat === resultat) garde = null;
+        });
+      }
+      return await garde.resultat;
+    } catch {
+      return null;
+    }
+  };
 }

@@ -1,26 +1,75 @@
 import {
+  appliquable,
+  appliquer,
+  cleProposition,
   compterModifications,
   creerIdUnique,
   dater,
   ecrireFichier,
+  estComplet,
+  indicationsConnues,
+  lireProposition,
+  lirePropositions,
   messageDEnvoi,
+  motsAVerifier,
+  motsInconnus,
   nettoyerFiche,
   nouvelleFiche,
   poserFiche,
   proposerTri,
+  remarqueOrthographe,
   retirerFiche,
   validerFichier,
+  validerHistorique,
   validerPourEnvoi,
+  verifierMot,
+  type CodeRemarque,
+  type EntreeHistorique,
   type EtatDepot,
   type FichierMots,
   type FiltreAtelier,
   type Modifications,
   type Mot,
   type PontBureau,
+  type Proposition,
   type RaisonDepot,
+  type Remarque,
 } from '@jolis-mots/core';
 import { etat } from './etat.svelte';
 import { pont } from './pont';
+import { ecrire, lire } from './stockage';
+
+/** Les remarques tues (« C'est voulu »), sur cet ordinateur : une liste de `id:code`. */
+const CLE_IGNOREES = 'jolismots.verification.ignorees.v1';
+/** Les propositions de correction chargées, chacune avec son sort. */
+const CLE_PROPOSITIONS = 'jolismots.propositions.v1';
+
+/** Le nombre de mots demandés au dictionnaire en une fois. */
+const LOT_ORTHOGRAPHE = 400;
+/** L'attente avant de demander des mots : une frappe qui suit la repousse. */
+const ATTENTE_ORTHOGRAPHE = 300;
+
+/** Le sort d'une proposition : en attente, appliquée (et enregistrée), ou refusée. */
+export type SortProposition = 'attente' | 'appliquee' | 'refusee';
+type PropositionSuivie = Proposition & { sort: SortProposition };
+
+const SORTS: readonly string[] = ['attente', 'appliquee', 'refusee'];
+
+/** Les propositions gardées, contrôlées une à une ; une entrée illisible est écartée. */
+function lirePropositionsGardees(): PropositionSuivie[] {
+  const brut = lire<unknown>(CLE_PROPOSITIONS, []);
+  if (!Array.isArray(brut)) return [];
+  return brut.flatMap((e: unknown) => {
+    const p = lireProposition(e);
+    const sort = (e as { sort?: unknown }).sort;
+    return p !== null && typeof sort === 'string' && SORTS.includes(sort) ? [{ ...p, sort: sort as SortProposition }] : [];
+  });
+}
+
+function lireIgnorees(): Set<string> {
+  const brut = lire<unknown>(CLE_IGNOREES, []);
+  return new Set(Array.isArray(brut) ? brut.filter((x): x is string => typeof x === 'string') : []);
+}
 
 export interface Avis {
   ton: 'calme' | 'alerte';
@@ -188,6 +237,53 @@ export class Atelier {
   private origine = $state.raw<Mot | null>(null);
   /** Le Tri suit la proposition tirée du Mot. */
   private triSuit = false;
+
+  /** Les indications connues du vérificateur, tirées une fois par liste. */
+  private readonly connues: Set<string> = $derived(indicationsConnues(etat.liste.mots));
+  /** Les remarques tues, `id:code`. */
+  private ignorees = $state.raw<ReadonlySet<string>>(lireIgnorees());
+  /** Les propositions chargées, avec leur sort. */
+  private suivies = $state.raw<readonly PropositionSuivie[]>(lirePropositionsGardees());
+  /** Les propositions en attente, par mot. */
+  private readonly enAttente: ReadonlyMap<string, Proposition[]> = $derived.by(() => {
+    const parMot = new Map<string, Proposition[]>();
+    for (const p of this.suivies) if (p.sort === 'attente') parMot.set(p.id, [...(parMot.get(p.id) ?? []), p]);
+    return parMot;
+  });
+  /** Les clés des propositions appliquées au brouillon : elles deviennent « appliquées » quand il est enregistré. */
+  private appliqueesAuBrouillon = new Set<string>();
+
+  /**
+   * Ce que le dictionnaire a dit de chaque mot demandé : vrai pour un mot inconnu. Un mot absent
+   * n'a pas encore de réponse. Les réponses arrivent par lots, en arrière-plan.
+   */
+  private dictionnaire = $state.raw<ReadonlyMap<string, boolean>>(new Map());
+  /** Les mots à demander, dans l'ordre (ceux de la fiche en tête), et ceux qui sont partis. */
+  private aDemander = new Set<string>();
+  private enDemande = new Set<string>();
+  private minuterieOrthographe: ReturnType<typeof setTimeout> | null = null;
+  private orthographeEnCours = false;
+  /** Le dictionnaire a échoué : il n'est plus sollicité, et rien n'est signalé. */
+  private dictionnaireEnPanne = false;
+
+  /** Les mots de la liste qui ont une remarque du vérificateur non tue ou une proposition en attente, une fois par liste. */
+  private readonly idsVerifies: ReadonlySet<string> = $derived(
+    new Set(
+      etat.liste.mots.filter((m) => this.remarquesDuVerificateur(m).length > 0 || this.propositionsDe(m).length > 0).map((m) => m.id),
+    ),
+  );
+  /** Les mots de la liste qui ont un mot inconnu non tu ; refait à chaque lot de réponses. */
+  private readonly idsOrthographe: ReadonlySet<string> = $derived(
+    new Set(etat.liste.mots.filter((m) => this.inconnusDe(m, false).length > 0).map((m) => m.id)),
+  );
+  private readonly idsAVerifier: ReadonlySet<string> = $derived(new Set([...this.idsVerifies, ...this.idsOrthographe]));
+  /** Pour le filtre « À vérifier » : le mot de la liste a une remarque ou une proposition à traiter. */
+  readonly aVerifier = (m: Mot): boolean => this.idsAVerifier.has(m.id);
+
+  /** Les remarques du brouillon, refaites à chaque frappe. */
+  readonly remarquesFiche: Remarque[] = $derived(this.brouillon === null ? [] : this.remarquesDe(this.brouillon, true));
+  /** Les propositions en attente qui valent pour le brouillon tel qu'il est. */
+  readonly propositionsFiche: Proposition[] = $derived(this.brouillon === null ? [] : this.propositionsDe(this.brouillon));
 
   /** Le brouillon diffère du mot enregistré, ou c'est un mot nouveau qui a du texte. */
   readonly modifiee: boolean = $derived.by(() => {
@@ -415,6 +511,7 @@ export class Atelier {
   private ouvrir(origine: Mot | null, brouillon: Mot): void {
     this.origine = origine;
     this.brouillon = { ...brouillon, sources: [...brouillon.sources] };
+    this.appliqueesAuBrouillon = new Set();
     this.triSuit = origine === null || origine.tri === proposerTri(origine.mot);
   }
 
@@ -481,10 +578,192 @@ export class Atelier {
     }
     if (!fait) return false;
     const enregistree = etat.liste.mots.find((m) => m.id === fiche.id);
+    if (enregistree !== undefined) {
+      // Les propositions appliquées au brouillon, et que le mot enregistré porte bien, sont faites.
+      const faites = this.suivies.filter((p) => this.appliqueesAuBrouillon.has(cleProposition(p)) && p.id === fiche.id && !appliquable(p, enregistree));
+      if (faites.length > 0) this.trancher(new Set(faites.map(cleProposition)), 'appliquee');
+    }
     if (enregistree === undefined || this.brouillon?.id !== fiche.id) return true;
     if (memesFiches(this.brouillon, envoye)) this.ouvrir(enregistree, enregistree);
     else this.origine = enregistree;
     return true;
+  }
+
+  /** Les remarques du vérificateur sur ce mot, sans celles qui sont tues ; les mots inconnus du dictionnaire en dernier. */
+  remarques(m: Mot): Remarque[] {
+    return this.remarquesDe(m, false);
+  }
+
+  private remarquesDe(m: Mot, prioritaire: boolean): Remarque[] {
+    const orthographe = remarqueOrthographe(this.inconnusDe(m, prioritaire));
+    return orthographe === null ? this.remarquesDuVerificateur(m) : [...this.remarquesDuVerificateur(m), orthographe];
+  }
+
+  private remarquesDuVerificateur(m: Mot): Remarque[] {
+    return verifierMot(m, this.connues).filter((r) => !this.ignorees.has(`${m.id}:${r.code}`));
+  }
+
+  /**
+   * Les mots inconnus du dictionnaire dans la définition d'un mot complet, sans ceux qui sont tus.
+   * Les mots sans réponse encore sont demandés en arrière-plan (en tête de file pour la fiche) :
+   * la remarque viendra avec la réponse. Rien n'attend ici.
+   */
+  private inconnusDe(m: Mot, prioritaire: boolean): string[] {
+    if (!estComplet(m) || this.dictionnaireEnPanne) return [];
+    const dico = this.dictionnaire;
+    const manquants = motsAVerifier(m.definition).filter((w) => !dico.has(w) && !this.enDemande.has(w));
+    if (manquants.length > 0) this.demanderMots(manquants, prioritaire);
+    return motsInconnus(m.definition, (w) => dico.get(w), m.mot).filter((w) => !this.ignorees.has(`${m.id}:orthographe:${w}`));
+  }
+
+  /**
+   * Met des mots dans la file du dictionnaire. Peut être appelée pendant un calcul de l'écran :
+   * elle ne touche à aucun état ; les réponses arrivent plus tard.
+   */
+  private demanderMots(mots: string[], enTete: boolean): void {
+    if (enTete) this.aDemander = new Set([...mots, ...this.aDemander]);
+    else for (const w of mots) this.aDemander.add(w);
+    if (this.orthographeEnCours) return;
+    if (this.minuterieOrthographe !== null) clearTimeout(this.minuterieOrthographe);
+    this.minuterieOrthographe = setTimeout(() => {
+      this.minuterieOrthographe = null;
+      void this.demanderAuDictionnaire();
+    }, ATTENTE_ORTHOGRAPHE);
+  }
+
+  /** Vide la file, lot après lot ; chaque lot de réponses met les remarques à jour. */
+  private async demanderAuDictionnaire(): Promise<void> {
+    if (this.orthographeEnCours) return;
+    this.orthographeEnCours = true;
+    try {
+      while (this.aDemander.size > 0 && !this.dictionnaireEnPanne) {
+        const lot = [...this.aDemander].slice(0, LOT_ORTHOGRAPHE);
+        for (const w of lot) {
+          this.aDemander.delete(w);
+          this.enDemande.add(w);
+        }
+        let inconnus: Set<string>;
+        try {
+          inconnus = new Set(await this.pont.motsInconnus(lot));
+        } catch {
+          this.dictionnaireEnPanne = true;
+          this.aDemander.clear();
+          this.enDemande.clear();
+          return;
+        }
+        const dico = new Map(this.dictionnaire);
+        for (const w of lot) {
+          dico.set(w, inconnus.has(w));
+          this.enDemande.delete(w);
+        }
+        this.dictionnaire = dico;
+      }
+    } finally {
+      this.orthographeEnCours = false;
+    }
+  }
+
+  /**
+   * « C'est voulu » : la remarque se tait pour ce mot, sur cet ordinateur. Pour l'orthographe,
+   * seuls les mots signalés à ce moment se taisent : un mot inconnu ajouté plus tard le sera.
+   */
+  ignorer(id: string, code: CodeRemarque): void {
+    let cles = [`${id}:${code}`];
+    if (code === 'orthographe') {
+      const m = this.brouillon?.id === id ? this.brouillon : etat.liste.mots.find((x) => x.id === id);
+      cles = m === undefined ? [] : this.inconnusDe(m, false).map((w) => `${id}:orthographe:${w}`);
+    }
+    this.ignorees = new Set([...this.ignorees, ...cles]);
+    ecrire(CLE_IGNOREES, [...this.ignorees]);
+  }
+
+  /**
+   * L'historique lu dans l'histoire de la branche `donnees` de la copie (conception, section 15.5) ;
+   * null sans copie, si la lecture échoue ou ne trouve aucune liste : l'écran montre alors l'historique de l'ordinateur.
+   */
+  async historiqueDuDepot(): Promise<EntreeHistorique[] | null> {
+    try {
+      const h: unknown = await this.pont.historique();
+      const valide = Array.isArray(h) ? validerHistorique(h) : [];
+      return valide.length > 0 ? valide : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * « Corriger » : la définition du brouillon prend la correction de la remarque, calculée sur le texte
+   * du moment. Rien n'est enregistré. `ecrire`, s'il est donné, pose le texte à la place (la fiche le
+   * fait passer par la zone de saisie, pour que Ctrl+Z l'annule).
+   */
+  corriger(code: CodeRemarque, ecrire?: (definition: string) => void): void {
+    const correction = this.remarquesFiche.find((r) => r.code === code)?.correction ?? null;
+    if (this.brouillon === null || correction === null) return;
+    if (ecrire === undefined) this.brouillon.definition = correction;
+    else ecrire(correction);
+  }
+
+  /** Les propositions en attente pour ce mot qui valent pour lui tel qu'il est. */
+  propositionsDe(m: Mot): Proposition[] {
+    return (this.enAttente.get(m.id) ?? []).filter((p) => appliquable(p, m));
+  }
+
+  private garderPropositions(suivies: PropositionSuivie[]): void {
+    this.suivies = suivies;
+    ecrire(CLE_PROPOSITIONS, suivies);
+  }
+
+  private trancher(cles: ReadonlySet<string>, sort: SortProposition): void {
+    this.garderPropositions(this.suivies.map((p) => (cles.has(cleProposition(p)) ? { ...p, sort } : p)));
+  }
+
+  /**
+   * Charge les propositions d'un fichier ; celles déjà connues gardent leur sort. Dit combien sont à
+   * traiter ; faux, sans rien changer, si le fichier ne se lit pas.
+   */
+  chargerPropositions(texte: string): boolean {
+    const lues = lirePropositions(texte);
+    if (lues === null) {
+      this.avis = alerte('Ce fichier ne contient pas de propositions lisibles.');
+      return false;
+    }
+    const sorts = new Map(this.suivies.map((p) => [cleProposition(p), p.sort]));
+    const vues = new Set<string>();
+    const suivies: PropositionSuivie[] = [];
+    for (const p of lues) {
+      const cle = cleProposition(p);
+      if (vues.has(cle)) continue;
+      vues.add(cle);
+      suivies.push({ ...p, sort: sorts.get(cle) ?? 'attente' });
+    }
+    // Les propositions déjà tranchées restent connues, même absentes du nouveau fichier : un refus ne revient pas.
+    for (const p of this.suivies) if (p.sort !== 'attente' && !vues.has(cleProposition(p))) suivies.push(p);
+    this.garderPropositions(suivies);
+    const n = etat.liste.mots.reduce((total, m) => total + this.propositionsDe(m).length, 0);
+    this.avis = calme(n === 0 ? 'Aucune proposition à traiter.' : `${n} proposition${n > 1 ? 's' : ''} à traiter.`);
+    return true;
+  }
+
+  /**
+   * « Corriger » une proposition : appliquée au brouillon seul ; rien n'est enregistré. Pour la
+   * définition, `ecrire`, s'il est donné, pose le texte corrigé (voir `corriger`).
+   */
+  appliquerProposition(p: Proposition, ecrire?: (definition: string) => void): void {
+    const b = this.brouillon;
+    if (b === null || !appliquable(p, b)) return;
+    const corrige = appliquer(p, { ...b, sources: [...b.sources] });
+    if (p.champ === 'definition') {
+      if (ecrire === undefined) b.definition = corrige.definition;
+      else ecrire(corrige.definition);
+    }
+    else if (p.champ === 'genre') b.genre = corrige.genre;
+    else b.sources = corrige.sources;
+    this.appliqueesAuBrouillon.add(cleProposition(p));
+  }
+
+  /** « Non » : la proposition est refusée et ne revient plus. */
+  refuserProposition(p: Proposition): void {
+    this.trancher(new Set([cleProposition(p)]), 'refusee');
   }
 
   /** Demande confirmation avant de supprimer le mot choisi (un mot jamais enregistré n'a rien à supprimer). */

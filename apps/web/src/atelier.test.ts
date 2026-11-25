@@ -1,4 +1,12 @@
-import { ecrireFichier, type EtatDepot, type FichierMots, type Mot, type PontBureau, type RaisonDepot } from '@jolis-mots/core';
+import {
+  ecrireFichier,
+  type EntreeHistorique,
+  type EtatDepot,
+  type FichierMots,
+  type Mot,
+  type PontBureau,
+  type RaisonDepot,
+} from '@jolis-mots/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 function mot(id: string, autres: Partial<Mot> = {}): Mot {
@@ -141,6 +149,27 @@ class FauxPont implements PontBureau {
   async ouvrirCnrtl(): Promise<void> {}
 
   signalerFicheModifiee(): void {}
+
+  /** Les mots que le faux dictionnaire ne connaît pas. */
+  inconnusDuDico = new Set<string>();
+  /** Chaque lot de mots demandé au dictionnaire. */
+  lotsOrthographe: string[][] = [];
+  /** Le dictionnaire rejette ses demandes. */
+  dicoEnPanne = false;
+
+  async motsInconnus(mots: string[]): Promise<string[]> {
+    this.lotsOrthographe.push(mots);
+    if (this.dicoEnPanne) throw new Error('Canal fermé');
+    return mots.filter((m) => this.inconnusDuDico.has(m));
+  }
+
+  /** Ce que rend `historique` ('rejet' : la promesse est rejetée). */
+  historiqueDuDepot: EntreeHistorique[] | null | 'rejet' = null;
+
+  async historique(): Promise<EntreeHistorique[] | null> {
+    if (this.historiqueDuDepot === 'rejet') throw new Error('Canal fermé');
+    return this.historiqueDuDepot;
+  }
 }
 
 /** Modules neufs, comme à un nouveau lancement de l'application. */
@@ -1040,5 +1069,309 @@ describe('l’historique sur bureau', () => {
     } finally {
       vi.doUnmock('./pont');
     }
+  });
+});
+
+describe('le vérificateur dans l’atelier', () => {
+  // Une balise mal écrite, une espace double, un genre vide, une indication hors crochets.
+  const bejaune = mot('bej001', { mot: 'Béjaune', tri: 'béjaune', genre: '', definition: '1. fauconnerie Oiseau jeune  qui ne sait pas voler. EX : Un béjaune.' });
+  const avecBejaune: FichierMots = { ...locale, mots: [...locale.mots, bejaune] };
+  const codes = (r: { code: string }[]) => r.map((x) => x.code);
+
+  it('les remarques d’un mot ; un mot sans écart n’en a pas', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    expect(codes(atelier.remarques(bejaune))).toEqual(['balise', 'indication-hors-crochets', 'genre-vide', 'espaces']);
+    expect(atelier.remarques(fiche)).toEqual([]);
+  });
+
+  it('les remarques de la fiche suivent le brouillon', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    expect(atelier.remarquesFiche).toEqual([]);
+    atelier.choisir(bejaune.id);
+    expect(codes(atelier.remarquesFiche)).toContain('genre-vide');
+    atelier.brouillon!.genre = 'subst. masc.';
+    expect(codes(atelier.remarquesFiche)).not.toContain('genre-vide');
+  });
+
+  it('corriger ne change que le brouillon ; deux corrections de suite partent du texte du moment', async () => {
+    const faux = new FauxPont(ecrireFichier(avecBejaune));
+    const { etat, atelier } = await demarrerSur(faux);
+    atelier.choisir(bejaune.id);
+    atelier.corriger('balise');
+    expect(atelier.brouillon!.definition).toBe('1. fauconnerie Oiseau jeune  qui ne sait pas voler. EX: Un béjaune.');
+    expect(atelier.modifiee).toBe(true);
+    atelier.corriger('espaces');
+    expect(atelier.brouillon!.definition).toBe('1. fauconnerie Oiseau jeune qui ne sait pas voler. EX: Un béjaune.');
+    expect(codes(atelier.remarquesFiche)).toEqual(['indication-hors-crochets', 'genre-vide']);
+    // Rien n'est écrit sans « Enregistrer ».
+    expect(faux.enregistre).toEqual([]);
+    expect(etat.liste.mots.find((m) => m.id === bejaune.id)!.definition).toBe(bejaune.definition);
+    // Une remarque sans correction ne change rien.
+    const avant = atelier.brouillon!.definition;
+    atelier.corriger('genre-vide');
+    expect(atelier.brouillon!.definition).toBe(avant);
+  });
+
+  it('« C’est voulu » tait la remarque pour ce mot, et c’est gardé', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    atelier.ignorer(bejaune.id, 'genre-vide');
+    expect(codes(atelier.remarques(bejaune))).not.toContain('genre-vide');
+    expect(codes(atelier.remarques({ ...bejaune, id: 'autre1' }))).toContain('genre-vide');
+    expect(JSON.parse(localStorage.getItem('jolismots.verification.ignorees.v1')!)).toEqual(['bej001:genre-vide']);
+
+    const relance = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    expect(codes(relance.atelier.remarques(bejaune))).toEqual(['balise', 'indication-hors-crochets', 'espaces']);
+  });
+
+  it('À vérifier : les mots qui ont une remarque non tue', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    expect(atelier.aVerifier(bejaune)).toBe(true);
+    expect(atelier.aVerifier(fiche)).toBe(false);
+    for (const code of ['balise', 'indication-hors-crochets', 'genre-vide', 'espaces'] as const) atelier.ignorer(bejaune.id, code);
+    expect(atelier.aVerifier(bejaune)).toBe(false);
+  });
+});
+
+describe('les propositions de correction', () => {
+  const abstrus = mot('abs001', { mot: 'Abstrus', tri: 'abstrus', genre: 'adj.', definition: 'Se dit d’une œuvre litt. ou artistique ou savante.', sources: ['Marc Lévy: Le roman (12)'] });
+  const avecAbstrus: FichierMots = { ...locale, mots: [...locale.mots, abstrus] };
+  const proposition = (extra: Record<string, string> = {}) => ({
+    id: 'abs001',
+    mot: 'Abstrus',
+    champ: 'definition',
+    avant: 'artistique ou',
+    apres: 'artistiques ou',
+    raison: 'accord au pluriel',
+    certitude: 'forte',
+    ...extra,
+  });
+  const fichier = JSON.stringify({
+    format: 1,
+    liste: '2026-11-25T03:49:19Z',
+    propositions: [
+      proposition(),
+      proposition({ champ: 'sources', avant: 'Marc Lévy', apres: 'Marc Levy', raison: 'sans accent', certitude: 'faible' }),
+      proposition({ id: 'disparu', mot: 'Disparu' }),
+      proposition({ avant: 'introuvable' }),
+    ],
+  });
+
+  it('un fichier illisible ne change rien et le dit', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    expect(atelier.chargerPropositions('pas du JSON')).toBe(false);
+    expect(atelier.avis?.ton).toBe('alerte');
+    expect(atelier.propositionsDe(abstrus)).toEqual([]);
+  });
+
+  it('chargées : seules celles qui valent pour un mot de la liste se montrent, et le filtre les compte', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    expect(atelier.aVerifier(abstrus)).toBe(false);
+    expect(atelier.chargerPropositions(fichier)).toBe(true);
+    expect(atelier.avis).toEqual({ ton: 'calme', texte: '2 propositions à traiter.' });
+    expect(atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['definition', 'sources']);
+    expect(atelier.aVerifier(abstrus)).toBe(true);
+    expect(atelier.aVerifier(fiche)).toBe(false);
+  });
+
+  it('corriger applique au brouillon seul ; une fois enregistrée, elle est appliquée et ne revient pas', async () => {
+    const faux = new FauxPont(ecrireFichier(avecAbstrus));
+    const { etat, atelier } = await demarrerSur(faux);
+    atelier.chargerPropositions(fichier);
+    atelier.choisir(abstrus.id);
+    const [def, source] = atelier.propositionsFiche;
+    atelier.appliquerProposition(def!);
+    expect(atelier.brouillon!.definition).toBe('Se dit d’une œuvre litt. ou artistiques ou savante.');
+    expect(atelier.modifiee).toBe(true);
+    expect(atelier.propositionsFiche).toEqual([source]);
+    expect(faux.enregistre).toEqual([]);
+    expect(etat.liste.mots.find((m) => m.id === abstrus.id)!.definition).toBe(abstrus.definition);
+    atelier.appliquerProposition(source!);
+    expect(atelier.brouillon!.sources).toEqual(['Marc Levy: Le roman (12)']);
+    expect(atelier.propositionsFiche).toEqual([]);
+
+    expect(await atelier.enregistrerBrouillon()).toBe(true);
+    const gardees = JSON.parse(localStorage.getItem('jolismots.propositions.v1')!) as { sort: string }[];
+    expect(gardees.map((p) => p.sort)).toEqual(['appliquee', 'appliquee', 'attente', 'attente']);
+    expect(atelier.aVerifier(etat.liste.mots.find((m) => m.id === abstrus.id)!)).toBe(false);
+  });
+
+  it('une proposition appliquée au brouillon puis abandonnée reste en attente', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier);
+    atelier.choisir(abstrus.id);
+    atelier.appliquerProposition(atelier.propositionsFiche[0]!);
+    atelier.choisir(fiche.id);
+    await atelier.confirmer();
+    atelier.choisir(abstrus.id);
+    expect(atelier.propositionsFiche).toHaveLength(2);
+  });
+
+  it('« Non » la refuse : elle ne revient plus, même après un nouveau lancement ou le même fichier rechargé', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier);
+    atelier.choisir(abstrus.id);
+    atelier.refuserProposition(atelier.propositionsFiche[1]!);
+    expect(atelier.propositionsFiche.map((p) => p.champ)).toEqual(['definition']);
+    expect(atelier.modifiee).toBe(false);
+
+    const relance = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    expect(relance.atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['definition']);
+    relance.atelier.chargerPropositions(fichier);
+    expect(relance.atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['definition']);
+  });
+});
+
+describe('les propositions d’un second fichier', () => {
+  const abstrus = mot('abs001', { mot: 'Abstrus', tri: 'abstrus', genre: 'adj.', definition: 'Se dit d’une œuvre litt. ou artistique ou savante.', sources: ['Marc Lévy: Le roman (12)'] });
+  const avecAbstrus: FichierMots = { ...locale, mots: [...locale.mots, abstrus] };
+  const definition = { id: 'abs001', mot: 'Abstrus', champ: 'definition', avant: 'artistique ou', apres: 'artistiques ou', raison: 'accord', certitude: 'forte' };
+  const source = { ...definition, champ: 'sources', avant: 'Marc Lévy', apres: 'Marc Levy', raison: 'sans accent' };
+  const genre = { ...definition, champ: 'genre', avant: 'adj.', apres: 'adj. et subst.', raison: 'emploi' };
+  const fichier = (...propositions: object[]) => JSON.stringify({ format: 1, propositions });
+
+  it('un refus reste acquis quand un autre fichier est chargé, puis le premier de nouveau', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier(definition, source));
+    atelier.choisir(abstrus.id);
+    atelier.refuserProposition(atelier.propositionsFiche.find((p) => p.champ === 'definition')!);
+    atelier.chargerPropositions(fichier(genre));
+    expect(atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['genre']);
+    atelier.chargerPropositions(fichier(definition, source));
+    expect(atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['sources']);
+  });
+
+  it('une proposition appliquée reste appliquée d’un fichier à l’autre', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier(definition));
+    atelier.choisir(abstrus.id);
+    atelier.appliquerProposition(atelier.propositionsFiche[0]!);
+    await atelier.enregistrerBrouillon();
+    atelier.chargerPropositions(fichier(genre));
+    atelier.chargerPropositions(fichier(definition, genre));
+    const gardees = JSON.parse(localStorage.getItem('jolismots.propositions.v1')!) as { champ: string; sort: string }[];
+    expect(gardees.find((p) => p.champ === 'definition')?.sort).toBe('appliquee');
+  });
+
+  it('la correction de la définition peut passer par la zone de saisie (pour Ctrl+Z)', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier(definition, genre));
+    atelier.choisir(abstrus.id);
+    const ecrites: string[] = [];
+    const ecrire = (t: string) => {
+      ecrites.push(t);
+      atelier.brouillon!.definition = t;
+    };
+    atelier.appliquerProposition(atelier.propositionsFiche.find((p) => p.champ === 'definition')!, ecrire);
+    expect(ecrites).toEqual(['Se dit d’une œuvre litt. ou artistiques ou savante.']);
+    // Le genre ne passe pas par la zone de la définition.
+    atelier.appliquerProposition(atelier.propositionsFiche.find((p) => p.champ === 'genre')!, ecrire);
+    expect(ecrites).toHaveLength(1);
+    expect(atelier.brouillon!.genre).toBe('adj. et subst.');
+    atelier.brouillon!.definition = 'Une définition  avec espace double.';
+    atelier.corriger('espaces', ecrire);
+    expect(ecrites[1]).toBe('Une définition avec espace double.');
+  });
+});
+
+describe('l’orthographe dans l’atelier', () => {
+  const fautif = mot('faut01', { mot: 'Bévue', tri: 'bévue', definition: '1. Une fautte de frappe, p. ext. une erreur (fam.).' });
+  const avecFautif: FichierMots = { ...locale, mots: [...locale.mots, fautif] };
+  /** Plus que l'attente du vérificateur avant de demander des mots. */
+  const attendreLeDictionnaire = () => new Promise((r) => setTimeout(r, 500));
+  const orthographe = (r: { code: string; texte: string }[]) => r.filter((x) => x.code === 'orthographe').map((x) => x.texte);
+
+  it('les mots inconnus d’un mot complet deviennent une remarque, sans « Corriger »', async () => {
+    const faux = new FauxPont(ecrireFichier(avecFautif));
+    faux.inconnusDuDico = new Set(['fautte', 'ext', 'fam']);
+    const { atelier } = await demarrerSur(faux);
+    // Pas de réponse encore : pas de remarque, et la demande part en arrière-plan.
+    expect(orthographe(atelier.remarques(fautif))).toEqual([]);
+    await attendreLeDictionnaire();
+    const r = atelier.remarques(fautif).find((x) => x.code === 'orthographe');
+    expect(r).toMatchObject({ texte: 'Mot inconnu du dictionnaire\u202F: fautte.', correction: null, mots: ['fautte'] });
+    expect(atelier.aVerifier(fautif)).toBe(true);
+  });
+
+  it('chaque mot n’est demandé qu’une fois, par lots', async () => {
+    const beaucoup = Array.from({ length: 900 }, (_, i) => `mot${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26) % 26)}${String.fromCharCode(97 + Math.floor(i / 676))}`);
+    const long = mot('long01', { definition: `${beaucoup.join(' ')}.` });
+    const faux = new FauxPont(ecrireFichier({ ...locale, mots: [...locale.mots, long] }));
+    const { atelier } = await demarrerSur(faux);
+    atelier.remarques(long);
+    await attendreLeDictionnaire();
+    atelier.remarques(long);
+    atelier.choisir(long.id);
+    void atelier.remarquesFiche;
+    await attendreLeDictionnaire();
+    const demandes = faux.lotsOrthographe.flat();
+    expect(new Set(demandes).size).toBe(demandes.length);
+    expect(demandes).toEqual(expect.arrayContaining(beaucoup));
+    expect(Math.max(...faux.lotsOrthographe.map((l) => l.length))).toBeLessThanOrEqual(400);
+  });
+
+  it('la fiche en cours de saisie : un mot inconnu tapé est signalé après une pause', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    faux.inconnusDuDico = new Set(['xyzzyq']);
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    expect(orthographe(atelier.remarquesFiche)).toEqual([]);
+    atelier.brouillon!.definition = `${fiche.definition} EX: Un xyzzyq.`;
+    expect(orthographe(atelier.remarquesFiche)).toEqual([]);
+    await attendreLeDictionnaire();
+    expect(orthographe(atelier.remarquesFiche)).toEqual(['Mot inconnu du dictionnaire\u202F: xyzzyq.']);
+  });
+
+  it('« C’est voulu » tait les mots signalés, pas un mot inconnu ajouté plus tard', async () => {
+    const faux = new FauxPont(ecrireFichier(avecFautif));
+    faux.inconnusDuDico = new Set(['fautte', 'xyzzyq']);
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fautif.id);
+    void atelier.remarquesFiche;
+    await attendreLeDictionnaire();
+    atelier.ignorer(fautif.id, 'orthographe');
+    expect(orthographe(atelier.remarquesFiche)).toEqual([]);
+    expect(atelier.aVerifier(fautif)).toBe(false);
+    atelier.brouillon!.definition = `${fautif.definition} EX: Un xyzzyq.`;
+    void atelier.remarquesFiche;
+    await attendreLeDictionnaire();
+    expect(orthographe(atelier.remarquesFiche)).toEqual(['Mot inconnu du dictionnaire\u202F: xyzzyq.']);
+    expect(JSON.parse(localStorage.getItem('jolismots.verification.ignorees.v1')!)).toEqual(['faut01:orthographe:fautte']);
+  });
+
+  it('un dictionnaire en panne ne signale rien et n’est plus sollicité', async () => {
+    const faux = new FauxPont(ecrireFichier(avecFautif));
+    faux.inconnusDuDico = new Set(['fautte']);
+    faux.dicoEnPanne = true;
+    const { atelier } = await demarrerSur(faux);
+    atelier.remarques(fautif);
+    await attendreLeDictionnaire();
+    const lots = faux.lotsOrthographe.length;
+    expect(lots).toBeGreaterThan(0);
+    expect(orthographe(atelier.remarques(fautif))).toEqual([]);
+    atelier.remarques({ ...fautif, id: 'autre2', definition: 'Encore un mot neuf.' });
+    await attendreLeDictionnaire();
+    expect(faux.lotsOrthographe.length).toBe(lots);
+  });
+});
+
+describe('l’historique lu dans le dépôt', () => {
+  const entree: EntreeHistorique = { publie: '2026-11-24T14:50:52Z', debut: true, total: 3, ajoutes: [], modifies: [], supprimes: [] };
+
+  it('rend l’historique du dépôt', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    faux.historiqueDuDepot = [entree, entree];
+    const { atelier } = await demarrerSur(faux);
+    expect(await atelier.historiqueDuDepot()).toEqual([entree]);
+  });
+
+  it('sans copie, ou si le pont échoue : null', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    expect(await atelier.historiqueDuDepot()).toBeNull();
+    // Une histoire sans liste lisible ne remplace pas celle de l'ordinateur.
+    faux.historiqueDuDepot = [];
+    expect(await atelier.historiqueDuDepot()).toBeNull();
+    faux.historiqueDuDepot = 'rejet';
+    expect(await atelier.historiqueDuDepot()).toBeNull();
   });
 });

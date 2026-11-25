@@ -87,6 +87,22 @@ describe('compterFiltres', () => {
     expect(n.doublons).toBe(groupesDeDoublons(liste).flat().length);
     expect(n.doublons).toBe(4);
   });
+
+  it('À vérifier : vide sans fonction ; sinon les mots qu’elle retient', () => {
+    expect(compterFiltres(liste).aVerifier).toBe(0);
+    expect(compterFiltres(liste, (m) => m.tri.startsWith('b')).aVerifier).toBe(2);
+  });
+});
+
+describe('listerAtelier, À vérifier', () => {
+  it('vide sans fonction ; sinon les mots retenus, rangés, et la recherche s’applique', () => {
+    expect(listerAtelier(liste, { filtre: 'aVerifier', requete: '' })).toEqual([]);
+    const aVerifier = (m: Mot) => m.id === 'cave2' || m.id === 'bistre' || m.id === 'venuste2';
+    expect(listerAtelier(liste, { filtre: 'aVerifier', requete: '', aVerifier }).map((m) => m.id)).toEqual(['bistre', 'cave2', 'venuste2']);
+    expect(listerAtelier(liste, { filtre: 'aVerifier', requete: 'CAVE', aVerifier }).map((m) => m.id)).toEqual(['cave2']);
+    // Les autres filtres ne la regardent pas.
+    expect(listerAtelier(liste, { filtre: 'tous', requete: '', aVerifier })).toHaveLength(liste.length);
+  });
 });
 
 describe('listerAtelier', () => {
