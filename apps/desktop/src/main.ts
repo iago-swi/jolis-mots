@@ -19,6 +19,22 @@ import {
 } from 'electron';
 import { ADRESSE_DEPOT, enregistrer, envoyer, ouvrir, reprendre, synchroniser, type Depot } from './depot';
 
+// Une version de développement ne travaille jamais sur les vraies données : sans dossier de
+// données à part, elle s'arrête avant d'ouvrir une fenêtre ou de créer un dossier.
+if (!app.isPackaged && !process.env.JOLISMOTS_DONNEES) {
+  console.error(
+    [
+      'Jolis Mots ne démarre pas en développement sans JOLISMOTS_DONNEES.',
+      'Sans elle, l’application travaillerait sur la vraie copie de la liste, dans %APPDATA%\\Jolis Mots,',
+      'à un clic de la branche donnees en ligne. Donner les deux variables :',
+      '  JOLISMOTS_DEPOT : l’adresse du dépôt de la liste pour l’essai, par exemple un dépôt nu local ;',
+      '  JOLISMOTS_DONNEES : un dossier de données à part (copie, sauvegardes, fenêtre).',
+      'Un exemple est dans PROJET.md, « Mettre en route après un clonage ».',
+    ].join('\n'),
+  );
+  process.exit(1);
+}
+
 // Avant tout le reste : le dossier des données décide aussi du verrou d'instance unique.
 if (process.env.JOLISMOTS_DONNEES) app.setPath('userData', process.env.JOLISMOTS_DONNEES);
 

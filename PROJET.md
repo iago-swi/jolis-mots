@@ -318,7 +318,17 @@ Toutes se lancent depuis la racine.
    ```
 
 3. Pour Android seulement, le projet généré : `npx cap add android`, depuis `apps/android`. Pour un APK publié, le fichier de clé (voir « Signature »).
-4. Pour Windows, rien de plus : `npm run start:desktop` lance l'application. Pour essayer l'atelier sans toucher à la vraie liste, donner `JOLISMOTS_DEPOT` et `JOLISMOTS_DONNEES` (voir plus haut).
+4. Pour Windows, `npm run start:desktop` lance l'application. Hors de l'application installée, elle refuse de démarrer sans `JOLISMOTS_DONNEES` : elle le dit dans le terminal et s'arrête, avant d'ouvrir une fenêtre ou de créer un dossier. Sans cette garde, un essai travaillerait sur la vraie copie de la liste (`%APPDATA%\Jolis Mots`), à un clic de la branche `donnees` en ligne. Pour un essai, un dépôt nu local et un dossier de données à part, depuis PowerShell, à la racine :
+
+   ```powershell
+   $essai = "$env:TEMP\jolis-mots-essai"
+   git clone --bare --single-branch --branch donnees . "$essai\depot.git"
+   $env:JOLISMOTS_DEPOT = "$essai\depot.git"
+   $env:JOLISMOTS_DONNEES = "$essai\donnees"
+   npm run start:desktop
+   ```
+
+   L'atelier télécharge alors sa copie depuis `depot.git`, et ses envois n'y vont que là. Supprimer le dossier `$essai` après l'essai.
 
 ## Fabriquer l'APK
 

@@ -23,4 +23,5 @@ Depuis la racine. Le détail est dans [PROJET.md](PROJET.md).
 
 - `donnees/` est un worktree de la branche `donnees` (`git worktree add donnees donnees` après un clonage), ignoré sur la branche de code. Sans `donnees/mots.json`, `npm run check` et `npm run build` échouent.
 - `apps/android/android/` est généré par `npx cap add android` (depuis `apps/android`) et ignoré par git.
+- `npm run start:desktop` refuse de démarrer sans `JOLISMOTS_DONNEES` (seule l'application installée travaille dans `%APPDATA%\Jolis Mots`). Toujours donner aussi `JOLISMOTS_DEPOT`, un dépôt nu local ; l'exemple est dans PROJET.md, « Mettre en route après un clonage ».
 - L'APK demande un JDK entre 17 et 24 et le SDK Android. Sur la machine du propriétaire, lancer la fabrication Gradle depuis PowerShell : depuis Git Bash, elle échoue (« Unable to establish loopback connection »).
