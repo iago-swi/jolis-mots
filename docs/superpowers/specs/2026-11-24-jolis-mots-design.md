@@ -466,3 +466,19 @@ Décidé en route :
 
 - L'atelier lit l'histoire de la branche `donnees` sur GitHub (dans sa copie locale) : chaque version envoyée y est comparée à la précédente, avec les règles de la section 14. La première version, l'import depuis l'Excel, ouvre l'historique.
 - Sans copie locale ou si la lecture échoue, l'écran montre l'historique noté sur l'ordinateur, comme en 1.0.2.
+
+## 16. Version 1.0.4 : l'annonce d'une nouvelle liste
+
+Demandé par Philippe le 25 novembre 2026 : sur le téléphone, une petite annonce dit que la liste a changé, sans avoir à ouvrir l'historique.
+
+### 16.1 Décidé par Philippe
+
+- Sur le téléphone, quand une nouvelle liste ajoute, modifie ou supprime des mots, une petite annonce s'affiche quelques secondes.
+- Elle dit, très brièvement, ce que dit l'historique : ajouts, modifications, suppressions.
+
+### 16.2 Choix de Claude
+
+- **Approche.** L'annonce naît là où le téléphone note la liste dans l'historique (section 14) : elle montre l'entrée qui vient d'y être ajoutée, et dit donc toujours la même chose que l'historique. Écarté : comparer les listes une seconde fois pour l'annonce.
+- **Quand.** Au moment où la liste est adoptée : à l'ouverture de l'application, ou au mot suivant. Pas d'annonce pour la première liste (« Début de l'historique »), ni pour une liste qui ne change aucun mot visible. Pas d'annonce sous Windows : l'atelier sait ce qu'il vient d'envoyer.
+- **Texte.** « Liste mise à jour · +2 · ~1 → 1 139 mots », avec les seules sortes présentes, comme dans l'historique. Les lecteurs d'écran entendent la phrase en toutes lettres.
+- **Allure.** Une pastille sobre en haut de l'écran, sous l'en-tête (en bas, elle cacherait « Mot suivant »), en encre secondaire sur le papier, avec un filet. Elle s'efface après six secondes. La toucher ouvre l'historique, avec cette entrée dépliée.

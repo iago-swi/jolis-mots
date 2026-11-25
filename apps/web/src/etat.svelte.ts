@@ -75,6 +75,13 @@ class Etat {
   reglages = $state<Reglages>(reglagesDeDepart());
   /** L'historique de la liste, du plus ancien au plus récent (conception, section 14). */
   historique = $state.raw<EntreeHistorique[]>(validerHistorique(lire<unknown>(CLES.historique, [])));
+  /**
+   * Sur le téléphone, l'entrée que l'historique vient de gagner, montrée quelques secondes
+   * par une annonce (conception, section 16) ; null quand il n'y a rien à annoncer.
+   */
+  annonce = $state.raw<EntreeHistorique | null>(null);
+  /** L'entrée que l'écran Historique déplie en s'ouvrant (posée en touchant l'annonce). */
+  entreeADeplier: string | null = null;
   /** La dernière liste notée dans l'historique, réduite à ce qui sert à comparer. */
   private reference = validerReference(lire<unknown>(CLES.reference, null));
   /** Les mots montrés sur l'écran Mot depuis l'ouverture, dans l'ordre. Mémoire seulement. */
@@ -202,7 +209,23 @@ class Etat {
     if (r.historique !== this.historique) {
       this.historique = r.historique;
       ecrire(CLES.historique, r.historique);
+      // Sur bureau, l'atelier sait ce qu'il vient d'envoyer : pas d'annonce.
+      const nouvelle = r.historique[r.historique.length - 1];
+      if (pont === null && nouvelle !== undefined && !nouvelle.debut) this.annonce = nouvelle;
     }
+  }
+
+  fermerAnnonce(): void {
+    this.annonce = null;
+  }
+
+  /** L'annonce touchée : l'historique s'ouvre, son entrée dépliée ; le retour ramène à l'écran d'avant. */
+  ouvrirAnnonce(): void {
+    if (this.annonce === null) return;
+    this.entreeADeplier = this.annonce.publie;
+    this.annonce = null;
+    if (this.ecran !== 'reglages' && this.ecran !== 'historique') this.ecranAvantReglages = this.ecran;
+    this.allerA('historique');
   }
 
   precedent(): void {

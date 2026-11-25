@@ -1,6 +1,6 @@
 # Jolis Mots : notes techniques
 
-Ce document décrit le dépôt tel qu'il est à la version 1.0.3. La [conception](docs/superpowers/specs/2026-11-24-jolis-mots-design.md) dit pourquoi ; ici, on dit comment. Pour utiliser l'application, voir le [README](README.md).
+Ce document décrit le dépôt tel qu'il est à la version 1.0.4. La [conception](docs/superpowers/specs/2026-11-24-jolis-mots-design.md) dit pourquoi ; ici, on dit comment. Pour utiliser l'application, voir le [README](README.md).
 
 ## Vue d'ensemble
 
@@ -96,6 +96,7 @@ Sur la fiche, le mot a une seule grande taille, 54 px ; une expression passe à 
 - `ecrans/Historique.svelte` : l'historique de la liste, de la plus récente à la plus ancienne ; une entrée se déplie sur ses mots (« + » ajouté, « ~ » modifié, « − » supprimé, par ordre alphabétique) ; un mot ajouté ou modifié encore dans la liste ouvre sa fiche dans un volet (`etat.ficheOuverte`, que le bouton retour d'Android ferme d'abord). On y vient des Réglages ; le bouton retour y ramène. Sur le téléphone, l'état note chaque liste adoptée ; sur bureau, c'est l'atelier qui note chaque liste envoyée ou reçue (`envoyee`), jamais la copie de travail : un envoi qui échoue ne laisse pas d'entrée. Depuis la 1.0.3, sur bureau, l'écran demande à l'ouverture l'historique tiré de la copie locale (`atelier.historiqueDuDepot`, voir plus bas) et le montre à la place de celui noté sur l'ordinateur ; en l'attendant, ou s'il manque (pas de copie, lecture échouée, aucune liste), il montre celui de l'ordinateur.
 - `ecrans/Reglages.svelte` : questions par quiz, palette, version, date et heure de la liste (« 25 novembre 2026 à 03:44 », heure de l'appareil), la ligne « Historique de la liste », « Effacer mes progrès » ; ce lien reste visible au-dessus de sa confirmation.
 - `ecrans/Atelier.svelte` : l'atelier, sur bureau seulement ; voir plus bas.
+- `composants/Annonce.svelte` (depuis la 1.0.4) : sur le téléphone, la pastille qui annonce une nouvelle liste, en haut de l'écran, six secondes. Elle montre `etat.annonce`, l'entrée que l'historique vient de gagner (posée par `etat.noterListe`, jamais pour « Début de l'historique » ni sur bureau) ; la toucher appelle `etat.ouvrirAnnonce`, qui ouvre l'historique avec cette entrée dépliée (`etat.entreeADeplier`).
 - `composants/Entete.svelte`, `composants/Onglets.svelte` : l'en-tête (la marque et le bouton des réglages) et les onglets, trois sur le téléphone, quatre sur bureau.
 - `volet.ts` : l'action Svelte des volets et des confirmations. À l'ouverture, le curseur va sur l'élément marqué `data-depart`, sinon sur le volet (qui reçoit toujours `tabindex="-1"`) ; Échap ferme, où que soit le curseur ; à la fermeture, le curseur revient à l'élément qui l'avait.
 
