@@ -420,6 +420,14 @@ Demandé par Philippe le 25 novembre 2026 pour nettoyer et compléter ses mots d
 - **L'orthographe en français** pendant la saisie (le correcteur était en anglais).
 - **Sous Windows, l'historique de la liste** se lit sur GitHub, depuis le premier import ; le téléphone garde le sien, qui commence à son installation.
 
+Décidé en route :
+
+- **Un point final à chaque sens**, que « Corriger » pose d'un clic (à la fin du texte propre du sens, avant ses balises).
+- **Des propositions de correction** chargées depuis un fichier (« Charger des propositions… ») : chacune apparaît dans la fiche de son mot, avec « Corriger » pour l'appliquer et « Non » pour l'écarter.
+- **Note et Util. en petit sur la première ligne** de la fiche, après Genre. Dans une fiche étroite, Genre, Note et Util. passent sur une deuxième ligne, pour qu'aucun genre ne soit coupé.
+- **Le pied de fiche sur une ligne** : la case « À compléter », le CNRTL en lien, « Supprimer ce mot », puis « Enregistrer ».
+- **La zone de définition ne rétrécit pas** : elle garde neuf lignes au moins ; quand la place manque, ce sont les champs qui défilent.
+
 ### 15.2 Saisie rapide
 
 - La barre, sobre, sur une ligne : `1.` [Litt.] [Fig.] [Par ext.] [Vieux] [Fam.] `EX:` `SYN:` `US:` et « ⋯ », qui déplie les autres. Un clic insère au curseur ; au survol, chaque bouton montre son abréviation.
@@ -436,7 +444,7 @@ Demandé par Philippe le 25 novembre 2026 pour nettoyer et compléter ses mots d
 
 ### 15.3 Le vérificateur
 
-- Un cinquième filtre de la liste, « À vérifier », avec son nombre : les mots complets qui ont au moins une remarque.
+- Un cinquième filtre de la liste, « À vérifier », avec son nombre : les mots complets qui ont une remarque, et les mots qui ont une proposition de correction.
 - Dans la fiche, au-dessus de la définition, les remarques du mot, une ligne chacune :
   - balise mal écrite (`EX :`, `Ex:`, `Syn:`) ;
   - indication entre crochets inconnue : ni dans la table des abréviations développées, ni employée ailleurs dans la liste ;
@@ -444,9 +452,10 @@ Demandé par Philippe le 25 novembre 2026 pour nettoyer et compléter ses mots d
   - numérotation qui saute ou ne commence pas à 1 ;
   - crochet, parenthèse ou guillemet non fermé ; `EX:` vide ;
   - genre vide, ou inconnu de la table des genres ;
-  - espaces doubles, espace avant un point ou une virgule ;
+  - espaces doubles, espace avant un point ou une virgule (les passages cités, trois au plus) ;
+  - point final manquant à la fin d'un sens ;
   - mots inconnus du dictionnaire français.
-- « Corriger » est proposé pour les écarts mécaniques (balise mal écrite, espaces) : le texte ne change que sur ce clic. « C'est voulu » fait taire une remarque pour ce mot, sur cet ordinateur.
+- « Corriger » est proposé pour les écarts mécaniques (balise mal écrite, espaces, point final manquant) : le texte ne change que sur ce clic. « C'est voulu » fait taire cette sorte de remarque pour ce mot, durablement, sur cet ordinateur.
 
 ### 15.4 Orthographe
 

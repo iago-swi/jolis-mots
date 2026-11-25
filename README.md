@@ -84,8 +84,8 @@ Tous les mots qui ont une définition, par ordre alphabétique. On peut chercher
 
 L'atelier tient sur trois colonnes.
 
-- **À gauche, la liste** de tous les mots, complets ou non, avec une recherche et cinq filtres, chacun avec son nombre de mots : Tous les mots, Complets, À compléter, À vérifier et Doublons. À vérifier réunit les mots complets qui ont au moins une remarque du vérificateur ou une proposition de correction (voir plus bas). Doublons réunit côte à côte les mots qui ont le même mot ou le même tri, pour choisir lequel garder ; une recherche y garde les groupes entiers. « Nouveau mot » ouvre une fiche vide ; « Charger des propositions… » est juste en dessous.
-- **Au centre, la fiche** : sur la première ligne Mot, Tri, Genre, puis deux petits champs, **Note** et **Util.** (« Utilisé dans mes livres » : L, LL, LLL ou X), dont le nom entier apparaît au survol ; ensuite Définition et Source. Le tri est proposé à partir du mot et reste modifiable ; le genre propose les valeurs déjà employées. La définition s'écrit comme dans l'Excel, avec les balises habituelles (`1.`, `2.`, `[Litt.]`, `EX:`, `SYN:`, `US:`), rappelées au survol du titre « Définition », et la source prend une ligne par livre, sous la forme `Auteur: Titre (page)`. Un avertissement apparaît si le mot ou le tri existe déjà.
+- **À gauche, la liste** de tous les mots, complets ou non, avec une recherche et cinq filtres, chacun avec son nombre de mots : Tous les mots, Complets, À compléter, À vérifier et Doublons. À vérifier réunit les mots complets qui ont une remarque du vérificateur, et les mots qui ont une proposition de correction (voir plus bas). Doublons réunit côte à côte les mots qui ont le même mot ou le même tri, pour choisir lequel garder ; une recherche y garde les groupes entiers. « Nouveau mot » ouvre une fiche vide ; « Charger des propositions… » est juste en dessous.
+- **Au centre, la fiche** : sur la première ligne Mot, Tri, Genre, puis deux petits champs, **Note** et **Util.** (« Utilisé dans mes livres » : L, LL, LLL ou X), dont le nom entier apparaît au survol ; ensuite Définition et Source. Dans une fenêtre étroite, Genre, Note et Util. passent sur une deuxième ligne, pour que le genre le plus long tienne en entier. Le tri est proposé à partir du mot et reste modifiable ; le genre propose les valeurs déjà employées. La définition s'écrit comme dans l'Excel, avec les balises habituelles (`1.`, `2.`, `[Litt.]`, `EX:`, `SYN:`, `US:`), rappelées au survol du titre « Définition », et la source prend une ligne par livre, sous la forme `Auteur: Titre (page)`. Un avertissement apparaît si le mot ou le tri existe déjà.
 - **À droite, l'aperçu** : la fiche telle qu'elle apparaîtra sur le téléphone, mise à jour pendant la saisie.
 
 Sous la fiche, toujours visibles et sur une ligne : la case **À compléter**, **Ouvrir dans le CNRTL**, qui ouvre l'article du mot dans le navigateur, **Supprimer ce mot**, après confirmation, et **Enregistrer** (ou Ctrl+S), inactif tant que rien n'a changé. Dans une fenêtre étroite, les deux liens se disent « CNRTL » et « Supprimer ». Tant que la case « À compléter » est cochée, le mot reste dans l'atelier et n'apparaît pas sur le téléphone ; elle est cochée d'office pour un nouveau mot. Quitter une fiche modifiée sans l'enregistrer demande confirmation, de même que recharger ou fermer la fenêtre.
@@ -117,11 +117,11 @@ Le vérificateur relit les mots complets. Dans la fiche, entre la première lign
 - numérotation des sens qui saute ou ne commence pas à 1 ;
 - crochet, parenthèse ou guillemet sans pendant ; `EX:` sans exemple ;
 - genre vide, ou inconnu ;
-- espace double, ou espace avant un point ou une virgule ;
+- espace double, ou espace avant un point ou une virgule (la remarque cite les passages, trois au plus) ;
 - point final manquant à la fin d'un sens ;
 - mots inconnus du dictionnaire français (sous Windows ; voir plus bas).
 
-**Corriger** répare une balise mal écrite, des espaces en trop ou un point final manquant. Le texte ne change que sur ce clic, rien n'est enregistré avant **Enregistrer**, et Ctrl+Z rend le texte d'avant. **C'est voulu** fait taire la remarque pour ce mot, sur cet ordinateur ; pour un mot inconnu du dictionnaire, seuls les mots signalés à ce moment se taisent. Au-delà de trois lignes, « et N autres » montre le reste.
+**Corriger** répare une balise mal écrite, des espaces en trop ou un point final manquant. Le texte ne change que sur ce clic, rien n'est enregistré avant **Enregistrer**, et Ctrl+Z rend le texte d'avant. **C'est voulu** fait taire cette sorte de remarque pour ce mot, durablement : elle ne revient pas, même si la définition change encore. Cela vaut sur cet ordinateur ; pour un mot inconnu du dictionnaire, seuls les mots signalés à ce moment se taisent. Au-delà de trois lignes, « et N autres » montre le reste.
 
 #### Propositions de correction
 
@@ -131,9 +131,9 @@ Chaque proposition apparaît dans la fiche de son mot, avec les remarques : le p
 
 #### Orthographe
 
-Sous Windows, le correcteur souligne les fautes en français pendant la saisie. Le vérificateur demande au même dictionnaire les mots de chaque définition, et ajoute une remarque « Mot inconnu du dictionnaire » ; les mots rares de la liste y tombent souvent, d'où **C'est voulu**. Les noms propres, les abréviations (« fam. », « qqn ») et les formes du mot de la fiche ne sont pas signalés.
+Sous Windows, le correcteur souligne les fautes en français pendant la saisie. Le vérificateur demande au même dictionnaire les mots de chaque définition, et ajoute une remarque « Mot inconnu du dictionnaire » ; les mots rares de la liste y tombent souvent, d'où **C'est voulu**. Les noms propres en cours de phrase, les abréviations (« fam. », « qqn ») et les formes du mot de la fiche ne sont pas signalés.
 
-Ce dictionnaire est celui de Windows : il n'y a rien à installer si le français fait partie des langues de Windows. Sinon, l'ajouter dans **Paramètres › Heure et langue › Langue et région › Ajouter une langue** (en anglais : *Settings › Time & language › Language & region › Add a language*), choisir **Français (Suisse)** et garder la saisie de base, puis relancer Jolis Mots. Sans français, le vérificateur ne signale aucun mot inconnu, et tout le reste fonctionne.
+Ce dictionnaire est celui de Windows : il n'y a rien à installer si le français fait partie des langues de Windows. Sinon, l'ajouter depuis les Paramètres de Windows, Heure et langue, Langue et région, puis Ajouter une langue (les libellés peuvent varier un peu selon la version de Windows) ; choisir **Français (Suisse)**, **décocher « Définir comme langue d'affichage de Windows »**, installer, puis relancer Jolis Mots. Sans français, le vérificateur ne signale aucun mot inconnu, et tout le reste fonctionne.
 
 #### Historique sous Windows
 
