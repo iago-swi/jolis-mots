@@ -6,7 +6,7 @@ Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les 
 
 La version Windows, avec l'atelier pour ajouter, modifier et supprimer des mots, puis envoyer la liste au téléphone. Sur le téléphone, la lecture n'a plus de fin et le quiz se choisit.
 
-**Sur Android, il faut désinstaller la version 0.1.0 avant d'installer la 1.0.0. L'application est maintenant signée avec une nouvelle clé, et Android refuse d'installer la 1.0.0 par-dessus la 0.1.0. La désinstallation efface les progrès et les favoris gardés sur le téléphone. Il n'y a à le faire qu'une fois.**
+**Sur Android, il faut désinstaller la version 0.1.0 avant d'installer la 1.0.0. L'application est maintenant signée avec une nouvelle clé, et Android refuse d'installer la 1.0.0 par-dessus la 0.1.0. La désinstallation efface les progrès et les favoris gardés sur le téléphone. Ce n'est à faire qu'une fois.**
 
 ### Ajouté
 
@@ -38,15 +38,15 @@ La version Windows, avec l'atelier pour ajouter, modifier et supprimer des mots,
 - Les filtres du Recueil sont plus petits et tiennent sur une ligne : Bouvier, Tesson, Rollin, Méral, l'étoile des favoris et « Autres ». Le bouton « Tous » disparaît : toucher le filtre allumé l'éteint.
 - Le mot s'affiche toujours à la même grande taille, et une expression passe à la ligne entre ses mots. Seul un mot d'un seul tenant trop long pour une ligne prend une taille plus petite.
 - Sur le téléphone, l'application reste en portrait.
-- En mode sombre, l'écran de lancement est sombre lui aussi.
 
 ### Corrigé
 
 - Une définition qui commence par une phrase placée avant le « 1. » (« Éployer », « Musarder ») est maintenant découpée en sens numérotés. La phrase s'affiche au-dessus des sens.
 - Une longue indication entre crochets s'affiche en italique, plus facile à lire que les petites capitales.
-- En mode sombre, l'éclair clair au lancement a disparu.
+- En mode sombre, l'écran de lancement est sombre lui aussi, et l'éclair clair au lancement a disparu.
 - Au clavier, les volets et les questions reçoivent le curseur à l'ouverture et le rendent à la fermeture. La touche Échap les ferme.
 - Le téléphone refuse une liste en ligne vide, ou dont deux mots portent le même identifiant.
+- Dans les textes de l'application, une espace fine insécable précède « ? », « : » et « ; » : un point d'interrogation ne se retrouve plus seul au début d'une ligne.
 
 ## [0.1.0] - 2026-11-24
 

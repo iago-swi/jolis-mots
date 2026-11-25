@@ -34,7 +34,7 @@ L'application n'est pas sur le Play Store.
 2. L'ouvrir. Android demande d'autoriser l'installation d'applications venant de cette source (le navigateur ou le gestionnaire de fichiers qui a servi au téléchargement) : l'accepter.
 3. Installer. L'application s'appelle « Jolis Mots ».
 
-**Venir de la version 0.1.0.** Depuis la version 1.0.0, l'application est signée avec une nouvelle clé : Android refuse de l'installer par-dessus la 0.1.0. Désinstaller d'abord Jolis Mots 0.1.0, puis installer la nouvelle version. La désinstallation efface les progrès et les favoris gardés sur le téléphone. Il n'y a à le faire qu'une fois.
+**Venir de la version 0.1.0.** Depuis la version 1.0.0, l'application est signée avec une nouvelle clé : Android refuse de l'installer par-dessus la 0.1.0. Désinstaller d'abord Jolis Mots 0.1.0, puis installer la nouvelle version. La désinstallation efface les progrès et les favoris gardés sur le téléphone. Ce n'est à faire qu'une fois.
 
 ### Windows
 

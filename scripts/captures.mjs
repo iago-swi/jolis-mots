@@ -245,7 +245,7 @@ async function filtresSurUneLigne() {
       const attendre = () => new Promise((r) => setTimeout(r, 200));
       document.querySelector('.filtres button:last-child')?.click();
       await attendre();
-      const nomCourt = (b) => b.querySelector('span').textContent.trim().split(/\s+/).at(-1);
+      const nomCourt = (b) => b.querySelector('span').textContent.trim().split(/\\s+/).at(-1);
       const auteurs = [...document.querySelectorAll('button.auteur')];
       if (auteurs.length === 0) return 'aucun';
       const long = auteurs.reduce((a, b) => (nomCourt(b).length > nomCourt(a).length ? b : a));

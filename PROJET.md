@@ -85,13 +85,13 @@ Sur la fiche, le mot a une seule grande taille, 54 px ; une expression passe à 
 ### Écrans et composants
 
 - `App.svelte` : en-tête, écran courant, barre d'onglets. L'écran se choisit par l'adresse (`#mot`, `#quiz`, `#recueil`, `#reglages`, et `#atelier` sur bureau seulement) ; sans adresse, c'est Mot. Sur bureau, les écrans de lecture tiennent dans une colonne centrée de 560 px ; l'Atelier prend toute la largeur.
-- `ecrans/Mot.svelte` : la fiche du mot courant (`composants/Fiche.svelte`), un glissement horizontal de plus de 60 px pour changer de mot, l'étoile des favoris, « Mot suivant ».
+- `ecrans/Mot.svelte` : la fiche du mot courant (`composants/Fiche.svelte`), un glissement horizontal de plus de 60 px, au doigt ou au stylet, pour changer de mot (à la souris, glisser sélectionne le texte), l'étoile des favoris, « Mot suivant ».
 - `ecrans/Quiz.svelte` : le choix « Tous les mots » ou « Les mots que j'ai vus », puis les questions ; voir plus bas.
-- `ecrans/Recueil.svelte` : la liste alphabétique avec lettrines, la recherche, les filtres sur une ligne (Bouvier, Tesson, Rollin, Méral, l'étoile des favoris, et « Autres », qui ouvre un volet avec les autres auteurs et le nombre de mots de chacun), la fiche ouverte dans un volet. Un seul filtre est allumé à la fois ; toucher le filtre allumé l'éteint. Quand un autre auteur est choisi, le bouton « Autres » prend son nom.
+- `ecrans/Recueil.svelte` : la liste alphabétique avec lettrines, la recherche, les filtres sur une ligne (Bouvier, Tesson, Rollin, Méral, l'étoile des favoris, et « Autres », qui ouvre un volet avec les autres auteurs et le nombre de mots de chacun), la fiche ouverte dans un volet. Un seul filtre est allumé à la fois ; toucher le filtre allumé l'éteint. Quand un autre auteur est choisi, le bouton « Autres » prend son nom ; un nom trop long pour la ligne finit par « … », le nom entier restant dans `aria-label` et `title`.
 - `ecrans/Reglages.svelte` : questions par quiz, palette, version, date de la liste, « Effacer mes progrès » ; ce lien reste visible au-dessus de sa confirmation.
 - `ecrans/Atelier.svelte` : l'atelier, sur bureau seulement ; voir plus bas.
 - `composants/Entete.svelte`, `composants/Onglets.svelte` : l'en-tête (la marque et le bouton des réglages) et les onglets, trois sur le téléphone, quatre sur bureau.
-- `volet.ts` : l'action Svelte des volets et des confirmations. À l'ouverture, le curseur va sur l'élément marqué `data-depart`, sinon sur le volet ; Échap ferme ; à la fermeture, le curseur revient à l'élément qui l'avait.
+- `volet.ts` : l'action Svelte des volets et des confirmations. À l'ouverture, le curseur va sur l'élément marqué `data-depart`, sinon sur le volet (qui reçoit toujours `tabindex="-1"`) ; Échap ferme, où que soit le curseur ; à la fermeture, le curseur revient à l'élément qui l'avait.
 
 L'état de l'application est dans `etat.svelte.ts` (une classe avec les runes de Svelte 5), celui de l'atelier dans `atelier.svelte.ts`. Les écrans n'ont pas d'état partagé ailleurs.
 
@@ -120,7 +120,8 @@ Les réglages sont deux valeurs : `questionsParQuiz` (5, 10, 15 ou 20, 10 par d�
 - `&copie=aucune` part sans copie : la première synchronisation échoue faute de réseau, la suivante la reçoit ;
 - `&copie=illisible` part d'une copie dont le fichier des mots ne se lit pas ;
 - `&detail=long` donne aux pannes un message de git de sept lignes ;
-- `&reprise=echec` fait échouer la reprise de la liste en ligne.
+- `&reprise=echec` fait échouer la reprise de la liste en ligne ;
+- `&sync=sans-reseau` fait échouer toute synchronisation faute de réseau, la copie étant là : l'atelier travaille alors sans rien dire.
 
 C'est ce qu'utilise `scripts/captures.mjs`.
 
@@ -185,7 +186,9 @@ Les opérations passent une à une, dans l'ordre où elles sont demandées. Au d
 
 **Envoyer** contrôle la liste (`validerPourEnvoi` : ni liste vide, ni identifiant vide ou en double, ni mot sans nom), la date (`dater`), compose le message (`messageDEnvoi`, « Liste du 24 novembre 2026 : 3 mots modifiés, 1 ajouté ») et la passe au pont.
 
-Les phrases de l'atelier sont en tête de `atelier.svelte.ts`. Un envoi réussi dit « Liste envoyée. Le téléphone la verra dans quelques minutes. » ; chaque panne a sa phrase (pas de réseau, refus de GitHub, liste en ligne changée ailleurs, `git` introuvable, copie illisible, reprise échouée…). Le message de `git`, en anglais, est montré tel quel en dessous. Après une reprise, le chemin du fichier mis de côté est montré tel quel.
+Les phrases de l'atelier sont en tête de `atelier.svelte.ts`. Un envoi réussi dit « Liste envoyée. Le téléphone la verra dans quelques minutes. » ; chaque panne a sa phrase (pas de réseau, refus de GitHub, liste en ligne changée ailleurs, `git` introuvable, copie illisible, reprise échouée…). Le message de `git`, en anglais, est montré tel quel en dessous, et seulement sous un avis d'alerte (`detail`) : une panne que l'atelier tait, comme l'absence de réseau avec une copie, ne laisse pas de ligne orpheline. Après une reprise, le chemin du fichier mis de côté est montré tel quel ; de même quand la synchronisation a mis de côté une copie cassée qui tenait un `mots.json` (« L'ancienne copie de l'atelier a été mise de côté ici : »). Sans la dernière liste envoyée (`git` introuvable, branche en ligne absente de la copie), le compteur ne montre rien, « Envoyer au téléphone » reste inactif, et un avis le dit.
+
+Pendant qu'un enregistrement attend son tour (derrière une synchronisation lente) ou tourne, « Enregistrer » devient « Enregistrement… », inactif ; la fiche reste modifiable. Quand une synchronisation ou une reprise remplace la liste, une fiche ouverte non modifiée prend le mot de la nouvelle liste (ou se ferme s'il n'y est plus) ; une fiche modifiée reste un brouillon, comparé au mot de la nouvelle liste.
 
 Composants (`composants/atelier/`) :
 
@@ -220,10 +223,12 @@ Electron 45, pour Windows x64. L'identifiant est `ch.noth.jolismots`, le nom « 
 L'atelier travaille sur un clone de la branche `donnees`, dans le dossier de données de l'application : `%APPDATA%\Jolis Mots\donnees`. Les fichiers mis de côté vont dans `%APPDATA%\Jolis Mots\sauvegardes`. `depot.ts` est du Node seul, sans Electron ; il appelle le `git` installé sur la machine par `execFile`, sans shell, avec `LC_ALL=C` et `GIT_TERMINAL_PROMPT=0` : l'application ne manipule aucun mot de passe ni jeton. Les opérations passent une à la fois, et aucune ne lève : une panne revient dans `raison` (`sans-git`, `sans-reseau`, `refus`, `divergence`, `erreur`) et dans `detail`, le message de git.
 
 - **Ouvrir** lit ce qui est sur le disque, sans réseau : le `mots.json` de la copie et celui de `origin/donnees`.
-- **Synchroniser** télécharge la copie si elle manque (`git clone --single-branch --branch donnees`, sans conversion des fins de ligne) ; un dossier laissé par un téléchargement interrompu est d'abord mis de côté. Sinon, `git fetch` : si la liste en ligne n'a pas bougé, rien à faire ; si elle a avancé et que rien n'attend ici, avance rapide ; sinon, divergence.
-- **Enregistrer** écrit `mots.json` dans un fichier temporaire du même dossier, puis le renomme : UTF-8 sans BOM, octets exacts.
+- **Synchroniser** télécharge la copie si elle manque (`git clone --single-branch --branch donnees`, sans conversion des fins de ligne) ; un dossier sans copie utilisable (téléchargement interrompu, `HEAD` cassé) est d'abord mis de côté dans `sauvegardes/donnees-AAAA-MM-JJ-HHMMSS`, et s'il tenait un `mots.json`, le chemin de ce fichier revient dans `sauvegarde`. Sinon, `git fetch` : si la liste en ligne n'a pas bougé, rien à faire ; si elle a avancé et que rien n'attend ici, avance rapide ; sinon, divergence.
+- **Enregistrer** écrit `mots.json` dans un fichier temporaire du même dossier (`mots.json.tmp`), écrit jusqu'au disque (`fsync`), puis le renomme : UTF-8 sans BOM, octets exacts.
 - **Envoyer** écrit le fichier, va voir la liste en ligne, et s'arrête sur une divergence sans rien envoyer. Sinon, une seule version est faite à partir de la liste en ligne, avec le message de l'envoi (une version restée ici après un envoi manqué est refaite, sans que le fichier bouge), puis envoyée par `git push`. Jamais d'envoi en force.
 - **Reprendre** copie d'abord `mots.json` dans `sauvegardes/mots-AAAA-MM-JJ-HHMMSS.json` (sans jamais écraser un fichier existant), puis remet la copie sur la liste en ligne. Seule la copie privée de l'atelier est touchée.
+
+Les opérations réseau ont des délais : `git fetch` est arrêté au bout de 30 secondes, `git clone` au bout de 120, `git push` au bout de 5 minutes (le gestionnaire d'identifiants peut ouvrir une fenêtre de connexion). Une opération arrêtée rend `sans-reseau`. Les trois passent aussi `-c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30` : git abandonne lui-même un transfert qui reste sous 1000 octets par seconde pendant 30 secondes. Un refus d'identification (« could not read Username … terminal prompts disabled ») rend `refus`.
 
 Deux variables d'environnement servent aux essais, pour que rien ne parte sur la vraie branche `donnees` :
 
@@ -343,9 +348,9 @@ Toutes se lancent depuis la racine.
 
 `npm run captures` fabrique l'application, la sert sur un port local libre, la photographie avec Edge sans fenêtre (piloté par son protocole de débogage), puis écrit `mot.png`, `quiz.png`, `question.png`, `recueil.png`, `reglages.png`, `atelier.png` et `palettes.png` dans `docs/captures/`.
 
-- Avant les photos, il vérifie que les filtres du Recueil tiennent sur une ligne d'un écran de 411 px de large, et s'arrête sinon.
+- Avant les photos, il vérifie que les filtres du Recueil tiennent sur une ligne d'un écran de 411 px de large, au départ puis avec l'autre auteur au nom le plus long choisi, et s'arrête sinon.
 - Edge sans fenêtre ne descend pas sous 500 px de large : le script émule donc un écran de 411 × 890 px, la largeur du téléphone de Philippe, et impose le mode clair, car les pastilles « Comme le système » des Réglages suivent le mode sombre de la machine.
-- Les adresses fixent le mot (`?mot=baguenauder`) et la palette (`?palette=papier`). `quiz.png` montre le choix du quiz ; `question.png` le saute (`?quiz=vus`) et interroge sur « Baguenauder », le seul mot vu jusque-là. Les trois mauvaises réponses sont tirées au hasard : elles changent d'une exécution à l'autre.
+- Les adresses fixent le mot (`?mot=baguenauder`, `?mot=ceruleen` pour `palettes.png`) et la palette (`?palette=papier`). `quiz.png` montre le choix du quiz ; `question.png` le saute (`?quiz=vus`) et interroge sur « Baguenauder », le seul mot vu jusque-là. Les trois mauvaises réponses sont tirées au hasard : elles changent d'une exécution à l'autre.
 - `atelier.png` est prise à 1280 × 800 avec le pont de démonstration (`?pont=demo#atelier`). Aucune adresse n'ouvre un mot dans l'atelier : le script touche la ligne « Vénuste » de la liste, puis vérifie que la fiche s'est ouverte.
 
 ## Versions et publication
