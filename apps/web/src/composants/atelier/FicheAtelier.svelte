@@ -182,24 +182,25 @@
     {@const b = atelier.brouillon}
     <!-- Les champs défilent ; la case et les boutons restent en bas, toujours visibles. -->
     <div class="champs">
-      <!-- Mot, Tri, Genre, puis Note et Util., tout petits : leur contenu tient en quelques lettres. -->
+      <!-- Mot, Tri, Genre, puis Note et Util., tout petits : leur contenu tient en quelques lettres.
+           Dans une fiche étroite, Genre, Note et Util. passent sur une deuxième ligne. -->
       <div class="rangee premiere">
-        <div class="champ">
+        <div class="champ mot">
           <label for="f-mot">Mot</label>
           <input id="f-mot" type="text" autocomplete="off" value={b.mot} oninput={(e) => atelier.saisirMot(e.currentTarget.value)} />
         </div>
-        <div class="champ">
+        <div class="champ tri">
           <label for="f-tri">Tri</label>
           <input id="f-tri" type="text" autocomplete="off" spellcheck="false" value={b.tri} oninput={(e) => atelier.saisirTri(e.currentTarget.value)} />
         </div>
-        <div class="champ">
+        <div class="champ genre">
           <label for="f-genre">Genre</label>
           <input id="f-genre" type="text" autocomplete="off" spellcheck="false" list="f-genres" value={b.genre} oninput={(e) => poser('genre', e.currentTarget.value)} />
           <datalist id="f-genres">
             {#each genres as g (g)}<option value={g}></option>{/each}
           </datalist>
         </div>
-        <div class="champ petit">
+        <div class="champ petit note">
           <label for="f-note" title="Note&#x202F;: pour marquer les plus intéressants">Note</label>
           <input
             id="f-note"
@@ -211,7 +212,7 @@
             oninput={(e) => poser('note', e.currentTarget.value)}
           />
         </div>
-        <div class="champ petit">
+        <div class="champ petit util">
           <label for="f-util" title="Utilisé dans mes livres">Util.</label>
           <input
             id="f-util"
@@ -479,9 +480,12 @@
     gap: 16px;
   }
 
-  /* Mot un peu plus large que Tri et Genre ; Note et Util. à la mesure de leur contenu. */
+  /*
+   * Mot et Genre un peu plus larges que Tri ; Note et Util. à la mesure de leur contenu. Le genre a
+   * toujours la place du plus long de la liste (« verbe trans. + verbe intrans. », 210 px en 20 px).
+   */
   .premiere {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(250px, 1.2fr) auto auto;
   }
 
   .champ {
@@ -656,6 +660,40 @@
 
   /* Les réglages étroits viennent en dernier : ils l'emportent sur les règles de base. */
 
+  /*
+   * Fiche de moins de 800 px (fenêtres de 1280 et 1000 px) : cinq champs ne tiennent plus sur une
+   * ligne sans couper le genre ou le mot. Mot et Tri restent en haut ; Genre, Note et Util. passent
+   * dessous, le genre sur la largeur de Mot et Tri.
+   */
+  @container (max-width: 800px) {
+    .premiere {
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto auto;
+      grid-template-areas:
+        'mot tri tri tri'
+        'genre genre note util';
+    }
+
+    .premiere .mot {
+      grid-area: mot;
+    }
+
+    .premiere .tri {
+      grid-area: tri;
+    }
+
+    .premiere .genre {
+      grid-area: genre;
+    }
+
+    .premiere .note {
+      grid-area: note;
+    }
+
+    .premiere .util {
+      grid-area: util;
+    }
+  }
+
   /* Fiche moyenne (fenêtre de 1280 px) et étroite (1000 px) : moins de marge, un pied plus serré. */
   @container (max-width: 640px) {
     .champs,
@@ -695,9 +733,7 @@
       gap: 2px;
     }
 
-    /* Cinq champs sur la première ligne : le genre (« subst. masc. ») prend la place que le tri, tiré du mot, peut céder. */
     .premiere {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr) minmax(0, 1.25fr) auto auto;
       gap: 10px;
     }
 
