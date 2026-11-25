@@ -1191,3 +1191,55 @@ describe('les propositions de correction', () => {
     expect(relance.atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['definition']);
   });
 });
+
+describe('les propositions d’un second fichier', () => {
+  const abstrus = mot('abs001', { mot: 'Abstrus', tri: 'abstrus', genre: 'adj.', definition: 'Se dit d’une œuvre litt. ou artistique ou savante.', sources: ['Marc Lévy: Le roman (12)'] });
+  const avecAbstrus: FichierMots = { ...locale, mots: [...locale.mots, abstrus] };
+  const definition = { id: 'abs001', mot: 'Abstrus', champ: 'definition', avant: 'artistique ou', apres: 'artistiques ou', raison: 'accord', certitude: 'forte' };
+  const source = { ...definition, champ: 'sources', avant: 'Marc Lévy', apres: 'Marc Levy', raison: 'sans accent' };
+  const genre = { ...definition, champ: 'genre', avant: 'adj.', apres: 'adj. et subst.', raison: 'emploi' };
+  const fichier = (...propositions: object[]) => JSON.stringify({ format: 1, propositions });
+
+  it('un refus reste acquis quand un autre fichier est chargé, puis le premier de nouveau', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier(definition, source));
+    atelier.choisir(abstrus.id);
+    atelier.refuserProposition(atelier.propositionsFiche.find((p) => p.champ === 'definition')!);
+    atelier.chargerPropositions(fichier(genre));
+    expect(atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['genre']);
+    atelier.chargerPropositions(fichier(definition, source));
+    expect(atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['sources']);
+  });
+
+  it('une proposition appliquée reste appliquée d’un fichier à l’autre', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier(definition));
+    atelier.choisir(abstrus.id);
+    atelier.appliquerProposition(atelier.propositionsFiche[0]!);
+    await atelier.enregistrerBrouillon();
+    atelier.chargerPropositions(fichier(genre));
+    atelier.chargerPropositions(fichier(definition, genre));
+    const gardees = JSON.parse(localStorage.getItem('jolismots.propositions.v1')!) as { champ: string; sort: string }[];
+    expect(gardees.find((p) => p.champ === 'definition')?.sort).toBe('appliquee');
+  });
+
+  it('la correction de la définition peut passer par la zone de saisie (pour Ctrl+Z)', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier(definition, genre));
+    atelier.choisir(abstrus.id);
+    const ecrites: string[] = [];
+    const ecrire = (t: string) => {
+      ecrites.push(t);
+      atelier.brouillon!.definition = t;
+    };
+    atelier.appliquerProposition(atelier.propositionsFiche.find((p) => p.champ === 'definition')!, ecrire);
+    expect(ecrites).toEqual(['Se dit d’une œuvre litt. ou artistiques ou savante.']);
+    // Le genre ne passe pas par la zone de la définition.
+    atelier.appliquerProposition(atelier.propositionsFiche.find((p) => p.champ === 'genre')!, ecrire);
+    expect(ecrites).toHaveLength(1);
+    expect(atelier.brouillon!.genre).toBe('adj. et subst.');
+    atelier.brouillon!.definition = 'Une définition  avec espace double.';
+    atelier.corriger('espaces', ecrire);
+    expect(ecrites[1]).toBe('Une définition avec espace double.');
+  });
+});

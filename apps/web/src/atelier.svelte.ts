@@ -571,11 +571,14 @@ export class Atelier {
 
   /**
    * « Corriger » : la définition du brouillon prend la correction de la remarque, calculée sur le texte
-   * du moment. Rien n'est enregistré.
+   * du moment. Rien n'est enregistré. `ecrire`, s'il est donné, pose le texte à la place (la fiche le
+   * fait passer par la zone de saisie, pour que Ctrl+Z l'annule).
    */
-  corriger(code: CodeRemarque): void {
+  corriger(code: CodeRemarque, ecrire?: (definition: string) => void): void {
     const correction = this.remarquesFiche.find((r) => r.code === code)?.correction ?? null;
-    if (this.brouillon !== null && correction !== null) this.brouillon.definition = correction;
+    if (this.brouillon === null || correction === null) return;
+    if (ecrire === undefined) this.brouillon.definition = correction;
+    else ecrire(correction);
   }
 
   /** Les propositions en attente pour ce mot qui valent pour lui tel qu'il est. */
@@ -611,18 +614,26 @@ export class Atelier {
       vues.add(cle);
       suivies.push({ ...p, sort: sorts.get(cle) ?? 'attente' });
     }
+    // Les propositions déjà tranchées restent connues, même absentes du nouveau fichier : un refus ne revient pas.
+    for (const p of this.suivies) if (p.sort !== 'attente' && !vues.has(cleProposition(p))) suivies.push(p);
     this.garderPropositions(suivies);
     const n = etat.liste.mots.reduce((total, m) => total + this.propositionsDe(m).length, 0);
     this.avis = calme(n === 0 ? 'Aucune proposition à traiter.' : `${n} proposition${n > 1 ? 's' : ''} à traiter.`);
     return true;
   }
 
-  /** « Corriger » une proposition : appliquée au brouillon seul ; rien n'est enregistré. */
-  appliquerProposition(p: Proposition): void {
+  /**
+   * « Corriger » une proposition : appliquée au brouillon seul ; rien n'est enregistré. Pour la
+   * définition, `ecrire`, s'il est donné, pose le texte corrigé (voir `corriger`).
+   */
+  appliquerProposition(p: Proposition, ecrire?: (definition: string) => void): void {
     const b = this.brouillon;
     if (b === null || !appliquable(p, b)) return;
     const corrige = appliquer(p, { ...b, sources: [...b.sources] });
-    if (p.champ === 'definition') b.definition = corrige.definition;
+    if (p.champ === 'definition') {
+      if (ecrire === undefined) b.definition = corrige.definition;
+      else ecrire(corrige.definition);
+    }
     else if (p.champ === 'genre') b.genre = corrige.genre;
     else b.sources = corrige.sources;
     this.appliqueesAuBrouillon.add(cleProposition(p));

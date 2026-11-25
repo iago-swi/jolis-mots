@@ -2,6 +2,7 @@
   import {
     adresseCnrtl,
     BOUTONS_SAISIE,
+    cleProposition,
     developper,
     genresUtilises,
     homonymes,
@@ -73,8 +74,9 @@
    * comme une frappe, et l'événement `input` passe le texte au brouillon.
    */
   function inserer(z: HTMLTextAreaElement, texte: string): void {
-    if (texte === '') return;
-    if (!document.execCommand('insertText', false, texte)) {
+    if (texte === '' && z.selectionStart === z.selectionEnd) return;
+    const fait = texte === '' ? document.execCommand('delete') : document.execCommand('insertText', false, texte);
+    if (!fait) {
       // Sans execCommand : le texte est posé tout de même (sans annulation possible).
       z.setRangeText(texte, z.selectionStart, z.selectionEnd, 'end');
       z.dispatchEvent(new Event('input', { bubbles: true }));
@@ -101,6 +103,26 @@
     inserer(z, d.insertion);
   }
 
+  /**
+   * Pose une définition corrigée par la zone de saisie : seul le passage qui change est remplacé, par
+   * l'édition du navigateur, pour que Ctrl+Z rende le texte d'avant. Sans zone, le brouillon la prend.
+   */
+  function remplacerDefinition(texte: string): void {
+    const z = zone;
+    if (z === undefined) {
+      poser('definition', texte);
+      return;
+    }
+    const avant = z.value;
+    let debut = 0;
+    while (debut < avant.length && debut < texte.length && avant[debut] === texte[debut]) debut++;
+    let fin = 0;
+    while (fin < avant.length - debut && fin < texte.length - debut && avant[avant.length - 1 - fin] === texte[texte.length - 1 - fin]) fin++;
+    z.focus();
+    z.setSelectionRange(debut, avant.length - fin);
+    inserer(z, texte.slice(debut, texte.length - fin));
+  }
+
   /** Une ligne de remarque ou de proposition. */
   interface Ligne {
     cle: string;
@@ -121,15 +143,15 @@
         cle: `r:${r.code}`,
         texte: r.texte,
         incertaine: false,
-        corriger: r.correction === null ? null : () => atelier.corriger(r.code),
+        corriger: r.correction === null ? null : () => atelier.corriger(r.code, remplacerDefinition),
         taire: () => atelier.ignorer(b.id, r.code),
         libelleTaire: 'C’est voulu',
       })),
       ...atelier.propositionsFiche.map((p) => ({
-        cle: `p:${p.champ}:${p.avant}:${p.apres}`,
+        cle: `p:${cleProposition(p)}`,
         texte: `${CHAMPS[p.champ]}${p.avant} → ${p.apres} · ${p.raison}`,
         incertaine: p.certitude === 'faible',
-        corriger: () => atelier.appliquerProposition(p),
+        corriger: () => atelier.appliquerProposition(p, remplacerDefinition),
         taire: () => atelier.refuserProposition(p),
         libelleTaire: 'Non',
       })),
@@ -204,7 +226,7 @@
 
       <div class="champ definition">
         <div class="tete">
-          <label for="f-def">Définition</label>
+          <label for="f-def" title="Tes balises habituelles&#x202F;: 1. 2. · [Litt.] · EX: · SYN: · US:">Définition</label>
           <div class="barre" role="toolbar" aria-label="Insérer une balise" aria-controls="f-def">
             {#each boutonsVisibles as bouton (bouton.abreviation)}
               <button
@@ -256,18 +278,27 @@
 
     </div>
 
-    <!-- Une ligne : la case, les deux liens, puis « Enregistrer » à droite. -->
+    <!-- Une ligne : la case, les deux liens côte à côte, puis « Enregistrer » à droite. -->
     <div class="pied">
       <label class="case">
         <input type="checkbox" checked={b.aCompleter} onchange={(e) => poser('aCompleter', e.currentTarget.checked)} />
         <span>À compléter</span>
       </label>
       <div class="liens">
-        <button class="lien-pied" disabled={b.tri.trim() === ''} onclick={ouvrirCnrtl}>Ouvrir dans le CNRTL</button>
-        <button class="lien-pied" disabled={!enregistre} onclick={() => atelier.demanderSuppression()}>Supprimer ce mot</button>
+        <!-- Dans une fiche étroite, les liens se disent plus court ; leur nom entier reste celui du bouton. -->
+        <button class="lien-pied" aria-label="Ouvrir dans le CNRTL" title="Ouvrir dans le CNRTL" disabled={b.tri.trim() === ''} onclick={ouvrirCnrtl}
+          ><span class="long">Ouvrir dans le CNRTL</span><span class="court">CNRTL</span></button
+        >
+        <button class="lien-pied" aria-label="Supprimer ce mot" title="Supprimer ce mot" disabled={!enregistre} onclick={() => atelier.demanderSuppression()}
+          ><span class="long">Supprimer ce mot</span><span class="court">Supprimer</span></button
+        >
       </div>
+      <!-- Les deux libellés occupent la même place : le bouton garde la largeur du plus long. -->
       <button class="enregistrer" disabled={b.mot.trim() === '' || !atelier.modifiee || atelier.enregistrement} onclick={enregistrer}>
-        {atelier.enregistrement ? 'Enregistrement…' : 'Enregistrer'}
+        <span class="pile">
+          <span class:cache={atelier.enregistrement}>Enregistrer</span>
+          <span class:cache={!atelier.enregistrement}>Enregistrement…</span>
+        </span>
       </button>
     </div>
   {/if}
@@ -275,6 +306,8 @@
 
 <style>
   .fiche-atelier {
+    /* Les réglages étroits suivent la largeur de la fiche, non celle de la fenêtre. */
+    container-type: inline-size;
     min-height: 0;
     border-left: 1px solid var(--filet);
     display: flex;
@@ -301,8 +334,7 @@
     flex-grow: 1;
   }
 
-  /* Comme la barre d'actions de l'écran Mot : un filet, puis une ligne, hors du défilement. */
-  /* Quand la place manque, les deux liens se rangent l'un sous l'autre : le pied garde une ligne. */
+  /* Comme la barre d'actions de l'écran Mot : un filet, puis une seule ligne, hors du défilement. */
   .pied {
     flex-shrink: 0;
     padding: 6px 36px;
@@ -315,9 +347,8 @@
   .liens {
     flex: 1 1 auto;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 0 14px;
+    gap: 14px;
   }
 
   .lien-pied {
@@ -421,67 +452,6 @@
 
   .barre .plus {
     color: var(--second);
-  }
-
-  @media (max-width: 1180px) {
-    .champs,
-    .pied {
-      padding-inline: 20px;
-    }
-
-    .pied {
-      gap: 8px;
-    }
-
-    .liens {
-      column-gap: 10px;
-    }
-
-    .lien-pied {
-      font-size: 14px;
-    }
-
-    .case {
-      gap: 6px;
-    }
-
-    .case span {
-      font-size: 12px;
-      letter-spacing: 0.04em;
-    }
-
-    .enregistrer {
-      padding: 0 14px;
-      font-size: 17px;
-    }
-
-    .barre {
-      gap: 2px;
-    }
-
-    .barre button {
-      padding: 0 3px;
-      font-size: 13px;
-    }
-  }
-
-  /* La colonne la plus étroite : le pied garde sa ligne. */
-  @media (max-width: 1100px) {
-    .lien-pied {
-      font-size: 13px;
-    }
-
-    .enregistrer {
-      padding: 0 12px;
-    }
-  }
-
-  /* Sur un écran bas, moins de blanc autour des champs : la hauteur va à la définition. */
-  @media (max-height: 820px) {
-    .champs {
-      padding-top: 18px;
-      gap: 12px;
-    }
   }
 
   .aucune {
@@ -643,5 +613,87 @@
     border-radius: 22px;
     background: var(--accent);
     color: var(--papier);
+  }
+
+  .court {
+    display: none;
+  }
+
+  .pile {
+    display: inline-grid;
+  }
+
+  .pile > span {
+    grid-area: 1 / 1;
+  }
+
+  .cache {
+    visibility: hidden;
+  }
+
+  /* Les réglages étroits viennent en dernier : ils l'emportent sur les règles de base. */
+
+  /* Fiche moyenne (fenêtre de 1280 px) et étroite (1000 px) : moins de marge, un pied plus serré. */
+  @container (max-width: 640px) {
+    .champs,
+    .pied {
+      padding-inline: 20px;
+    }
+
+    .pied {
+      gap: 8px;
+    }
+
+    .liens {
+      gap: 8px;
+    }
+
+    .lien-pied {
+      font-size: 14px;
+    }
+
+    .case {
+      gap: 6px;
+    }
+
+    /* La case perd ses capitales espacées : « À compléter » en petit, comme les liens. */
+    .case span {
+      font-size: 14px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .enregistrer {
+      padding: 0 12px;
+      font-size: 15px;
+    }
+
+    .barre {
+      gap: 2px;
+    }
+
+    .barre button {
+      padding: 0 3px;
+      font-size: 13px;
+    }
+  }
+
+  /* Fiche la plus étroite (fenêtre de 1000 px) : les liens se disent plus court pour tenir sur la ligne. */
+  @container (max-width: 500px) {
+    .long {
+      display: none;
+    }
+
+    .court {
+      display: inline;
+    }
+  }
+
+  /* Sur un écran bas, moins de blanc autour des champs : la hauteur va à la définition. */
+  @media (max-height: 820px) {
+    .champs {
+      padding-top: 18px;
+      gap: 12px;
+    }
   }
 </style>
