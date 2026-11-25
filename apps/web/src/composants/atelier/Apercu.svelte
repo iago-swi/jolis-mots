@@ -12,7 +12,7 @@
     <div class="cadre"><Fiche {mot} /></div>
   {/if}
   <p class="note">
-    La fiche se met en forme toute seule à partir de tes balises. La typographie est corrigée à l’affichage : apostrophes,
+    La fiche se met en forme toute seule à partir de tes balises. La typographie est corrigée à l’affichage&#x202F;: apostrophes,
     guillemets, espaces fines.
   </p>
 </aside>

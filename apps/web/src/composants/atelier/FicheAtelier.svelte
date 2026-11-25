@@ -14,11 +14,11 @@
     if (memes === null) return [];
     const phrases: string[] = [];
     if (memes.parMot.length > 0) {
-      phrases.push(`Ce mot existe déjà : ${memes.parMot.map((m) => (m.genre === '' ? m.mot : `${m.mot} (${m.genre})`)).join(', ')}.`);
+      phrases.push(`Ce mot existe déjà\u202F: ${memes.parMot.map((m) => (m.genre === '' ? m.mot : `${m.mot} (${m.genre})`)).join(', ')}.`);
     }
     // Un mot déjà nommé pour son Mot ne l'est pas une seconde fois pour son Tri.
     const parTri = memes.parTri.filter((m) => !memes.parMot.includes(m));
-    if (parTri.length > 0) phrases.push(`Ce tri est déjà celui de : ${parTri.map((m) => m.mot).join(', ')}.`);
+    if (parTri.length > 0) phrases.push(`Ce tri est déjà celui de\u202F: ${parTri.map((m) => m.mot).join(', ')}.`);
     return phrases;
   });
 
@@ -97,7 +97,7 @@
       <div class="champ definition">
         <div class="tete">
           <label for="f-def">Définition</label>
-          <span class="aide" id="f-def-aide">Tes balises habituelles : 1. 2. · [Litt.] · EX: · SYN: · US:</span>
+          <span class="aide" id="f-def-aide">Tes balises habituelles&#x202F;: 1. 2. · [Litt.] · EX: · SYN: · US:</span>
         </div>
         <textarea id="f-def" rows="9" aria-describedby="f-def-aide" value={b.definition} oninput={(e) => poser('definition', e.currentTarget.value)}></textarea>
       </div>
@@ -105,7 +105,7 @@
       <div class="champ">
         <div class="tete">
           <label for="f-source">Source</label>
-          <span class="aide" id="f-source-aide">Une ligne par livre : Auteur: Titre (page)</span>
+          <span class="aide" id="f-source-aide">Une ligne par livre&#x202F;: Auteur: Titre (page)</span>
         </div>
         <textarea id="f-source" rows="2" aria-describedby="f-source-aide" value={texteSources} oninput={(e) => saisirSources(e.currentTarget.value)}></textarea>
       </div>

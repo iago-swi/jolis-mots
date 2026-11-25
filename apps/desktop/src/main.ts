@@ -26,10 +26,10 @@ if (!app.isPackaged && !process.env.JOLISMOTS_DONNEES) {
     [
       'Jolis Mots ne démarre pas en développement sans JOLISMOTS_DONNEES.',
       'Sans elle, l’application travaillerait sur la vraie copie de la liste, dans %APPDATA%\\Jolis Mots,',
-      'à un clic de la branche donnees en ligne. Donner les deux variables :',
-      '  JOLISMOTS_DEPOT : l’adresse du dépôt de la liste pour l’essai, par exemple un dépôt nu local ;',
-      '  JOLISMOTS_DONNEES : un dossier de données à part (copie, sauvegardes, fenêtre).',
-      'Un exemple est dans PROJET.md, « Mettre en route après un clonage ».',
+      'à un clic de la branche donnees en ligne. Donner les deux variables\u202F:',
+      '  JOLISMOTS_DEPOT\u202F: l’adresse du dépôt de la liste pour l’essai, par exemple un dépôt nu local\u202F;',
+      '  JOLISMOTS_DONNEES\u202F: un dossier de données à part (copie, sauvegardes, fenêtre).',
+      'Un exemple est dans PROJET.md, «\u202FMettre en route après un clonage\u202F».',
     ].join('\n'),
   );
   process.exit(1);
@@ -233,7 +233,7 @@ function demanderPuis(f: BrowserWindow, question: string, bouton: string, action
 
 /** Fiche modifiée : la fenêtre ne se ferme qu'après « Quitter ». */
 function demanderAvantDeFermer(f: BrowserWindow): void {
-  demanderPuis(f, 'Quitter sans enregistrer la fiche ?', 'Quitter', () => {
+  demanderPuis(f, 'Quitter sans enregistrer la fiche\u202F?', 'Quitter', () => {
     quitterQuandMeme = true;
     f.close();
   });
@@ -247,7 +247,7 @@ function recharger(): void {
     f.webContents.reload();
     return;
   }
-  demanderPuis(f, 'Recharger sans enregistrer la fiche ?', 'Recharger', () => f.webContents.reload());
+  demanderPuis(f, 'Recharger sans enregistrer la fiche\u202F?', 'Recharger', () => f.webContents.reload());
 }
 
 async function ouvrirFenetre(): Promise<void> {
@@ -323,7 +323,7 @@ if (!app.requestSingleInstanceLock()) {
       await ouvrirFenetre();
     })
     .catch((erreur: unknown) => {
-      console.error('Jolis Mots ne démarre pas :', erreur);
+      console.error('Jolis Mots ne démarre pas\u202F:', erreur);
       app.quit();
     });
 

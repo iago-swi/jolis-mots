@@ -85,7 +85,7 @@
       <button class="lien" onclick={() => (confirmation = true)}>Effacer mes progrès</button>
       {#if confirmation}
         <div role="alertdialog" aria-labelledby="question-effacer" bind:this={question} use:volet={{ fermer: annuler }}>
-          <p id="question-effacer">Effacer les mots vus, les révisions et les favoris ?</p>
+          <p id="question-effacer">Effacer les mots vus, les révisions et les favoris&#x202F;?</p>
           <div class="boutons">
             <button class="danger" onclick={effacer}>Effacer</button>
             <button data-depart onclick={annuler}>Annuler</button>

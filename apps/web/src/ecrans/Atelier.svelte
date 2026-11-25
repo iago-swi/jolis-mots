@@ -116,13 +116,13 @@
     <div class="voile">
       <div class="question" role="alertdialog" aria-modal="true" aria-labelledby="question-atelier" use:volet={{ fermer: () => atelier.annuler() }}>
         {#if atelier.demande.genre === 'quitter'}
-          <p id="question-atelier">Quitter cette fiche sans l’enregistrer ?</p>
+          <p id="question-atelier">Quitter cette fiche sans l’enregistrer&#x202F;?</p>
           <div class="boutons">
             <button class="danger" onclick={confirmer}>Quitter la fiche</button>
             <button data-depart onclick={() => atelier.annuler()}>Rester</button>
           </div>
         {:else if atelier.demande.genre === 'supprimer'}
-          <p id="question-atelier">Supprimer « {aSupprimer?.mot ?? atelier.brouillon?.mot} » ?</p>
+          <p id="question-atelier">Supprimer «&#x202F;{aSupprimer?.mot ?? atelier.brouillon?.mot}&#x202F;»&#x202F;?</p>
           <div class="boutons">
             <button class="danger" onclick={confirmer}>Supprimer</button>
             <button data-depart onclick={() => atelier.annuler()}>Annuler</button>

@@ -39,14 +39,14 @@ const CONNEXION = alerte("L'atelier a besoin d'une connexion une première fois,
 const RECEPTION = alerte("L'atelier n'a pas pu recevoir la liste.");
 const VERIFICATION = alerte("L'atelier n'a pas pu vérifier la liste en ligne. Tu peux continuer à travailler.");
 const ILLISIBLE = alerte(
-  "Le fichier des mots de l'atelier est illisible. Tu peux reprendre la liste en ligne ; ta version sera mise de côté.",
+  "Le fichier des mots de l'atelier est illisible. Tu peux reprendre la liste en ligne\u202F; ta version sera mise de côté.",
 );
 const REPRISE_ECHOUEE = alerte("La liste en ligne n'a pas pu être reprise. Rien n'a changé ici.");
 const NON_ENREGISTREE = alerte("La fiche n'a pas pu être enregistrée.");
 const ENVOI_ECHOUE = alerte("L'envoi a échoué. Tes modifications restent en attente.");
 
 const ECHECS_D_ENVOI: Record<Exclude<RaisonDepot, 'pret'>, Avis> = {
-  'sans-reseau': alerte("Pas de réseau : la liste n'est pas partie. Tes modifications restent en attente."),
+  'sans-reseau': alerte("Pas de réseau\u202F: la liste n'est pas partie. Tes modifications restent en attente."),
   refus: alerte("GitHub a refusé l'envoi. Tes modifications restent en attente."),
   divergence: DIVERGENCE,
   erreur: ENVOI_ECHOUE,
@@ -330,7 +330,7 @@ export class Atelier {
         this.avis =
           r.sauvegarde === null
             ? calme('La liste en ligne est reprise.')
-            : { ...calme('La liste en ligne est reprise. Ta version est gardée ici :'), chemin: r.sauvegarde };
+            : { ...calme('La liste en ligne est reprise. Ta version est gardée ici\u202F:'), chemin: r.sauvegarde };
       } else if (r.raison !== 'pret') {
         // La copie et la divergence restent telles quelles ; l'échec est dit.
         this.avis = REPRISE_ECHOUEE;

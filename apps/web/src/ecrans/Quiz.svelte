@@ -119,7 +119,7 @@
       </div>
     {:else}
       <div class="defilement" bind:this={defilement}>
-        <h1 class="intitule" tabindex="-1" bind:this={surQuelsMots}>Sur quels mots ?</h1>
+        <h1 class="intitule" tabindex="-1" bind:this={surQuelsMots}>Sur quels mots&#x202F;?</h1>
         <div class="portees">
           <button class="portee" onclick={() => choisir('tous')}>
             <span class="libelle">Tous les mots</span>
@@ -135,7 +135,7 @@
             <span class="nombre">{nombre(portees.vus)}</span>
           </button>
           {#if portees.vus === 0}
-            <p class="explication" id="quiz-sans-mot-vu">Lis d’abord quelques mots : ils viendront ici.</p>
+            <p class="explication" id="quiz-sans-mot-vu">Lis d’abord quelques mots&#x202F;: ils viendront ici.</p>
           {/if}
         </div>
       </div>
@@ -150,7 +150,7 @@
     <div class="defilement" bind:this={defilement}>
       {#key index}
         <h1 class="intitule" tabindex="-1" bind:this={intitule}>
-          {question.forme === 'definition-vers-mot' ? 'Quel mot correspond à cette définition ?' : 'Que veut dire ce mot ?'}
+          {question.forme === 'definition-vers-mot' ? 'Quel mot correspond à cette définition\u202F?' : 'Que veut dire ce mot\u202F?'}
         </h1>
         <p class="enonce">{embellir(question.enonce)}</p>
         <p class="genre">{embellir(developperGenre(question.genre))}</p>
