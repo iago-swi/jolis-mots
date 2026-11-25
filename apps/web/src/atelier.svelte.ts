@@ -1,8 +1,14 @@
 import {
+  appliquable,
+  appliquer,
+  cleProposition,
   compterModifications,
   creerIdUnique,
   dater,
   ecrireFichier,
+  indicationsConnues,
+  lireProposition,
+  lirePropositions,
   messageDEnvoi,
   nettoyerFiche,
   nouvelleFiche,
@@ -11,16 +17,48 @@ import {
   retirerFiche,
   validerFichier,
   validerPourEnvoi,
+  verifierMot,
+  type CodeRemarque,
   type EtatDepot,
   type FichierMots,
   type FiltreAtelier,
   type Modifications,
   type Mot,
   type PontBureau,
+  type Proposition,
   type RaisonDepot,
+  type Remarque,
 } from '@jolis-mots/core';
 import { etat } from './etat.svelte';
 import { pont } from './pont';
+import { ecrire, lire } from './stockage';
+
+/** Les remarques tues (« C'est voulu »), sur cet ordinateur : une liste de `id:code`. */
+const CLE_IGNOREES = 'jolismots.verification.ignorees.v1';
+/** Les propositions de correction chargées, chacune avec son sort. */
+const CLE_PROPOSITIONS = 'jolismots.propositions.v1';
+
+/** Le sort d'une proposition : en attente, appliquée (et enregistrée), ou refusée. */
+export type SortProposition = 'attente' | 'appliquee' | 'refusee';
+type PropositionSuivie = Proposition & { sort: SortProposition };
+
+const SORTS: readonly string[] = ['attente', 'appliquee', 'refusee'];
+
+/** Les propositions gardées, contrôlées une à une ; une entrée illisible est écartée. */
+function lirePropositionsGardees(): PropositionSuivie[] {
+  const brut = lire<unknown>(CLE_PROPOSITIONS, []);
+  if (!Array.isArray(brut)) return [];
+  return brut.flatMap((e: unknown) => {
+    const p = lireProposition(e);
+    const sort = (e as { sort?: unknown }).sort;
+    return p !== null && typeof sort === 'string' && SORTS.includes(sort) ? [{ ...p, sort: sort as SortProposition }] : [];
+  });
+}
+
+function lireIgnorees(): Set<string> {
+  const brut = lire<unknown>(CLE_IGNOREES, []);
+  return new Set(Array.isArray(brut) ? brut.filter((x): x is string => typeof x === 'string') : []);
+}
 
 export interface Avis {
   ton: 'calme' | 'alerte';
@@ -188,6 +226,33 @@ export class Atelier {
   private origine = $state.raw<Mot | null>(null);
   /** Le Tri suit la proposition tirée du Mot. */
   private triSuit = false;
+
+  /** Les indications connues du vérificateur, tirées une fois par liste. */
+  private readonly connues: Set<string> = $derived(indicationsConnues(etat.liste.mots));
+  /** Les remarques tues, `id:code`. */
+  private ignorees = $state.raw<ReadonlySet<string>>(lireIgnorees());
+  /** Les propositions chargées, avec leur sort. */
+  private suivies = $state.raw<readonly PropositionSuivie[]>(lirePropositionsGardees());
+  /** Les propositions en attente, par mot. */
+  private readonly enAttente: ReadonlyMap<string, Proposition[]> = $derived.by(() => {
+    const parMot = new Map<string, Proposition[]>();
+    for (const p of this.suivies) if (p.sort === 'attente') parMot.set(p.id, [...(parMot.get(p.id) ?? []), p]);
+    return parMot;
+  });
+  /** Les clés des propositions appliquées au brouillon : elles deviennent « appliquées » quand il est enregistré. */
+  private appliqueesAuBrouillon = new Set<string>();
+
+  /** Les mots de la liste qui ont une remarque non tue ou une proposition en attente, calculés une fois par liste. */
+  private readonly idsAVerifier: ReadonlySet<string> = $derived(
+    new Set(etat.liste.mots.filter((m) => this.remarques(m).length > 0 || this.propositionsDe(m).length > 0).map((m) => m.id)),
+  );
+  /** Pour le filtre « À vérifier » : le mot de la liste a une remarque ou une proposition à traiter. */
+  readonly aVerifier = (m: Mot): boolean => this.idsAVerifier.has(m.id);
+
+  /** Les remarques du brouillon, refaites à chaque frappe. */
+  readonly remarquesFiche: Remarque[] = $derived(this.brouillon === null ? [] : this.remarques(this.brouillon));
+  /** Les propositions en attente qui valent pour le brouillon tel qu'il est. */
+  readonly propositionsFiche: Proposition[] = $derived(this.brouillon === null ? [] : this.propositionsDe(this.brouillon));
 
   /** Le brouillon diffère du mot enregistré, ou c'est un mot nouveau qui a du texte. */
   readonly modifiee: boolean = $derived.by(() => {
@@ -415,6 +480,7 @@ export class Atelier {
   private ouvrir(origine: Mot | null, brouillon: Mot): void {
     this.origine = origine;
     this.brouillon = { ...brouillon, sources: [...brouillon.sources] };
+    this.appliqueesAuBrouillon = new Set();
     this.triSuit = origine === null || origine.tri === proposerTri(origine.mot);
   }
 
@@ -481,10 +547,90 @@ export class Atelier {
     }
     if (!fait) return false;
     const enregistree = etat.liste.mots.find((m) => m.id === fiche.id);
+    if (enregistree !== undefined) {
+      // Les propositions appliquées au brouillon, et que le mot enregistré porte bien, sont faites.
+      const faites = this.suivies.filter((p) => this.appliqueesAuBrouillon.has(cleProposition(p)) && p.id === fiche.id && !appliquable(p, enregistree));
+      if (faites.length > 0) this.trancher(new Set(faites.map(cleProposition)), 'appliquee');
+    }
     if (enregistree === undefined || this.brouillon?.id !== fiche.id) return true;
     if (memesFiches(this.brouillon, envoye)) this.ouvrir(enregistree, enregistree);
     else this.origine = enregistree;
     return true;
+  }
+
+  /** Les remarques du vérificateur sur ce mot, sans celles qui sont tues. */
+  remarques(m: Mot): Remarque[] {
+    return verifierMot(m, this.connues).filter((r) => !this.ignorees.has(`${m.id}:${r.code}`));
+  }
+
+  /** « C'est voulu » : la remarque se tait pour ce mot, sur cet ordinateur. */
+  ignorer(id: string, code: CodeRemarque): void {
+    this.ignorees = new Set([...this.ignorees, `${id}:${code}`]);
+    ecrire(CLE_IGNOREES, [...this.ignorees]);
+  }
+
+  /**
+   * « Corriger » : la définition du brouillon prend la correction de la remarque, calculée sur le texte
+   * du moment. Rien n'est enregistré.
+   */
+  corriger(code: CodeRemarque): void {
+    const correction = this.remarquesFiche.find((r) => r.code === code)?.correction ?? null;
+    if (this.brouillon !== null && correction !== null) this.brouillon.definition = correction;
+  }
+
+  /** Les propositions en attente pour ce mot qui valent pour lui tel qu'il est. */
+  propositionsDe(m: Mot): Proposition[] {
+    return (this.enAttente.get(m.id) ?? []).filter((p) => appliquable(p, m));
+  }
+
+  private garderPropositions(suivies: PropositionSuivie[]): void {
+    this.suivies = suivies;
+    ecrire(CLE_PROPOSITIONS, suivies);
+  }
+
+  private trancher(cles: ReadonlySet<string>, sort: SortProposition): void {
+    this.garderPropositions(this.suivies.map((p) => (cles.has(cleProposition(p)) ? { ...p, sort } : p)));
+  }
+
+  /**
+   * Charge les propositions d'un fichier ; celles déjà connues gardent leur sort. Dit combien sont à
+   * traiter ; faux, sans rien changer, si le fichier ne se lit pas.
+   */
+  chargerPropositions(texte: string): boolean {
+    const lues = lirePropositions(texte);
+    if (lues === null) {
+      this.avis = alerte('Ce fichier ne contient pas de propositions lisibles.');
+      return false;
+    }
+    const sorts = new Map(this.suivies.map((p) => [cleProposition(p), p.sort]));
+    const vues = new Set<string>();
+    const suivies: PropositionSuivie[] = [];
+    for (const p of lues) {
+      const cle = cleProposition(p);
+      if (vues.has(cle)) continue;
+      vues.add(cle);
+      suivies.push({ ...p, sort: sorts.get(cle) ?? 'attente' });
+    }
+    this.garderPropositions(suivies);
+    const n = etat.liste.mots.reduce((total, m) => total + this.propositionsDe(m).length, 0);
+    this.avis = calme(n === 0 ? 'Aucune proposition à traiter.' : `${n} proposition${n > 1 ? 's' : ''} à traiter.`);
+    return true;
+  }
+
+  /** « Corriger » une proposition : appliquée au brouillon seul ; rien n'est enregistré. */
+  appliquerProposition(p: Proposition): void {
+    const b = this.brouillon;
+    if (b === null || !appliquable(p, b)) return;
+    const corrige = appliquer(p, { ...b, sources: [...b.sources] });
+    if (p.champ === 'definition') b.definition = corrige.definition;
+    else if (p.champ === 'genre') b.genre = corrige.genre;
+    else b.sources = corrige.sources;
+    this.appliqueesAuBrouillon.add(cleProposition(p));
+  }
+
+  /** « Non » : la proposition est refusée et ne revient plus. */
+  refuserProposition(p: Proposition): void {
+    this.trancher(new Set([cleProposition(p)]), 'refusee');
   }
 
   /** Demande confirmation avant de supprimer le mot choisi (un mot jamais enregistré n'a rien à supprimer). */

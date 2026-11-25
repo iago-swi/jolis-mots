@@ -18,3 +18,4 @@ export * from './pont';
 export * from './historique';
 export * from './saisie';
 export * from './verification';
+export * from './propositions';

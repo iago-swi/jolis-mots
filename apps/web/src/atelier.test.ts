@@ -1042,3 +1042,152 @@ describe('l’historique sur bureau', () => {
     }
   });
 });
+
+describe('le vérificateur dans l’atelier', () => {
+  // Une balise mal écrite, une espace double, un genre vide, une indication hors crochets.
+  const bejaune = mot('bej001', { mot: 'Béjaune', tri: 'béjaune', genre: '', definition: '1. fauconnerie Oiseau jeune  qui ne sait pas voler. EX : Un béjaune.' });
+  const avecBejaune: FichierMots = { ...locale, mots: [...locale.mots, bejaune] };
+  const codes = (r: { code: string }[]) => r.map((x) => x.code);
+
+  it('les remarques d’un mot ; un mot sans écart n’en a pas', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    expect(codes(atelier.remarques(bejaune))).toEqual(['balise', 'indication-hors-crochets', 'genre-vide', 'espaces']);
+    expect(atelier.remarques(fiche)).toEqual([]);
+  });
+
+  it('les remarques de la fiche suivent le brouillon', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    expect(atelier.remarquesFiche).toEqual([]);
+    atelier.choisir(bejaune.id);
+    expect(codes(atelier.remarquesFiche)).toContain('genre-vide');
+    atelier.brouillon!.genre = 'subst. masc.';
+    expect(codes(atelier.remarquesFiche)).not.toContain('genre-vide');
+  });
+
+  it('corriger ne change que le brouillon ; deux corrections de suite partent du texte du moment', async () => {
+    const faux = new FauxPont(ecrireFichier(avecBejaune));
+    const { etat, atelier } = await demarrerSur(faux);
+    atelier.choisir(bejaune.id);
+    atelier.corriger('balise');
+    expect(atelier.brouillon!.definition).toBe('1. fauconnerie Oiseau jeune  qui ne sait pas voler. EX: Un béjaune.');
+    expect(atelier.modifiee).toBe(true);
+    atelier.corriger('espaces');
+    expect(atelier.brouillon!.definition).toBe('1. fauconnerie Oiseau jeune qui ne sait pas voler. EX: Un béjaune.');
+    expect(codes(atelier.remarquesFiche)).toEqual(['indication-hors-crochets', 'genre-vide']);
+    // Rien n'est écrit sans « Enregistrer ».
+    expect(faux.enregistre).toEqual([]);
+    expect(etat.liste.mots.find((m) => m.id === bejaune.id)!.definition).toBe(bejaune.definition);
+    // Une remarque sans correction ne change rien.
+    const avant = atelier.brouillon!.definition;
+    atelier.corriger('genre-vide');
+    expect(atelier.brouillon!.definition).toBe(avant);
+  });
+
+  it('« C’est voulu » tait la remarque pour ce mot, et c’est gardé', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    atelier.ignorer(bejaune.id, 'genre-vide');
+    expect(codes(atelier.remarques(bejaune))).not.toContain('genre-vide');
+    expect(codes(atelier.remarques({ ...bejaune, id: 'autre1' }))).toContain('genre-vide');
+    expect(JSON.parse(localStorage.getItem('jolismots.verification.ignorees.v1')!)).toEqual(['bej001:genre-vide']);
+
+    const relance = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    expect(codes(relance.atelier.remarques(bejaune))).toEqual(['balise', 'indication-hors-crochets', 'espaces']);
+  });
+
+  it('À vérifier : les mots qui ont une remarque non tue', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecBejaune)));
+    expect(atelier.aVerifier(bejaune)).toBe(true);
+    expect(atelier.aVerifier(fiche)).toBe(false);
+    for (const code of ['balise', 'indication-hors-crochets', 'genre-vide', 'espaces'] as const) atelier.ignorer(bejaune.id, code);
+    expect(atelier.aVerifier(bejaune)).toBe(false);
+  });
+});
+
+describe('les propositions de correction', () => {
+  const abstrus = mot('abs001', { mot: 'Abstrus', tri: 'abstrus', genre: 'adj.', definition: 'Se dit d’une œuvre litt. ou artistique ou savante.', sources: ['Marc Lévy: Le roman (12)'] });
+  const avecAbstrus: FichierMots = { ...locale, mots: [...locale.mots, abstrus] };
+  const proposition = (extra: Record<string, string> = {}) => ({
+    id: 'abs001',
+    mot: 'Abstrus',
+    champ: 'definition',
+    avant: 'artistique ou',
+    apres: 'artistiques ou',
+    raison: 'accord au pluriel',
+    certitude: 'forte',
+    ...extra,
+  });
+  const fichier = JSON.stringify({
+    format: 1,
+    liste: '2026-11-25T03:49:19Z',
+    propositions: [
+      proposition(),
+      proposition({ champ: 'sources', avant: 'Marc Lévy', apres: 'Marc Levy', raison: 'sans accent', certitude: 'faible' }),
+      proposition({ id: 'disparu', mot: 'Disparu' }),
+      proposition({ avant: 'introuvable' }),
+    ],
+  });
+
+  it('un fichier illisible ne change rien et le dit', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    expect(atelier.chargerPropositions('pas du JSON')).toBe(false);
+    expect(atelier.avis?.ton).toBe('alerte');
+    expect(atelier.propositionsDe(abstrus)).toEqual([]);
+  });
+
+  it('chargées : seules celles qui valent pour un mot de la liste se montrent, et le filtre les compte', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    expect(atelier.aVerifier(abstrus)).toBe(false);
+    expect(atelier.chargerPropositions(fichier)).toBe(true);
+    expect(atelier.avis).toEqual({ ton: 'calme', texte: '2 propositions à traiter.' });
+    expect(atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['definition', 'sources']);
+    expect(atelier.aVerifier(abstrus)).toBe(true);
+    expect(atelier.aVerifier(fiche)).toBe(false);
+  });
+
+  it('corriger applique au brouillon seul ; une fois enregistrée, elle est appliquée et ne revient pas', async () => {
+    const faux = new FauxPont(ecrireFichier(avecAbstrus));
+    const { etat, atelier } = await demarrerSur(faux);
+    atelier.chargerPropositions(fichier);
+    atelier.choisir(abstrus.id);
+    const [def, source] = atelier.propositionsFiche;
+    atelier.appliquerProposition(def!);
+    expect(atelier.brouillon!.definition).toBe('Se dit d’une œuvre litt. ou artistiques ou savante.');
+    expect(atelier.modifiee).toBe(true);
+    expect(atelier.propositionsFiche).toEqual([source]);
+    expect(faux.enregistre).toEqual([]);
+    expect(etat.liste.mots.find((m) => m.id === abstrus.id)!.definition).toBe(abstrus.definition);
+    atelier.appliquerProposition(source!);
+    expect(atelier.brouillon!.sources).toEqual(['Marc Levy: Le roman (12)']);
+    expect(atelier.propositionsFiche).toEqual([]);
+
+    expect(await atelier.enregistrerBrouillon()).toBe(true);
+    const gardees = JSON.parse(localStorage.getItem('jolismots.propositions.v1')!) as { sort: string }[];
+    expect(gardees.map((p) => p.sort)).toEqual(['appliquee', 'appliquee', 'attente', 'attente']);
+    expect(atelier.aVerifier(etat.liste.mots.find((m) => m.id === abstrus.id)!)).toBe(false);
+  });
+
+  it('une proposition appliquée au brouillon puis abandonnée reste en attente', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier);
+    atelier.choisir(abstrus.id);
+    atelier.appliquerProposition(atelier.propositionsFiche[0]!);
+    atelier.choisir(fiche.id);
+    await atelier.confirmer();
+    atelier.choisir(abstrus.id);
+    expect(atelier.propositionsFiche).toHaveLength(2);
+  });
+
+  it('« Non » la refuse : elle ne revient plus, même après un nouveau lancement ou le même fichier rechargé', async () => {
+    const { atelier } = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    atelier.chargerPropositions(fichier);
+    atelier.choisir(abstrus.id);
+    atelier.refuserProposition(atelier.propositionsFiche[1]!);
+    expect(atelier.propositionsFiche.map((p) => p.champ)).toEqual(['definition']);
+    expect(atelier.modifiee).toBe(false);
+
+    const relance = await demarrerSur(new FauxPont(ecrireFichier(avecAbstrus)));
+    expect(relance.atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['definition']);
+    relance.atelier.chargerPropositions(fichier);
+    expect(relance.atelier.propositionsDe(abstrus).map((p) => p.champ)).toEqual(['definition']);
+  });
+});

@@ -3,7 +3,7 @@ import { normaliser } from './recherche';
 import { estComplet } from './types';
 import type { Mot } from './types';
 
-export type FiltreAtelier = 'tous' | 'complets' | 'aCompleter' | 'doublons';
+export type FiltreAtelier = 'tous' | 'complets' | 'aCompleter' | 'aVerifier' | 'doublons';
 
 const PREFIXES = ['se ', "s'", 's’', 'le ', 'la ', 'les ', "l'", 'l’', 'un ', 'une ', 'des '];
 
@@ -57,13 +57,17 @@ export function groupesDeDoublons(mots: Mot[]): Mot[][] {
   return [...groupes.values()].filter((g) => g.length > 1).sort((a, b) => comparerMots(a[0]!, b[0]!));
 }
 
-/** Nombre de mots de chaque filtre. */
-export function compterFiltres(mots: Mot[]): Record<FiltreAtelier, number> {
+/**
+ * Nombre de mots de chaque filtre. « À vérifier » compte les mots que retient `aVerifier` : le cœur
+ * ne connaît ni l'orthographe ni les remarques tues ; sans la fonction, ce filtre est vide.
+ */
+export function compterFiltres(mots: Mot[], aVerifier?: (m: Mot) => boolean): Record<FiltreAtelier, number> {
   const complets = mots.filter(estComplet).length;
   return {
     tous: mots.length,
     complets,
     aCompleter: mots.length - complets,
+    aVerifier: aVerifier === undefined ? 0 : mots.filter(aVerifier).length,
     doublons: groupesDeDoublons(mots).flat().length,
   };
 }
@@ -72,7 +76,7 @@ export function compterFiltres(mots: Mot[]): Record<FiltreAtelier, number> {
  * Les mots à montrer dans la liste de l'atelier, dans l'ordre du fichier. Pour les doublons, les groupes
  * restent entiers : un groupe est montré dès qu'un de ses mots répond à la recherche, pour comparer ses mots.
  */
-export function listerAtelier(mots: Mot[], a: { filtre: FiltreAtelier; requete: string }): Mot[] {
+export function listerAtelier(mots: Mot[], a: { filtre: FiltreAtelier; requete: string; aVerifier?: (m: Mot) => boolean }): Mot[] {
   const requete = normaliser(a.requete.trim());
   const retenu = (m: Mot) => requete === '' || normaliser(m.mot).includes(requete) || normaliser(m.tri).includes(requete);
   switch (a.filtre) {
@@ -84,6 +88,10 @@ export function listerAtelier(mots: Mot[], a: { filtre: FiltreAtelier; requete: 
       return mots.filter((m) => estComplet(m) && retenu(m)).sort(comparerMots);
     case 'aCompleter':
       return mots.filter((m) => !estComplet(m) && retenu(m)).sort(comparerMots);
+    case 'aVerifier': {
+      const aVerifier = a.aVerifier;
+      return aVerifier === undefined ? [] : mots.filter((m) => aVerifier(m) && retenu(m)).sort(comparerMots);
+    }
     default:
       return mots.filter(retenu).sort(comparerMots);
   }
