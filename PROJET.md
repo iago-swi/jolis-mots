@@ -33,6 +33,7 @@ Le cœur est livré en TypeScript (`"exports": "./src/index.ts"`) : Vite le tran
 | `selection.ts` | `prochainMot`. |
 | `quiz.ts` | `composerQuiz`, `compterPortees`, `definitionPourQuiz`, `QUESTIONS_POSSIBLES`. |
 | `miseAJour.ts` | `ADRESSE_LISTE`, `choisirListe`. |
+| `historique.ts` | `noterListe`, `referenceDe`, `validerHistorique`, `validerReference`, `HISTORIQUE_MAX` : l'historique de la liste (conception, section 14). |
 | `stockage.ts` | `lireJson`. |
 | `import.ts` | `importer`, `rapportEnMarkdown`. |
 | `atelier.ts` | La liste et la fiche de l'atelier : `proposerTri`, `groupesDeDoublons`, `compterFiltres`, `listerAtelier`, `genresUtilises`, `homonymes`, `adresseCnrtl`, `nouvelleFiche`, `nettoyerFiche`, `poserFiche`, `retirerFiche`, `lignesDeSources`. |
@@ -88,7 +89,8 @@ Sur la fiche, le mot a une seule grande taille, 54 px ; une expression passe à 
 - `ecrans/Mot.svelte` : la fiche du mot courant (`composants/Fiche.svelte`), un glissement horizontal de plus de 60 px, au doigt ou au stylet, pour changer de mot (à la souris, glisser sélectionne le texte), l'étoile des favoris, « Mot suivant ».
 - `ecrans/Quiz.svelte` : le choix « Tous les mots » ou « Les mots que j'ai vus », puis les questions ; voir plus bas.
 - `ecrans/Recueil.svelte` : la liste alphabétique avec lettrines, la recherche, les filtres sur une ligne (Bouvier, Tesson, Rollin, l'étoile des favoris, et « Autres », qui ouvre un volet avec les autres auteurs et le nombre de mots de chacun), la fiche ouverte dans un volet. Un seul filtre est allumé à la fois ; toucher le filtre allumé l'éteint. Quand un autre auteur est choisi, le bouton « Autres » prend son nom ; un nom trop long pour la ligne finit par « … », le nom entier restant dans `aria-label` et `title`.
-- `ecrans/Reglages.svelte` : questions par quiz, palette, version, date et heure de la liste (« 25 novembre 2026 à 03:44 », heure de l'appareil), « Effacer mes progrès » ; ce lien reste visible au-dessus de sa confirmation.
+- `ecrans/Historique.svelte` : l'historique de la liste, de la plus récente à la plus ancienne ; une entrée se déplie sur ses mots (« + » ajouté, « ~ » modifié, « − » supprimé, par ordre alphabétique) ; un mot encore dans la liste ouvre sa fiche dans un volet. On y vient des Réglages ; le bouton retour y ramène.
+- `ecrans/Reglages.svelte` : questions par quiz, palette, version, date et heure de la liste (« 25 novembre 2026 à 03:44 », heure de l'appareil), la ligne « Historique de la liste », « Effacer mes progrès » ; ce lien reste visible au-dessus de sa confirmation.
 - `ecrans/Atelier.svelte` : l'atelier, sur bureau seulement ; voir plus bas.
 - `composants/Entete.svelte`, `composants/Onglets.svelte` : l'en-tête (la marque et le bouton des réglages) et les onglets, trois sur le téléphone, quatre sur bureau.
 - `volet.ts` : l'action Svelte des volets et des confirmations. À l'ouverture, le curseur va sur l'élément marqué `data-depart`, sinon sur le volet (qui reçoit toujours `tabindex="-1"`) ; Échap ferme, où que soit le curseur ; à la fermeture, le curseur revient à l'élément qui l'avait.
@@ -127,7 +129,7 @@ C'est ce qu'utilise `scripts/captures.mjs`.
 
 ### Ce que l'appareil garde
 
-Dans `localStorage`, quatre clés (voir `stockage.ts`) : `jolismots.progres.v1`, `jolismots.favoris.v1`, `jolismots.reglages.v1`, `jolismots.liste.v1` (la dernière liste téléchargée, sur le téléphone). Une valeur absente, illisible ou d'une autre forme est remplacée par la valeur par défaut ; dans les progrès, `validerProgres` garde les entrées bien formées et écarte les autres. Un stockage plein ou refusé est ignoré.
+Dans `localStorage`, six clés (voir `stockage.ts`) : `jolismots.progres.v1`, `jolismots.favoris.v1`, `jolismots.reglages.v1`, `jolismots.historique.v1` (l'historique de la liste, 200 entrées au plus), `jolismots.reference.v1` (la dernière liste notée, réduite à une empreinte par mot complet), `jolismots.liste.v1` (la dernière liste téléchargée, sur le téléphone). Une valeur absente, illisible ou d'une autre forme est remplacée par la valeur par défaut ; dans les progrès, `validerProgres` garde les entrées bien formées et écarte les autres. Un stockage plein ou refusé est ignoré.
 
 Les mots lus depuis l'ouverture (`etat.lus`) et la position dans cette suite vivent en mémoire seulement : ils repartent à zéro à chaque lancement. Il n'y a pas de séance.
 

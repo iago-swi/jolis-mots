@@ -77,6 +77,11 @@
       <div><dt>Liste des mots</dt><dd>{dateListe}</dd></div>
     </dl>
 
+    <button class="vers-historique" onclick={() => etat.allerA('historique')}>
+      <span>Historique de la liste</span>
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+    </button>
+
     <div class="effacer">
       <!--
         Le lien reste affiché au-dessus de la question : le curseur y revient quand elle se ferme.
@@ -256,6 +261,27 @@
     margin: 0;
     font-size: 18px;
     font-style: italic;
+    color: var(--second);
+  }
+
+  .vers-historique {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 0;
+    border: none;
+    border-top: 1px solid var(--filet);
+    background: transparent;
+    color: var(--encre);
+    font: inherit;
+    font-size: 20px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .vers-historique svg {
     color: var(--second);
   }
 

@@ -293,3 +293,58 @@ describe('l’adresse', () => {
     expect(etat.quizDemande).toBeNull();
   });
 });
+
+describe('l’historique de la liste', () => {
+  it('s’ouvre au premier démarrage, puis note la liste reçue avec ses mots nouveaux', async () => {
+    poserStockage();
+    const { etat, rafraichir } = await lancer();
+    repondreAvec(JSON.stringify(listePlusRecente));
+    etat.demarrer({ search: '', hash: '' });
+    expect(etat.historique).toEqual([
+      { publie: embarquee.publie, debut: true, total: 3, ajoutes: [], modifies: [], supprimes: [] },
+    ]);
+    await rafraichir();
+    // La liste reçue n'est adoptée qu'au mot suivant : l'historique aussi attend.
+    expect(etat.historique).toHaveLength(1);
+    etat.suivant();
+    expect(etat.historique).toHaveLength(2);
+    expect(etat.historique[1]).toMatchObject({
+      publie: listePlusRecente.publie,
+      debut: false,
+      total: 4,
+      ajoutes: [{ id: 'b1', mot: 'mot b1' }],
+    });
+  });
+
+  it('est gardé sur l’appareil et repris au lancement suivant, sans doublon', async () => {
+    const stockage = poserStockage();
+    const premier = await lancer();
+    premier.etat.demarrer({ search: '', hash: '' });
+    premier.etat.remplacerListe(listePlusRecente);
+    expect(premier.etat.historique).toHaveLength(2);
+    expect(stockage.has('jolismots.historique.v1')).toBe(true);
+    const second = await lancer();
+    second.etat.demarrer({ search: '', hash: '' });
+    expect(second.etat.historique).toEqual(premier.etat.historique);
+  });
+
+  it('un historique illisible repart de zéro sans rien casser', async () => {
+    poserStockage({ 'jolismots.historique.v1': '{pas du json', 'jolismots.reference.v1': '[1,2]' });
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '' });
+    expect(etat.historique).toHaveLength(1);
+    expect(etat.historique[0]?.debut).toBe(true);
+  });
+
+  it('« Historique » se ferme vers les réglages, qui se ferment vers l’écran d’avant', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '#recueil' });
+    etat.allerA('reglages');
+    etat.allerA('historique');
+    expect(etat.retour()).toBe(true);
+    expect(etat.ecran).toBe('reglages');
+    expect(etat.retour()).toBe(true);
+    expect(etat.ecran).toBe('recueil');
+  });
+});

@@ -6,6 +6,8 @@ export const CLES = {
   favoris: 'jolismots.favoris.v1',
   reglages: 'jolismots.reglages.v1',
   liste: 'jolismots.liste.v1',
+  historique: 'jolismots.historique.v1',
+  reference: 'jolismots.reference.v1',
 };
 
 /** Valeur gardée sous `cle`, ou `defaut` si elle manque, est illisible ou si le stockage est refusé. */
