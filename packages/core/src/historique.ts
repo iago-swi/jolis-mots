@@ -68,6 +68,11 @@ export function noterListe(
   f: FichierMots,
 ): { historique: EntreeHistorique[]; reference: Reference } {
   if (reference !== null && !(Date.parse(f.publie) > Date.parse(reference.publie))) return { historique, reference };
+  const derniere = historique[historique.length - 1];
+  if (derniere !== undefined && !(Date.parse(f.publie) > Date.parse(derniere.publie))) {
+    // La référence a pris du retard sur l'historique (stockage plein) : rien n'est noté deux fois.
+    return { historique, reference: referenceDe(f) };
+  }
   const nouvelle = referenceDe(f);
   const total = Object.keys(nouvelle.mots).length;
   if (reference === null) {
@@ -116,14 +121,21 @@ function estEntree(x: unknown): x is EntreeHistorique {
 
 /** L'historique gardé sur l'appareil, sans les entrées qui n'ont pas la bonne forme. */
 export function validerHistorique(x: unknown): EntreeHistorique[] {
-  return Array.isArray(x) ? x.filter(estEntree) : [];
+  if (!Array.isArray(x)) return [];
+  const vues = new Set<string>();
+  return x.filter((e): e is EntreeHistorique => {
+    if (!estEntree(e) || vues.has(e.publie)) return false;
+    vues.add(e.publie);
+    return true;
+  });
 }
 
 /** La référence gardée sur l'appareil, ou null si elle n'a pas la bonne forme. */
 export function validerReference(x: unknown): Reference | null {
   if (typeof x !== 'object' || x === null) return null;
   const o = x as Record<string, unknown>;
-  if (typeof o.publie !== 'string' || typeof o.mots !== 'object' || o.mots === null || Array.isArray(o.mots)) return null;
+  if (typeof o.publie !== 'string' || Number.isNaN(Date.parse(o.publie))) return null;
+  if (typeof o.mots !== 'object' || o.mots === null || Array.isArray(o.mots)) return null;
   const mots: Reference['mots'] = Object.create(null);
   for (const [id, v] of Object.entries(o.mots)) {
     if (!Array.isArray(v) || v.length !== 2 || typeof v[0] !== 'string' || typeof v[1] !== 'number') return null;

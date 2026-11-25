@@ -186,13 +186,15 @@ class Etat {
       if (m !== null) this.montrer(m);
     }
     if (this.ficheOuverte !== null && !complets.has(this.ficheOuverte)) this.ficheOuverte = null;
-    this.noterListe();
+    // Sur bureau, la liste en place porte des modifications pas encore envoyées : l'atelier note
+    // lui-même chaque liste envoyée ou reçue (voir `Atelier.poser`).
+    if (pont === null) this.noterListe(l);
   }
 
-  /** Note la liste en place dans l'historique si elle est nouvelle pour l'appareil. */
-  private noterListe(): void {
-    if (Number.isNaN(Date.parse(this.liste.publie))) return;
-    const r = noterListe(this.historique, this.reference, this.liste);
+  /** Note `f` dans l'historique si elle est nouvelle pour l'appareil (conception, section 14). */
+  noterListe(f: FichierMots): void {
+    if (Number.isNaN(Date.parse(f.publie))) return;
+    const r = noterListe(this.historique, this.reference, f);
     if (r.reference !== this.reference) {
       this.reference = r.reference;
       ecrire(CLES.reference, r.reference);
@@ -304,7 +306,7 @@ class Etat {
       });
     }
 
-    this.noterListe();
+    if (pont === null) this.noterListe(this.liste);
     const voulu = params.get('mot');
     const impose = voulu === null ? undefined : this.trouver(normaliser(voulu));
     if (impose !== undefined) this.montrer(impose);

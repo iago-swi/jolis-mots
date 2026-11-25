@@ -348,3 +348,17 @@ describe('l’historique de la liste', () => {
     expect(etat.ecran).toBe('recueil');
   });
 });
+
+describe('la fiche ouverte depuis l’historique', () => {
+  it('le bouton retour la ferme d’abord, puis revient aux réglages', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '#historique' });
+    etat.ficheOuverte = 'a1';
+    expect(etat.retour()).toBe(true);
+    expect(etat.ficheOuverte).toBeNull();
+    expect(etat.ecran).toBe('historique');
+    expect(etat.retour()).toBe(true);
+    expect(etat.ecran).toBe('reglages');
+  });
+});

@@ -6,7 +6,7 @@ Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les 
 
 ### Ajouté
 
-- Dans les réglages, « Historique de la liste » : chaque nouvelle liste reçue, de la plus récente à la plus ancienne, avec sa date et son heure, ce qui a changé et le nombre de mots. Une entrée se déplie sur ses mots, par ordre alphabétique : « + » pour un mot ajouté, « ~ » pour un mot modifié, « − » pour un mot supprimé. Toucher un mot ouvre sa fiche.
+- Dans les réglages, « Historique de la liste » : chaque nouvelle liste reçue, de la plus récente à la plus ancienne, avec sa date et son heure, ce qui a changé et le nombre de mots. Une entrée se déplie sur ses mots, par ordre alphabétique : « + » pour un mot ajouté, « ~ » pour un mot modifié, « − » pour un mot supprimé. Toucher un mot ajouté ou modifié ouvre sa fiche.
 - L'historique commence à l'installation de cette version, avec le nombre de mots du moment.
 
 ## [1.0.1] - 2026-11-25

@@ -77,7 +77,7 @@ Tous les mots qui ont une définition, par ordre alphabétique. On peut chercher
 - **Questions par quiz** : 5, 10, 15 ou 20.
 - **Palette** : Comme le système, Papier, Nuit, Ivoire ou Céruléen.
 - La version de l'application, et la date et l'heure de la liste des mots.
-- **Historique de la liste** : chaque liste reçue, de la plus récente à la plus ancienne, avec sa date, ce qui a changé (« +3 · ~1 · −1 ») et le nombre de mots. Une entrée se déplie : « + » pour un mot ajouté, « ~ » pour un mot modifié, « − » pour un mot supprimé. Toucher un mot ouvre sa fiche. L'historique commence quand la version 1.0.2 s'installe ; une réinstallation le remet à zéro.
+- **Historique de la liste** : chaque liste reçue, de la plus récente à la plus ancienne, avec sa date, ce qui a changé (« +3 · ~1 · −1 ») et le nombre de mots. Une entrée se déplie : « + » pour un mot ajouté, « ~ » pour un mot modifié, « − » pour un mot supprimé. Toucher un mot ajouté ou modifié ouvre sa fiche. L'historique commence quand la version 1.0.2 s'installe ; une réinstallation le remet à zéro.
 - **Effacer mes progrès** : efface les mots vus, les révisions et les favoris, après confirmation.
 
 ### Atelier (Windows)

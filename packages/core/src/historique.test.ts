@@ -50,6 +50,16 @@ describe('noterListe', () => {
     expect(r2.reference).toBe(r1.reference);
   });
 
+  it('une référence en retard sur l’historique ne fait pas de doublon', () => {
+    const r1 = noterListe([], null, L1);
+    const L2 = liste('2026-11-26T08:00:00Z', [a, b, c, { ...d, aCompleter: false }]);
+    const r2 = noterListe(r1.historique, r1.reference, L2);
+    // La référence de L2 n'a pas pu être gardée : on repart de celle de L1.
+    const r3 = noterListe(r2.historique, r1.reference, L2);
+    expect(r3.historique).toBe(r2.historique);
+    expect(r3.reference.publie).toBe(L2.publie);
+  });
+
   it('la même liste ne note rien', () => {
     const r1 = noterListe([], null, L1);
     const r2 = noterListe(r1.historique, r1.reference, L1);
@@ -131,6 +141,8 @@ describe('validerHistorique et validerReference', () => {
     expect(validerHistorique({})).toEqual([]);
     expect(validerReference(JSON.parse(JSON.stringify(r.reference)))).toEqual(r.reference);
     expect(validerReference({ publie: 3 })).toBeNull();
+    expect(validerReference({ publie: 'pas une date', mots: {} })).toBeNull();
+    expect(validerHistorique([...r.historique, ...r.historique])).toEqual(r.historique);
     expect(validerReference({ publie: 'x', mots: { a1: 'faux' } })).toBeNull();
     expect(validerReference(null)).toBeNull();
   });

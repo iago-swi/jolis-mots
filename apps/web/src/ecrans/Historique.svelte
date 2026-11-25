@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { embellir, normaliser, type EntreeHistorique } from '@jolis-mots/core';
   import Fiche from '../composants/Fiche.svelte';
   import { etat } from '../etat.svelte';
@@ -16,8 +17,13 @@
   /** Du plus récent au plus ancien. */
   const entrees = $derived([...etat.historique].reverse());
   let deplie = $state<string | null>(null);
-  let ouvertId = $state<string | null>(null);
-  const ouvert = $derived(ouvertId === null ? null : (etat.complets.find((m) => m.id === ouvertId) ?? null));
+  /** Les mots encore dans la liste : eux seuls ouvrent une fiche. */
+  const presents = $derived(new Set(etat.complets.map((m) => m.id)));
+  // La fiche ouverte passe par l'état, comme au Recueil : le bouton retour d'Android la ferme d'abord.
+  const ouvert = $derived(etat.ficheOuverte === null ? null : (etat.complets.find((m) => m.id === etat.ficheOuverte) ?? null));
+  onDestroy(() => {
+    etat.ficheOuverte = null;
+  });
 
   function date(publie: string): string {
     const t = Date.parse(publie);
@@ -38,6 +44,16 @@
     return parties.join(' · ');
   }
 
+  /** Le bilan dit en toutes lettres, pour les lecteurs d'écran. */
+  function bilanDit(e: EntreeHistorique): string {
+    const parties: string[] = [];
+    const dire = (n: number, s: string, p: string) => parties.push(`${n} ${n > 1 ? p : s}`);
+    if (e.ajoutes.length > 0) dire(e.ajoutes.length, 'ajouté', 'ajoutés');
+    if (e.modifies.length > 0) dire(e.modifies.length, 'modifié', 'modifiés');
+    if (e.supprimes.length > 0) dire(e.supprimes.length, 'supprimé', 'supprimés');
+    return `Envoi de l’atelier, ${date(e.publie)} : ${parties.join(', ')} ; ${nombre(e.total)}`;
+  }
+
   /** Les mots de l'entrée, tous ensemble par ordre alphabétique, chacun avec sa sorte. */
   function mots(e: EntreeHistorique): { id: string; mot: string; sorte: Sorte }[] {
     return [
@@ -55,10 +71,6 @@
     deplie = deplie === publie ? null : publie;
   }
 
-  /** Un mot encore dans la liste s'ouvre ; un mot supprimé depuis n'a plus de fiche. */
-  function existe(id: string): boolean {
-    return etat.complets.some((m) => m.id === id);
-  }
 </script>
 
 <div class="historique" inert={ouvert !== null}>
@@ -81,7 +93,7 @@
               <span class="bilan">{nombre(e.total)}</span>
             </div>
           {:else}
-            <button class="tete depliable" aria-expanded={deplie === e.publie} onclick={() => basculer(e.publie)}>
+            <button class="tete depliable" aria-expanded={deplie === e.publie} aria-label={bilanDit(e)} onclick={() => basculer(e.publie)}>
               <span class="origine">Envoi de l’atelier</span>
               <span class="date">{date(e.publie)}</span>
               <span class="bilan">{bilan(e)} <span class="fleche" aria-hidden="true">→</span> {nombre(e.total)}</span>
@@ -92,8 +104,8 @@
                 {#each mots(e) as m (m.sorte + m.id)}
                   <li class={m.sorte}>
                     <span class="signe" aria-hidden="true">{SIGNES[m.sorte].signe}</span>
-                    {#if m.sorte !== 'supprime' && existe(m.id)}
-                      <button class="mot" onclick={() => (ouvertId = m.id)}>{embellir(m.mot)}</button>
+                    {#if m.sorte !== 'supprime' && presents.has(m.id)}
+                      <button class="mot" onclick={() => (etat.ficheOuverte = m.id)}>{embellir(m.mot)}</button>
                     {:else}
                       <span class="mot">{embellir(m.mot)}</span>
                     {/if}
@@ -110,10 +122,10 @@
 </div>
 
 {#if ouvert !== null}
-  <div class="volet" role="dialog" aria-modal="true" aria-label="Fiche du mot" use:volet={{ fermer: () => (ouvertId = null) }}>
+  <div class="volet" role="dialog" aria-modal="true" aria-label="Fiche du mot" use:volet={{ fermer: () => (etat.ficheOuverte = null) }}>
     <div class="defilement"><Fiche mot={ouvert} /></div>
     <div class="actions">
-      <button class="principal" data-depart onclick={() => (ouvertId = null)}>Retour à l’historique</button>
+      <button class="principal" data-depart onclick={() => (etat.ficheOuverte = null)}>Retour à l’historique</button>
     </div>
   </div>
 {/if}
