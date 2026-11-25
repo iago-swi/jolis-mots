@@ -22,7 +22,7 @@ Le cœur est livré en TypeScript (`"exports": "./src/index.ts"`) : Vite le tran
 | Fichier | Contenu |
 | --- | --- |
 | `types.ts` | `Mot`, `FichierMots`, `estComplet`. |
-| `definition.ts` | `lireDefinition`, `developperIndication`, `indicationEstLongue`. |
+| `definition.ts` | `lireDefinition`, `developperIndication`, `indicationEstLongue`, `ABREVIATIONS_INDICATION`, `DEBUT_DE_SENS`. |
 | `genre.ts` | `developperGenre` (« subst. masc. » devient « nom masculin »), `premierTerme`, `genreEstConnu`. |
 | `sources.ts` | `lireSource`, `auteursDe`, `nomCourt`, `auteursParNombre`. |
 | `recherche.ts` | `normaliser`, `ordonner`, `lettrine`, `filtrer`. |
@@ -33,6 +33,8 @@ Le cœur est livré en TypeScript (`"exports": "./src/index.ts"`) : Vite le tran
 | `selection.ts` | `prochainMot`. |
 | `quiz.ts` | `composerQuiz`, `compterPortees`, `definitionPourQuiz`, `QUESTIONS_POSSIBLES`. |
 | `miseAJour.ts` | `ADRESSE_LISTE`, `choisirListe`. |
+| `saisie.ts` | La saisie rapide de l'atelier (conception, section 15.2) : `ABREVIATIONS_SAISIE`, `BOUTONS_SAISIE`, `developper` (Tab), `insertionPour` (un bouton), `numeroSuivant`. |
+| `verification.ts` | Le vérificateur (conception, section 15.3) : `verifierMot`, `indicationsConnues`, `corrigerBalises`, `corrigerEspaces`. |
 | `historique.ts` | `noterListe`, `referenceDe`, `validerHistorique`, `validerReference`, `HISTORIQUE_MAX` : l'historique de la liste (conception, section 14). |
 | `stockage.ts` | `lireJson`. |
 | `import.ts` | `importer`, `rapportEnMarkdown`. |

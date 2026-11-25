@@ -9,9 +9,11 @@ export interface Sens {
 }
 
 const BALISE = /(?<![\p{L}\p{N}])(EX|SYN|US|ANTON|ANT)[ \t]?:/gu;
-const DEBUT_DE_SENS = /^\s*(\d+)\.(?!\d)/;
+/** Le numéro d'un sens en tête de ligne : « 1. », « 2. »… */
+export const DEBUT_DE_SENS = /^\s*(\d+)\.(?!\d)/;
 
-const ABREVIATIONS: Record<string, string> = {
+/** Les indications abrégées connues (en minuscules) et leur forme développée. */
+export const ABREVIATIONS_INDICATION: Readonly<Record<string, string>> = {
   'litt.': 'Littéraire',
   'fig.': 'Figuré',
   'par ext.': 'Par extension',
@@ -33,7 +35,7 @@ export function developperIndication(indication: string): string {
     .split(',')
     .map((terme, i) => {
       const net = terme.trim();
-      const developpe = ABREVIATIONS[net.toLowerCase()];
+      const developpe = ABREVIATIONS_INDICATION[net.toLowerCase()];
       if (developpe === undefined) return net;
       return i === 0 ? developpe : developpe.toLowerCase();
     })

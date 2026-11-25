@@ -16,3 +16,5 @@ export * from './atelier';
 export * from './envoi';
 export * from './pont';
 export * from './historique';
+export * from './saisie';
+export * from './verification';
