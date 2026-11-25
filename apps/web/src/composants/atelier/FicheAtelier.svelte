@@ -182,7 +182,8 @@
     {@const b = atelier.brouillon}
     <!-- Les champs défilent ; la case et les boutons restent en bas, toujours visibles. -->
     <div class="champs">
-      <div class="rangee trois">
+      <!-- Mot, Tri, Genre, puis Note et Util., tout petits : leur contenu tient en quelques lettres. -->
+      <div class="rangee premiere">
         <div class="champ">
           <label for="f-mot">Mot</label>
           <input id="f-mot" type="text" autocomplete="off" value={b.mot} oninput={(e) => atelier.saisirMot(e.currentTarget.value)} />
@@ -197,6 +198,31 @@
           <datalist id="f-genres">
             {#each genres as g (g)}<option value={g}></option>{/each}
           </datalist>
+        </div>
+        <div class="champ petit">
+          <label for="f-note" title="Note&#x202F;: pour marquer les plus intéressants">Note</label>
+          <input
+            id="f-note"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            title="Note&#x202F;: pour marquer les plus intéressants"
+            value={b.note}
+            oninput={(e) => poser('note', e.currentTarget.value)}
+          />
+        </div>
+        <div class="champ petit">
+          <label for="f-util" title="Utilisé dans mes livres">Util.</label>
+          <input
+            id="f-util"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Utilisé dans mes livres"
+            title="Utilisé dans mes livres"
+            value={b.util}
+            oninput={(e) => poser('util', e.currentTarget.value)}
+          />
         </div>
       </div>
 
@@ -261,21 +287,6 @@
         </div>
         <textarea id="f-source" rows="2" aria-describedby="f-source-aide" value={texteSources} oninput={(e) => saisirSources(e.currentTarget.value)}></textarea>
       </div>
-
-      <div class="rangee deux">
-        <div class="champ">
-          <div class="tete">
-            <label for="f-note">Note</label>
-            <span class="aide" id="f-note-aide">Pour marquer les plus intéressants</span>
-          </div>
-          <input id="f-note" type="text" autocomplete="off" aria-describedby="f-note-aide" value={b.note} oninput={(e) => poser('note', e.currentTarget.value)} />
-        </div>
-        <div class="champ">
-          <div class="tete"><label for="f-util">Utilisé dans mes livres</label></div>
-          <input id="f-util" type="text" autocomplete="off" value={b.util} oninput={(e) => poser('util', e.currentTarget.value)} />
-        </div>
-      </div>
-
     </div>
 
     <!-- Une ligne : la case, les deux liens côte à côte, puis « Enregistrer » à droite. -->
@@ -467,12 +478,9 @@
     gap: 16px;
   }
 
-  .trois {
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  }
-
-  .deux {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  /* Mot un peu plus large que Tri et Genre ; Note et Util. à la mesure de leur contenu. */
+  .premiere {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto auto;
   }
 
   .champ {
@@ -521,9 +529,23 @@
     font-size: 20px;
   }
 
+  .petit label {
+    white-space: nowrap;
+  }
+
+  /* Un chiffre pour la note, deux ou trois lettres pour Util. (L, LL, LLL, X). */
   #f-note,
   #f-util {
-    font-size: 19px;
+    padding: 0 6px;
+    text-align: center;
+  }
+
+  #f-note {
+    width: calc(4ch + 14px);
+  }
+
+  #f-util {
+    width: calc(5ch + 14px);
   }
 
   input::placeholder {
@@ -672,6 +694,21 @@
       gap: 2px;
     }
 
+    /* Cinq champs sur la première ligne : le genre (« subst. masc. ») prend la place que le tri, tiré du mot, peut céder. */
+    .premiere {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr) minmax(0, 1.25fr) auto auto;
+      gap: 10px;
+    }
+
+    .premiere input[type='text'] {
+      padding: 0 8px;
+    }
+
+    .premiere #f-note,
+    .premiere #f-util {
+      padding: 0 6px;
+    }
+
     .barre button {
       padding: 0 3px;
       font-size: 13px;
@@ -686,6 +723,20 @@
 
     .court {
       display: inline;
+    }
+
+    /* La première ligne se serre encore : un texte un peu plus petit. */
+    .premiere {
+      gap: 8px;
+    }
+
+    .premiere input[type='text'] {
+      padding: 0 6px;
+      font-size: 18px;
+    }
+
+    .premiere label {
+      letter-spacing: 0.1em;
     }
   }
 
