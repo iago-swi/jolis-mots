@@ -132,7 +132,15 @@
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill={favorisSeuls ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z"></path></svg>
         </span>
       </button>
-      <button aria-pressed={autreChoisi !== null} aria-haspopup={autreChoisi === null ? 'dialog' : undefined} onclick={autres}>
+      <!-- Un nom long est coupé d'un « … » pour garder la ligne ; le nom entier reste dit et survolable. -->
+      <button
+        class="autre"
+        aria-pressed={autreChoisi !== null}
+        aria-haspopup={autreChoisi === null ? 'dialog' : undefined}
+        aria-label={autreChoisi === null ? undefined : embellir(autreChoisi)}
+        title={autreChoisi === null ? undefined : embellir(autreChoisi)}
+        onclick={autres}
+      >
         <span>{autreChoisi === null ? 'Autres' : embellir(nomCourt(autreChoisi))}</span>
       </button>
     </div>
@@ -311,6 +319,23 @@
     color: var(--encre);
     font-size: 15px;
     white-space: nowrap;
+  }
+
+  /*
+   * Le filtre d'un autre auteur prend la place qui reste sur la ligne, et pas plus :
+   * un nom trop long (Houellebecq) finit par « … ».
+   */
+  .filtres .autre {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .filtres .autre span {
+    display: block;
+    min-width: 0;
+    line-height: 30px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* L'étoile seule : une pastille de 44 px de large, la largeur minimale d'une zone tactile. */

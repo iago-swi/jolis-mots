@@ -9,7 +9,8 @@
  * 4. écrit les images dans `docs/captures/`.
  *
  * Avant les photos, il contrôle que les filtres du Recueil tiennent sur une seule ligne
- * d'un écran de 411 px de large (le téléphone de Philippe), et s'arrête sinon.
+ * d'un écran de 411 px de large (le téléphone de Philippe), au départ et avec l'autre auteur
+ * au nom le plus long choisi, et s'arrête sinon.
  *
  * Les adresses fixent le mot (`?mot=`) et la palette (`?palette=papier`) ; le mode clair
  * imposé fixe en plus les pastilles « Comme le système » des Réglages, qui suivent le mode
@@ -221,21 +222,43 @@ async function photographierAtelier() {
   return photo();
 }
 
-/** Vrai si les filtres du Recueil tiennent sur une ligne, sans défilement, à 411 px de large. */
+/** Vrai si les filtres du Recueil tiennent sur une ligne, sans défilement (expression évaluée dans la page). */
+const UNE_LIGNE = `(() => {
+  const filtres = document.querySelector('.filtres');
+  if (filtres === null) return false;
+  const boutons = [...filtres.querySelectorAll('button')];
+  const haut = boutons[0]?.getBoundingClientRect().top;
+  return filtres.scrollWidth <= filtres.clientWidth && boutons.every((b) => b.getBoundingClientRect().top === haut);
+})()`;
+
+/**
+ * Vrai si les filtres du Recueil tiennent sur une ligne à 411 px de large : au départ, puis
+ * une fois choisi, sous « Autres », l'auteur au nom court le plus long (son nom prend la place d'« Autres »).
+ */
 async function filtresSurUneLigne() {
   await emuler(411, 900);
   await charger(`?${MOT}#recueil`);
+  const depart = await onglet.envoyer('Runtime.evaluate', { expression: UNE_LIGNE, returnByValue: true });
+  if (depart.result.value !== true) return false;
   const { result } = await onglet.envoyer('Runtime.evaluate', {
-    expression: `(() => {
-      const filtres = document.querySelector('.filtres');
-      if (filtres === null) return false;
-      const boutons = [...filtres.querySelectorAll('button')];
-      const haut = boutons[0]?.getBoundingClientRect().top;
-      return filtres.scrollWidth <= filtres.clientWidth && boutons.every((b) => b.getBoundingClientRect().top === haut);
+    expression: `(async () => {
+      const attendre = () => new Promise((r) => setTimeout(r, 200));
+      document.querySelector('.filtres button:last-child')?.click();
+      await attendre();
+      const nomCourt = (b) => b.querySelector('span').textContent.trim().split(/\s+/).at(-1);
+      const auteurs = [...document.querySelectorAll('button.auteur')];
+      if (auteurs.length === 0) return 'aucun';
+      const long = auteurs.reduce((a, b) => (nomCourt(b).length > nomCourt(a).length ? b : a));
+      long.click();
+      await attendre();
+      return ${UNE_LIGNE} ? nomCourt(long) : false;
     })()`,
+    awaitPromise: true,
     returnByValue: true,
   });
-  return result.value === true;
+  if (result.value === false) return false;
+  console.log(`Filtres du Recueil, avec « ${result.value} » choisi : une ligne à 411 px.`);
+  return true;
 }
 
 try {
