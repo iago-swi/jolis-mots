@@ -11,7 +11,8 @@
 <header class="barre">
   <h1>Atelier</h1>
   <div class="envoi">
-    {#if atelier.disponible}
+    <!-- Sans la dernière liste envoyée, pas de compte : l'avis sous la barre dit pourquoi. -->
+    {#if atelier.disponible && atelier.envoyeeConnue}
       <div class="compteur">
         {#if total === 0}
           <p class="nombre envoye">Tout est envoyé</p>
@@ -24,7 +25,7 @@
         {/if}
       </div>
     {/if}
-    <button disabled={!atelier.disponible || total === 0 || atelier.envoi} onclick={() => atelier.envoyer().catch(() => undefined)}>
+    <button disabled={!atelier.disponible || !atelier.envoyeeConnue || total === 0 || atelier.envoi} onclick={() => atelier.envoyer().catch(() => undefined)}>
       {atelier.envoi ? 'Envoi…' : 'Envoyer au téléphone'}
     </button>
   </div>

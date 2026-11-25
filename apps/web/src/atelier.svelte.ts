@@ -44,6 +44,11 @@ const ILLISIBLE = alerte(
 const REPRISE_ECHOUEE = alerte("La liste en ligne n'a pas pu être reprise. Rien n'a changé ici.");
 const NON_ENREGISTREE = alerte("La fiche n'a pas pu être enregistrée.");
 const ENVOI_ECHOUE = alerte("L'envoi a échoué. Tes modifications restent en attente.");
+const ENVOYEE_INCONNUE = alerte(
+  "L'atelier ne trouve pas la dernière liste envoyée\u202F: il ne peut ni compter les modifications ni envoyer.",
+);
+/** Dit avec le chemin du mots.json de l'ancienne copie, que la synchronisation a mise de côté. */
+const MISE_DE_COTE = calme("L'ancienne copie de l'atelier a été mise de côté ici\u202F:");
 
 const ECHECS_D_ENVOI: Record<Exclude<RaisonDepot, 'pret'>, Avis> = {
   'sans-reseau': alerte("Pas de réseau\u202F: la liste n'est pas partie. Tes modifications restent en attente."),
@@ -62,6 +67,7 @@ const AVIS_DE_LA_COPIE: readonly Avis[] = [
   VERIFICATION,
   ILLISIBLE,
   REPRISE_ECHOUEE,
+  ENVOYEE_INCONNUE,
 ];
 
 /** Le texte de l'avis de divergence, que l'écran garde affiché tant qu'elle n'est pas réglée. */
@@ -150,9 +156,14 @@ export class Atelier {
   readonly detail: string = $derived(
     this.avis?.ton === 'alerte' && this.depot !== null && this.depot.raison !== 'pret' ? this.depot.detail.trim() : '',
   );
+  /**
+   * La dernière liste envoyée est connue. Sans elle (git introuvable, branche en ligne absente
+   * de la copie), rien n'est compté ni envoyé : un compte contre une liste vide serait faux.
+   */
+  readonly envoyeeConnue: boolean = $derived(this.envoyee !== null);
   /** Entre la liste envoyée et `etat.liste`. */
   readonly modifications: Modifications = $derived(
-    this.disponible ? compterModifications(this.envoyee?.mots ?? [], etat.liste.mots) : AUCUNE,
+    this.disponible && this.envoyee !== null ? compterModifications(this.envoyee.mots, etat.liste.mots) : AUCUNE,
   );
 
   /** Filtre et recherche de la liste de l'atelier. */
@@ -209,15 +220,42 @@ export class Atelier {
     }
   }
 
-  /** Retient le nouvel état ; si le texte local a changé et se lit, les écrans le prennent. */
-  private poser(r: EtatDepot): void {
+  /**
+   * Retient le nouvel état ; si le texte local a changé et se lit, les écrans le prennent.
+   * Vrai quand la liste de travail a été remplacée.
+   */
+  private poser(r: EtatDepot): boolean {
     const avant = this.depot;
     this.depot = r;
     if (r.raison === 'divergence') this.divergence = true;
     if (avant === null || r.envoyee !== avant.envoyee) this.envoyee = lireListe(r.envoyee);
     if (avant === null || r.locale !== avant.locale) {
       this.locale = lireListe(r.locale);
-      if (this.locale !== null) etat.remplacerListe(this.locale);
+      if (this.locale !== null) {
+        etat.remplacerListe(this.locale);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Après une liste reçue ou reprise : une fiche non modifiée prend le mot de la nouvelle liste
+   * (ou se ferme s'il n'y est plus) ; une fiche modifiée reste telle quelle, comparée désormais
+   * au mot de la nouvelle liste.
+   */
+  private rafraichirFiche(): void {
+    const b = this.brouillon;
+    if (b === null) return;
+    const enregistre = etat.liste.mots.find((m) => m.id === b.id) ?? null;
+    if (this.modifiee) {
+      this.origine = enregistre;
+    } else if (enregistre !== null) {
+      this.ouvrir(enregistre, enregistre);
+    } else if (this.origine !== null) {
+      // Un mot nouveau encore vide n'était pas dans la liste : il reste ouvert.
+      this.brouillon = null;
+      this.origine = null;
     }
   }
 
@@ -230,7 +268,8 @@ export class Atelier {
       // « Une première fois » seulement quand c'est le réseau qui manque, pas quand l'ouverture a raté.
       return raison === 'sans-reseau' && !this.ouvertureRatee ? CONNEXION : RECEPTION;
     }
-    return raison === 'divergence' ? DIVERGENCE : null;
+    if (raison === 'divergence') return DIVERGENCE;
+    return this.envoyee === null ? ENVOYEE_INCONNUE : null;
   }
 
   /** Ouvre la copie locale et pose sa liste ; puis va voir la liste en ligne, sans attendre. */
@@ -253,13 +292,19 @@ export class Atelier {
   reessayer(): Promise<void> {
     return this.enFile(async () => {
       const r = await this.appeler(() => this.pont.synchroniser());
-      this.poser(r);
+      if (this.poser(r)) this.rafraichirFiche();
       if (r.raison === 'pret') this.divergence = false;
       const nouveau =
         this.avisDeLaCopie(r.raison) ??
         // Avec une copie, une panne de réseau ne se dit pas : l'atelier travaille hors ligne.
         (r.raison === 'refus' || r.raison === 'erreur' ? VERIFICATION : null);
-      if (nouveau !== null) this.avis = nouveau;
+      if (r.sauvegarde !== null) {
+        // Une ancienne copie a été mise de côté : son chemin est dit, avec l'avis du moment s'il y en a un.
+        this.avis =
+          nouveau === null
+            ? { ...MISE_DE_COTE, chemin: r.sauvegarde }
+            : { ton: nouveau.ton, texte: `${nouveau.texte} ${MISE_DE_COTE.texte}`, chemin: r.sauvegarde };
+      } else if (nouveau !== null) this.avis = nouveau;
       else if (r.raison === 'pret' && AVIS_DE_LA_COPIE.some((a) => a.texte === this.avis?.texte)) this.avis = null;
     });
   }
@@ -269,7 +314,8 @@ export class Atelier {
     const r = await this.appeler(() => this.pont.enregistrer(ecrireFichier(liste)));
     this.poser(r);
     const fait = r.raison === 'pret' && this.disponible;
-    this.avis = fait ? null : this.illisible ? ILLISIBLE : NON_ENREGISTREE;
+    if (fait) this.avis = this.envoyee === null ? ENVOYEE_INCONNUE : null;
+    else this.avis = this.illisible ? ILLISIBLE : NON_ENREGISTREE;
     return fait;
   }
 
@@ -301,7 +347,7 @@ export class Atelier {
   envoyer(): Promise<void> {
     this.envoi = true;
     return this.enFile(async () => {
-      if (!this.disponible) return;
+      if (!this.disponible || this.envoyee === null) return;
       const phrases = validerPourEnvoi(etat.liste);
       if (phrases.length > 0) {
         this.avis = alerte(phrases.join(' '));
@@ -324,7 +370,7 @@ export class Atelier {
   reprendre(): Promise<void> {
     return this.enFile(async () => {
       const r = await this.appeler(() => this.pont.reprendre());
-      this.poser(r);
+      if (this.poser(r)) this.rafraichirFiche();
       if (r.raison === 'pret' && this.disponible) {
         this.divergence = false;
         this.avis =

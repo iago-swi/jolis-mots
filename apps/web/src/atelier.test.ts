@@ -39,6 +39,9 @@ const ENREGISTREMENT = "La fiche n'a pas pu être enregistrée.";
 const VERIFICATION = "L'atelier n'a pas pu vérifier la liste en ligne. Tu peux continuer à travailler.";
 const RECEPTION = "L'atelier n'a pas pu recevoir la liste.";
 const REPRISE = "La liste en ligne n'a pas pu être reprise. Rien n'a changé ici.";
+const MISE_DE_COTE = "L'ancienne copie de l'atelier a été mise de côté ici\u202F:";
+const ENVOYEE_INCONNUE =
+  "L'atelier ne trouve pas la dernière liste envoyée\u202F: il ne peut ni compter les modifications ni envoyer.";
 const SANS_RESEAU = "Pas de réseau\u202F: la liste n'est pas partie. Tes modifications restent en attente.";
 
 // La vraie liste embarquée n'est jamais chargée (voir etat.test.ts).
@@ -69,6 +72,8 @@ class FauxPont implements PontBureau {
   pannes: Partial<Record<Operation, RaisonDepot | 'rejet'>> = {};
   /** Ce que `synchroniser` reçoit de la liste en ligne, s'il y a lieu. */
   enLigne: string | null = null;
+  /** Le chemin que rend `synchroniser` quand il a mis une copie cassée de côté. */
+  miseDeCote: string | null = null;
   /** `synchroniser` attend cette promesse avant de répondre. */
   retenue: Promise<void> | null = null;
   sauvegarde = 'C:\\Donnees\\sauvegardes\\mots-2026-11-24-100000.json';
@@ -82,7 +87,7 @@ class FauxPont implements PontBureau {
     this.appels.push(op);
     const panne = this.pannes[op];
     if (panne === 'rejet') throw new Error('Canal fermé');
-    if (panne !== undefined && panne !== 'pret') return this.etat(panne, `git : ${panne}`);
+    if (panne !== undefined && panne !== 'pret') return this.etat(panne, `git : ${panne}`, sauvegarde);
     effet();
     return this.etat('pret', '', sauvegarde);
   }
@@ -97,9 +102,13 @@ class FauxPont implements PontBureau {
 
   async synchroniser(): Promise<EtatDepot> {
     if (this.retenue) await this.retenue;
-    return this.issue('synchroniser', () => {
-      if (this.enLigne !== null) this.locale = this.envoyee = this.enLigne;
-    });
+    return this.issue(
+      'synchroniser',
+      () => {
+        if (this.enLigne !== null) this.locale = this.envoyee = this.enLigne;
+      },
+      this.miseDeCote,
+    );
   }
 
   enregistrer(texte: string): Promise<EtatDepot> {
@@ -318,6 +327,99 @@ describe('le démarrage', () => {
       expect(atelier.avis).toEqual({ ton: 'alerte', texte: VERIFICATION });
     });
   }
+});
+
+describe('la copie cassée, mise de côté', () => {
+  it('la synchronisation a mis une copie cassée de côté : l’avis calme donne le chemin, tel quel', async () => {
+    const faux = new FauxPont(null, null);
+    faux.enLigne = ecrireFichier(locale);
+    faux.miseDeCote = "C:\\Users\\O'Brien\\AppData\\Roaming\\Jolis Mots\\sauvegardes\\donnees-2026-11-25-101500\\mots.json";
+    const { atelier } = await demarrerSur(faux);
+    expect(atelier.disponible).toBe(true);
+    expect(atelier.avis).toEqual({ ton: 'calme', texte: MISE_DE_COTE, chemin: faux.miseDeCote });
+  });
+
+  it('la mise de côté puis l’échec du téléchargement : l’alerte dit les deux, avec le chemin', async () => {
+    const faux = new FauxPont(null, null);
+    faux.pannes.synchroniser = 'sans-reseau';
+    faux.miseDeCote = 'C:\\Donnees\\sauvegardes\\donnees-2026-11-25-101500\\mots.json';
+    const { atelier } = await demarrerSur(faux);
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: `${CONNEXION} ${MISE_DE_COTE}`, chemin: faux.miseDeCote });
+  });
+});
+
+describe('la dernière liste envoyée inconnue', () => {
+  it('sans git : pas de nombre, pas d’envoi, l’avis le dit', async () => {
+    const faux = new FauxPont(ecrireFichier(locale), null);
+    faux.pannes.synchroniser = 'sans-git';
+    const { atelier } = await demarrerSur(faux);
+    expect(atelier.disponible).toBe(true);
+    expect(atelier.envoyeeConnue).toBe(false);
+    expect(atelier.modifications.total).toBe(0);
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: SANS_GIT });
+    await atelier.envoyer();
+    expect(faux.envois).toHaveLength(0);
+  });
+
+  it('git présent mais pas de liste envoyée : l’avis le dit ; une synchronisation qui la trouve l’efface', async () => {
+    const faux = new FauxPont(ecrireFichier(locale), null);
+    const { atelier } = await demarrerSur(faux);
+    expect(atelier.envoyeeConnue).toBe(false);
+    expect(atelier.modifications.total).toBe(0);
+    expect(atelier.avis).toEqual({ ton: 'alerte', texte: ENVOYEE_INCONNUE });
+    faux.envoyee = ecrireFichier(locale);
+    await atelier.reessayer();
+    expect(atelier.envoyeeConnue).toBe(true);
+    expect(atelier.avis).toBeNull();
+  });
+});
+
+describe('la fiche ouverte quand la liste est remplacée', () => {
+  const changee = { ...fiche, definition: '1. [Litt.] Qui a de la grâce, du charme.' };
+  const nouvelle: FichierMots = { ...locale, publie: '2026-11-23T08:00:00Z', mots: [...locale.mots.filter((m) => m !== fiche), changee] };
+
+  it('une synchronisation apporte une liste plus récente : la fiche non modifiée suit', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    faux.enLigne = ecrireFichier(nouvelle);
+    await atelier.reessayer();
+    expect(atelier.brouillon).toEqual(changee);
+    expect(atelier.modifiee).toBe(false);
+  });
+
+  it('une reprise : la fiche non modifiée suit la liste reprise', async () => {
+    const faux = new FauxPont(ecrireFichier(locale), ecrireFichier(nouvelle));
+    faux.pannes.synchroniser = 'divergence';
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    await atelier.reprendre();
+    expect(atelier.brouillon).toEqual(changee);
+    expect(atelier.modifiee).toBe(false);
+  });
+
+  it('une fiche modifiée reste un brouillon, comparé au mot de la nouvelle liste', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    atelier.brouillon!.note = 'XX';
+    faux.enLigne = ecrireFichier(nouvelle);
+    await atelier.reessayer();
+    expect(atelier.brouillon).toEqual({ ...fiche, note: 'XX' });
+    expect(atelier.modifiee).toBe(true);
+    atelier.brouillon!.note = '';
+    atelier.brouillon!.definition = changee.definition;
+    expect(atelier.modifiee).toBe(false);
+  });
+
+  it('le mot de la fiche non modifiée n’est plus dans la nouvelle liste : la fiche se ferme', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    faux.enLigne = ecrireFichier({ ...nouvelle, mots: nouvelle.mots.filter((m) => m.id !== fiche.id) });
+    await atelier.reessayer();
+    expect(atelier.brouillon).toBeNull();
+  });
 });
 
 describe('réessayer', () => {
