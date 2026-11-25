@@ -12,7 +12,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { join } from 'node:path';
 
 /** Le programme : celui de Windows, par son chemin complet, jamais cherché dans le PATH. */
-const POWERSHELL = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+export const POWERSHELL = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 /** Les langues essayées, dans l'ordre : `fr` d'abord, comme le correcteur de la fenêtre. */
 const LANGUES = ['fr', 'fr-FR', 'fr-CH'];
 /** Le démarrage compile un peu de C# : il peut prendre quelques secondes. */
@@ -78,12 +78,25 @@ if ($null -eq $langue) { [Console]::Out.WriteLine('SANS'); [Console]::Out.Flush(
 while ($true) {
   $ligne = [Console]::In.ReadLine()
   if ($null -eq $ligne) { break }
-  $mots = $ligne | ConvertFrom-Json
-  $fautes = New-Object System.Collections.Generic.List[int]
-  for ($i = 0; $i -lt $mots.Count; $i++) { if ([JolisMots.Correcteur]::Inconnu([string]$mots[$i])) { $fautes.Add($i) } }
-  [Console]::Out.WriteLine('[' + ($fautes -join ',') + ']'); [Console]::Out.Flush()
+  # Une demande qui échoue reçoit une réponse vide ; le programme continue.
+  try {
+    $mots = $ligne | ConvertFrom-Json
+    $fautes = New-Object System.Collections.Generic.List[int]
+    for ($i = 0; $i -lt $mots.Count; $i++) { if ([JolisMots.Correcteur]::Inconnu([string]$mots[$i])) { $fautes.Add($i) } }
+    [Console]::Out.WriteLine('[' + ($fautes -join ',') + ']'); [Console]::Out.Flush()
+  } catch {
+    [Console]::Out.WriteLine('[]'); [Console]::Out.Flush()
+  }
 }
 `;
+
+/**
+ * Les arguments de PowerShell. Pas de « -ExecutionPolicy » : la stratégie ne vise que les fichiers
+ * de script, et le programme n'en charge aucun (il passe par « -EncodedCommand »).
+ */
+export function argumentsPowerShell(): string[] {
+  return ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(PROGRAMME, 'utf16le').toString('base64')];
+}
 
 /** Le JSON des mots, en ASCII seul : aucune page de codes ne peut l'abîmer en route. */
 function enAscii(mots: string[]): string {
@@ -112,7 +125,9 @@ export function creerCorrecteur(options: OptionsCorrecteur = {}): Correcteur {
   let attente: ((ligne: string | null) => void) | null = null;
   let file: Promise<unknown> = Promise.resolve();
 
-  function arreter(): void {
+  /** Met le correcteur hors service pour la session ; `cause` est dite dans le journal, une fois. */
+  function arreter(cause: string | null): void {
+    if (cause !== null && !horsService) console.error(`Correcteur d'orthographe hors service\u202F: ${cause}`);
     horsService = true;
     const e = enfant;
     enfant = null;
@@ -126,7 +141,7 @@ export function creerCorrecteur(options: OptionsCorrecteur = {}): Correcteur {
     return new Promise((resoudre) => {
       const minuterie = setTimeout(() => {
         attente = null;
-        arreter();
+        arreter(`pas de réponse de PowerShell en ${delai / 1000} s`);
         resoudre(null);
       }, delai);
       attente = (ligne) => {
@@ -153,7 +168,7 @@ export function creerCorrecteur(options: OptionsCorrecteur = {}): Correcteur {
     try {
       const e = spawn(
         options.powershell ?? POWERSHELL,
-        ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(PROGRAMME, 'utf16le').toString('base64')],
+        argumentsPowerShell(),
         { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] },
       );
       enfant = e;
@@ -165,17 +180,17 @@ export function creerCorrecteur(options: OptionsCorrecteur = {}): Correcteur {
       // PowerShell écrit sa progression sur l'erreur standard : elle est lue et jetée.
       e.stderr.resume();
       e.stdin.on('error', () => undefined);
-      e.on('error', () => arreter());
-      e.on('exit', () => {
-        if (enfant === e) arreter();
+      e.on('error', (erreur) => arreter(`PowerShell ne démarre pas (${erreur.message})`));
+      e.on('exit', (code, signal) => {
+        if (enfant === e) arreter(`PowerShell s'est arrêté (code ${code ?? signal})`);
       });
-    } catch {
-      arreter();
+    } catch (erreur) {
+      arreter(`PowerShell ne démarre pas (${erreur instanceof Error ? erreur.message : String(erreur)})`);
       return false;
     }
     const tete = await ligneSuivante(DELAI_DEMARRAGE);
     if (tete === null || !tete.startsWith('PRET ')) {
-      arreter();
+      arreter(tete === 'SANS' ? 'pas de dictionnaire français dans Windows' : `réponse inattendue au démarrage (${tete ?? 'aucune'})`);
       return false;
     }
     langue = tete.slice('PRET '.length);
@@ -192,7 +207,7 @@ export function creerCorrecteur(options: OptionsCorrecteur = {}): Correcteur {
       if (!Array.isArray(indices)) return [];
       return indices.filter((i): i is number => Number.isInteger(i) && i >= 0 && i < mots.length).map((i) => mots[i]!);
     } catch {
-      arreter();
+      arreter(`réponse illisible (${reponse.slice(0, 80)})`);
       return [];
     }
   }
@@ -210,7 +225,7 @@ export function creerCorrecteur(options: OptionsCorrecteur = {}): Correcteur {
       return suite;
     },
     fermer(): void {
-      arreter();
+      arreter(null);
     },
   };
 }

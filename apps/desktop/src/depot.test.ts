@@ -14,7 +14,7 @@ import { createServer, type AddressInfo, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { classer, enregistrer, envoyer, historique, ouvrir, reprendre, synchroniser, type Depot } from './depot';
+import { classer, enregistrer, envoyer, historique, historiqueEnCache, ouvrir, reprendre, synchroniser, type Depot } from './depot';
 
 // Tout se passe dans un dossier temporaire : un dépôt nu `origine.git` tient lieu de GitHub.
 // Aucun test ne contacte le réseau ni ne touche au dépôt du projet.
@@ -414,5 +414,32 @@ describe('dépôt : l’histoire de la liste', () => {
     } finally {
       renommer(f.origine + '.absent', f.origine);
     }
+  });
+});
+
+describe('dépôt : l’historique gardé', () => {
+  it('même version en ligne : rien n’est relu ; nouvelle version : recalculé', { timeout: DELAI }, async () => {
+    const f = preparer();
+    const { d } = f;
+    let lectures = 0;
+    const historiqueDe = historiqueEnCache((x) => {
+      lectures++;
+      return historique(x);
+    });
+    // Sans copie : null, et rien n'est lu.
+    expect(await historiqueDe(d)).toBeNull();
+    expect(lectures).toBe(0);
+    await synchroniser(d);
+    const [h1, h1bis] = await Promise.all([historiqueDe(d), historiqueDe(d)]);
+    expect(h1).toHaveLength(1);
+    expect(h1bis).toBe(h1);
+    expect(lectures).toBe(1);
+    expect(await historiqueDe(d)).toBe(h1);
+    expect(lectures).toBe(1);
+    f.pousserDepuisUnAutreClone(T5);
+    await synchroniser(d);
+    const h2 = await historiqueDe(d);
+    expect(lectures).toBe(2);
+    expect(h2?.map((e) => e.publie)).toEqual(['2026-11-24', '2026-11-25']);
   });
 });

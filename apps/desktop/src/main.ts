@@ -18,8 +18,7 @@ import {
   type IpcMainEvent,
   type IpcMainInvokeEvent,
 } from 'electron';
-import { historiqueDeListes } from '@jolis-mots/core';
-import { ADRESSE_DEPOT, enregistrer, envoyer, historique, ouvrir, reprendre, synchroniser, type Depot } from './depot';
+import { ADRESSE_DEPOT, enregistrer, envoyer, historiqueEnCache, ouvrir, reprendre, synchroniser, type Depot } from './depot';
 import { creerCorrecteur } from './orthographe';
 
 // Une version de développement ne travaille jamais sur les vraies données : sans dossier de
@@ -46,6 +45,9 @@ const depot: Depot = {
   sauvegardes: path.join(app.getPath('userData'), 'sauvegardes'),
   adresse: process.env.JOLISMOTS_DEPOT ?? ADRESSE_DEPOT,
 };
+
+/** L'historique de la liste, recalculé seulement quand la liste en ligne de la copie a changé. */
+const historiqueDuDepot = historiqueEnCache();
 
 /** Le dictionnaire du vérificateur : le correcteur de Windows, lancé à la première demande. */
 const correcteur = creerCorrecteur();
@@ -206,11 +208,7 @@ function brancherPont(): void {
       ? envoyer(depot, texte, message)
       : undefined,
   );
-  ipcMain.handle('depot:historique', async (e) => {
-    if (!vientDeLaPage(e)) return null;
-    const listes = await historique(depot);
-    return listes === null ? null : historiqueDeListes(listes);
-  });
+  ipcMain.handle('depot:historique', (e) => (vientDeLaPage(e) ? historiqueDuDepot(depot) : null));
   ipcMain.handle('orthographe:inconnus', (e, mots: unknown) =>
     vientDeLaPage(e) && Array.isArray(mots) && mots.every((m) => typeof m === 'string') ? correcteur.inconnus(mots) : [],
   );

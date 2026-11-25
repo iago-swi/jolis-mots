@@ -6,7 +6,15 @@ import { execFile } from 'node:child_process';
 import { constants, existsSync } from 'node:fs';
 import { copyFile, mkdir, open, readFile, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { HISTORIQUE_MAX, validerFichier, type EtatDepot, type FichierMots, type RaisonDepot } from '@jolis-mots/core';
+import {
+  HISTORIQUE_MAX,
+  historiqueDeListes,
+  validerFichier,
+  type EntreeHistorique,
+  type EtatDepot,
+  type FichierMots,
+  type RaisonDepot,
+} from '@jolis-mots/core';
 
 export const ADRESSE_DEPOT = 'https://github.com/iago-swi/jolis-mots.git';
 export const BRANCHE = 'donnees';
@@ -456,4 +464,35 @@ export async function historique(d: Depot): Promise<FichierMots[] | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * L'historique de la liste (conception, section 15.5), gardé tant que la liste en ligne de la
+ * copie (`origin/donnees`) reste la même version : rouvrir l'écran ne relit ni ne recalcule rien.
+ * Deux demandes pendant un calcul partagent le même. null sans copie ou si la lecture échoue
+ * (rien n'est alors gardé). `lire` sert aux essais.
+ */
+export function historiqueEnCache(
+  lire: (d: Depot) => Promise<FichierMots[] | null> = historique,
+): (d: Depot) => Promise<EntreeHistorique[] | null> {
+  let garde: { cle: string; resultat: Promise<EntreeHistorique[] | null> } | null = null;
+  return async (d) => {
+    try {
+      if (!(await aUneCopie(d))) return null;
+      const s = await lancer(d, d.dossier, ['rev-parse', '--verify', '--quiet', `${DISTANTE}^{commit}`]);
+      if (s.code !== 0) return null;
+      const cle = `${d.dossier}\u0000${s.stdout.trim()}`;
+      if (garde === null || garde.cle !== cle) {
+        const resultat = lire(d).then((l) => (l === null ? null : historiqueDeListes(l)));
+        garde = { cle, resultat };
+        // Un échec n'est pas gardé : la prochaine demande relit.
+        void resultat.then((h) => {
+          if (h === null && garde?.resultat === resultat) garde = null;
+        });
+      }
+      return await garde.resultat;
+    } catch {
+      return null;
+    }
+  };
 }
