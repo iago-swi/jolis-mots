@@ -262,6 +262,26 @@ describe('dépôt : cas à part', () => {
     expect(existsSync(join(d.sauvegardes, mis[0]!, '.git'))).toBe(true);
   });
 
+  it('7 quater. une copie cassée qui tenait un mots.json : mise de côté, et le chemin du fichier est rendu', { timeout: DELAI }, async () => {
+    const { d } = preparer();
+    mkdirSync(d.dossier, { recursive: true });
+    git(d.dossier, 'init');
+    writeFileSync(join(d.dossier, 'mots.json'), T2, 'utf8');
+    const e = await synchroniser(d);
+    expect(e).toMatchObject({ raison: 'pret', locale: TEXTE_ORIGINE, envoyee: TEXTE_ORIGINE });
+    const mis = readdirSync(d.sauvegardes);
+    expect(mis).toHaveLength(1);
+    expect(e.sauvegarde).toBe(join(d.sauvegardes, mis[0]!, 'mots.json'));
+    expect(readFileSync(e.sauvegarde!, 'utf8')).toBe(T2);
+  });
+
+  it('7 quinquies. un dossier mis de côté sans mots.json : pas de chemin rendu', { timeout: DELAI }, async () => {
+    const { d } = preparer();
+    mkdirSync(d.dossier, { recursive: true });
+    writeFileSync(join(d.dossier, 'reste.txt'), 'téléchargement interrompu');
+    expect(await synchroniser(d)).toMatchObject({ raison: 'pret', sauvegarde: null });
+  });
+
   it('7 ter. mots.json effacé à la main : ouvrir sans fichier, reprendre sans sauvegarde', { timeout: DELAI }, async () => {
     const f = preparer();
     const { d } = f;
@@ -339,6 +359,7 @@ describe('dépôt : cas à part', () => {
     expect(classer("fatal: unable to access 'https://github.com/x/': The requested URL returned error: 403")).toBe('refus');
     expect(classer(' ! [rejected]        donnees -> donnees (fetch first)')).toBe('divergence');
     expect(classer(' ! [remote rejected] donnees -> donnees (pre-receive hook declined)')).toBe('refus');
+    expect(classer("fatal: could not read Username for 'https://github.com': terminal prompts disabled")).toBe('refus');
     expect(classer('fatal: quelque chose')).toBe('erreur');
   });
 });

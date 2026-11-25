@@ -4,7 +4,7 @@
 
 import { execFile } from 'node:child_process';
 import { constants, existsSync } from 'node:fs';
-import { copyFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, open, readFile, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { EtatDepot, RaisonDepot } from '@jolis-mots/core';
 
@@ -138,7 +138,13 @@ export function classer(stderr: string): RaisonDepot {
   ) {
     return 'sans-reseau';
   }
-  if (/Authentication failed/i.test(stderr) || (/Permission/i.test(stderr) && /denied/i.test(stderr)) || a403) {
+  if (
+    /Authentication failed/i.test(stderr) ||
+    (/Permission/i.test(stderr) && /denied/i.test(stderr)) ||
+    a403 ||
+    // Pas d'identifiants enregistrés, et git n'a pas le droit de les demander.
+    /could not read Username|terminal prompts disabled/i.test(stderr)
+  ) {
     return 'refus';
   }
   if (/\[rejected\]|non-fast-forward|fetch first/i.test(stderr)) return 'divergence';
@@ -225,11 +231,20 @@ async function renommer(de: string, vers: string): Promise<void> {
   }
 }
 
-/** Écrit mots.json : fichier temporaire dans le même dossier, puis renommage. UTF-8 sans BOM, octets exacts. */
+/**
+ * Écrit mots.json : fichier temporaire dans le même dossier, écrit jusqu'au disque, puis renommage.
+ * UTF-8 sans BOM, octets exacts. Les écritures passant une à la fois, le nom temporaire est fixe.
+ */
 async function ecrire(d: Depot, texte: string): Promise<void> {
   const cible = join(d.dossier, FICHIER);
-  const temporaire = `${cible}.${process.pid}.tmp`;
-  await writeFile(temporaire, Buffer.from(texte, 'utf8'));
+  const temporaire = `${cible}.tmp`;
+  const fichier = await open(temporaire, 'w');
+  try {
+    await fichier.writeFile(Buffer.from(texte, 'utf8'));
+    await fichier.sync();
+  } finally {
+    await fichier.close();
+  }
   await renommer(temporaire, cible);
 }
 
@@ -237,11 +252,17 @@ function sansCopie(d: Depot): Promise<EtatDepot> {
   return etat(d, 'erreur', `Pas de copie locale dans ${d.dossier}.`);
 }
 
-/** Télécharge la copie ; un dossier sans .git (téléchargement interrompu) est d'abord mis de côté. */
+/**
+ * Télécharge la copie. Un dossier sans copie utilisable (téléchargement interrompu, HEAD cassé)
+ * est d'abord mis de côté ; s'il tenait un mots.json, son nouveau chemin revient dans `sauvegarde`.
+ */
 async function telecharger(d: Depot): Promise<EtatDepot> {
+  let sauvegarde: string | null = null;
   if (existsSync(d.dossier)) {
     await mkdir(d.sauvegardes, { recursive: true });
-    await renommer(d.dossier, join(d.sauvegardes, `donnees-${horodatage(new Date())}`));
+    const ailleurs = join(d.sauvegardes, `donnees-${horodatage(new Date())}`);
+    await renommer(d.dossier, ailleurs);
+    if (existsSync(join(ailleurs, FICHIER))) sauvegarde = join(ailleurs, FICHIER);
   }
   const parent = dirname(d.dossier);
   await mkdir(parent, { recursive: true });
@@ -251,8 +272,8 @@ async function telecharger(d: Depot): Promise<EtatDepot> {
     [...DEBIT_MINIMAL, 'clone', '-c', 'core.autocrlf=false', '--single-branch', '--branch', BRANCHE, d.adresse, d.dossier],
     (d.delais ?? DELAIS).telechargement,
   );
-  if (s.code !== 0) return etat(d, raisonDe(s), s.stderr.trim());
-  return etat(d, 'pret');
+  if (s.code !== 0) return etat(d, raisonDe(s), s.stderr.trim(), sauvegarde);
+  return etat(d, 'pret', '', sauvegarde);
 }
 
 /** Ce qui est sur le disque, sans réseau. */
