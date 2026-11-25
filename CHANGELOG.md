@@ -8,6 +8,7 @@ Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les 
 
 - Les filtres du Recueil : Bouvier, Tesson, Rollin, l'étoile des favoris et « Autres ». Méral passe sous « Autres », ce qui laisse la place au nom de l'auteur choisi.
 - La fiche d'un mot n'affiche plus les pages : l'auteur et l'ouvrage suffisent.
+- Dans les réglages, la liste des mots indique l'heure de son envoi en plus de la date (« 25 novembre 2026 à 03:44 »).
 
 ### Corrigé
 

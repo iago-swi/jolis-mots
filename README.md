@@ -76,7 +76,7 @@ Tous les mots qui ont une définition, par ordre alphabétique. On peut chercher
 
 - **Questions par quiz** : 5, 10, 15 ou 20.
 - **Palette** : Comme le système, Papier, Nuit, Ivoire ou Céruléen.
-- La version de l'application et la date de la liste des mots.
+- La version de l'application, et la date et l'heure de la liste des mots.
 - **Effacer mes progrès** : efface les mots vus, les révisions et les favoris, après confirmation.
 
 ### Atelier (Windows)

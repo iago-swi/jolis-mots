@@ -13,7 +13,7 @@
 
   const dateListe = $derived.by(() => {
     const t = Date.parse(etat.liste.publie);
-    return Number.isNaN(t) ? 'inconnue' : new Intl.DateTimeFormat('fr-CH', { dateStyle: 'long' }).format(t);
+    return Number.isNaN(t) ? 'inconnue' : new Intl.DateTimeFormat('fr-CH', { dateStyle: 'long', timeStyle: 'short' }).format(t);
   });
 
   let confirmation = $state(false);
