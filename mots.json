@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "publie": "2026-11-25T02:44:23Z",
+  "publie": "2026-11-25T02:54:38Z",
   "mots": [
     {"id":"r1p4yz","mot":"Abalourdir","tri":"abalourdir","genre":"verbe trans.","definition":"Rendre balourd, gauche, stupide. SYN: abêtir.","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
     {"id":"oku6ct","mot":"aberration","tri":"aberration","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
@@ -53,7 +53,7 @@
     {"id":"07vv4f","mot":"affliction","tri":"affliction","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"ogye4n","mot":"Affres","tri":"affres","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"csnel7","mot":"Agape","tri":"agape","genre":"subst. fém.","definition":"Banquet très convivial, festin.","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
-    {"id":"i0g1gv","mot":"Aggiornamento","tri":"aggiornamento","genre":"subst. masc.","definition":"1. [Rel.] Mise à jour de la doctrine, des rites de l’Église catholique.\n2. [Par ext.] Actualisation.\nEX: « [Le FN] a fait une sorte d’aggiornamento sur la Shoah, il est moins obsédé par la Seconde Guerre mondiale. » (Caroline Fourest)","sources":[],"note":"","util":"","aCompleter":true},
+    {"id":"i0g1gv","mot":"Aggiornamento","tri":"aggiornamento","genre":"subst. masc.","definition":"1. [Rel.] Mise à jour de la doctrine, des rites de l’Église catholique.\n2. [Par ext.] Actualisation.\nEX: « [Le FN] a fait une sorte d’aggiornamento sur la Shoah, il est moins obsédé par la Seconde Guerre mondiale. » (Caroline Fourest)","sources":[],"note":"","util":"","aCompleter":false},
     {"id":"9l5fc1","mot":"Agioter","tri":"agioter","genre":"verbe intrans.","definition":"Pratiquer l'agiotage, spéculer. SYN: accaparer, affamer, boursicoter, hasarder une mise, jouer à la bourse, miser, spéculer, traficoter, trafiquer, tripoter.","sources":["Nicolas Bouvier: Chronique Japonaise"],"note":"","util":"","aCompleter":false},
     {"id":"sdw72g","mot":"Agioteur","tri":"agioteur","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
     {"id":"i4h40h","mot":"Agonir","tri":"agonir","genre":"verbe trans.","definition":"[Rare] Injurier qqn. SYN: abreuver, accabler, engueuler, injurier, insulter, invectiver, maudire, vilipender. EX: (…) c'est un famélique jeune gars de dix-huit ans, que Brague secoue, ahurit, agonit d'injures, au point de m'apitoyer.","sources":["Albert Algoud: Le Haddock Illustré (11)","Nicolas Bouvier: Le Poisson-Scorpion (21)"],"note":"","util":"","aCompleter":false},
