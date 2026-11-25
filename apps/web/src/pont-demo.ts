@@ -1,6 +1,9 @@
-import { ecrireFichier, type EtatDepot, type FichierMots, type PontBureau, type RaisonDepot } from '@jolis-mots/core';
+import { ecrireFichier, historiqueDeListes, type EtatDepot, type FichierMots, type PontBureau, type RaisonDepot } from '@jolis-mots/core';
 
 const PANNES: readonly RaisonDepot[] = ['sans-reseau', 'refus', 'divergence'];
+
+/** Le dictionnaire de démonstration connaît tous les mots, sauf ces fautes d'essai. */
+const INCONNUS_DEMO = new Set(['fautte', 'xyzzyq', 'bouffonerie', 'vilbrequin']);
 
 /** Un message de git de plusieurs lignes, comme en rend un envoi refusé (« &detail=long »). */
 const DETAIL_LONG = [
@@ -22,6 +25,9 @@ const DETAIL_LONG = [
  * « &detail=long » donne aux pannes un message de git de sept lignes ; « &reprise=echec » fait
  * échouer la reprise, faute de réseau ; « &sync=sans-reseau » fait échouer toute synchronisation
  * faute de réseau, la copie étant là (l'atelier travaille alors sans rien dire).
+ * Le dictionnaire ne connaît pas « fautte », « xyzzyq », « bouffonerie » ni « vilbrequin ».
+ * L'historique lu dans le dépôt est absent (null : l'écran montre celui de l'appareil), sauf avec
+ * « &historique=depot » : deux versions, la liste de départ sans ses deux derniers mots, puis entière.
  */
 export function creerPontDemo(depart: FichierMots, params: URLSearchParams): PontBureau {
   const copie = params.get('copie');
@@ -70,5 +76,12 @@ export function creerPontDemo(depart: FichierMots, params: URLSearchParams): Pon
       window.open(adresse, '_blank', 'noopener');
     },
     signalerFicheModifiee: () => {},
+    motsInconnus: async (mots) => mots.filter((m) => INCONNUS_DEMO.has(m)),
+    historique: async () => {
+      if (params.get('historique') !== 'depot') return null;
+      const avant = Date.parse(depart.publie) - 86_400_000;
+      const premiere = { ...depart, publie: new Date(avant).toISOString(), mots: depart.mots.slice(0, -2) };
+      return historiqueDeListes([premiere, depart]);
+    },
   };
 }

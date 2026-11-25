@@ -1,4 +1,12 @@
-import { ecrireFichier, type EtatDepot, type FichierMots, type Mot, type PontBureau, type RaisonDepot } from '@jolis-mots/core';
+import {
+  ecrireFichier,
+  type EntreeHistorique,
+  type EtatDepot,
+  type FichierMots,
+  type Mot,
+  type PontBureau,
+  type RaisonDepot,
+} from '@jolis-mots/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 function mot(id: string, autres: Partial<Mot> = {}): Mot {
@@ -141,6 +149,27 @@ class FauxPont implements PontBureau {
   async ouvrirCnrtl(): Promise<void> {}
 
   signalerFicheModifiee(): void {}
+
+  /** Les mots que le faux dictionnaire ne connaît pas. */
+  inconnusDuDico = new Set<string>();
+  /** Chaque lot de mots demandé au dictionnaire. */
+  lotsOrthographe: string[][] = [];
+  /** Le dictionnaire rejette ses demandes. */
+  dicoEnPanne = false;
+
+  async motsInconnus(mots: string[]): Promise<string[]> {
+    this.lotsOrthographe.push(mots);
+    if (this.dicoEnPanne) throw new Error('Canal fermé');
+    return mots.filter((m) => this.inconnusDuDico.has(m));
+  }
+
+  /** Ce que rend `historique` ('rejet' : la promesse est rejetée). */
+  historiqueDuDepot: EntreeHistorique[] | null | 'rejet' = null;
+
+  async historique(): Promise<EntreeHistorique[] | null> {
+    if (this.historiqueDuDepot === 'rejet') throw new Error('Canal fermé');
+    return this.historiqueDuDepot;
+  }
 }
 
 /** Modules neufs, comme à un nouveau lancement de l'application. */
@@ -1241,5 +1270,108 @@ describe('les propositions d’un second fichier', () => {
     atelier.brouillon!.definition = 'Une définition  avec espace double.';
     atelier.corriger('espaces', ecrire);
     expect(ecrites[1]).toBe('Une définition avec espace double.');
+  });
+});
+
+describe('l’orthographe dans l’atelier', () => {
+  const fautif = mot('faut01', { mot: 'Bévue', tri: 'bévue', definition: '1. Une fautte de frappe, p. ext. une erreur (fam.).' });
+  const avecFautif: FichierMots = { ...locale, mots: [...locale.mots, fautif] };
+  /** Plus que l'attente du vérificateur avant de demander des mots. */
+  const attendreLeDictionnaire = () => new Promise((r) => setTimeout(r, 500));
+  const orthographe = (r: { code: string; texte: string }[]) => r.filter((x) => x.code === 'orthographe').map((x) => x.texte);
+
+  it('les mots inconnus d’un mot complet deviennent une remarque, sans « Corriger »', async () => {
+    const faux = new FauxPont(ecrireFichier(avecFautif));
+    faux.inconnusDuDico = new Set(['fautte', 'ext', 'fam']);
+    const { atelier } = await demarrerSur(faux);
+    // Pas de réponse encore : pas de remarque, et la demande part en arrière-plan.
+    expect(orthographe(atelier.remarques(fautif))).toEqual([]);
+    await attendreLeDictionnaire();
+    const r = atelier.remarques(fautif).find((x) => x.code === 'orthographe');
+    expect(r).toMatchObject({ texte: 'Mot inconnu du dictionnaire\u202F: fautte.', correction: null, mots: ['fautte'] });
+    expect(atelier.aVerifier(fautif)).toBe(true);
+  });
+
+  it('chaque mot n’est demandé qu’une fois, par lots', async () => {
+    const beaucoup = Array.from({ length: 900 }, (_, i) => `mot${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26) % 26)}${String.fromCharCode(97 + Math.floor(i / 676))}`);
+    const long = mot('long01', { definition: `${beaucoup.join(' ')}.` });
+    const faux = new FauxPont(ecrireFichier({ ...locale, mots: [...locale.mots, long] }));
+    const { atelier } = await demarrerSur(faux);
+    atelier.remarques(long);
+    await attendreLeDictionnaire();
+    atelier.remarques(long);
+    atelier.choisir(long.id);
+    void atelier.remarquesFiche;
+    await attendreLeDictionnaire();
+    const demandes = faux.lotsOrthographe.flat();
+    expect(new Set(demandes).size).toBe(demandes.length);
+    expect(demandes).toEqual(expect.arrayContaining(beaucoup));
+    expect(Math.max(...faux.lotsOrthographe.map((l) => l.length))).toBeLessThanOrEqual(400);
+  });
+
+  it('la fiche en cours de saisie : un mot inconnu tapé est signalé après une pause', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    faux.inconnusDuDico = new Set(['xyzzyq']);
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fiche.id);
+    expect(orthographe(atelier.remarquesFiche)).toEqual([]);
+    atelier.brouillon!.definition = `${fiche.definition} EX: Un xyzzyq.`;
+    expect(orthographe(atelier.remarquesFiche)).toEqual([]);
+    await attendreLeDictionnaire();
+    expect(orthographe(atelier.remarquesFiche)).toEqual(['Mot inconnu du dictionnaire\u202F: xyzzyq.']);
+  });
+
+  it('« C’est voulu » tait les mots signalés, pas un mot inconnu ajouté plus tard', async () => {
+    const faux = new FauxPont(ecrireFichier(avecFautif));
+    faux.inconnusDuDico = new Set(['fautte', 'xyzzyq']);
+    const { atelier } = await demarrerSur(faux);
+    atelier.choisir(fautif.id);
+    void atelier.remarquesFiche;
+    await attendreLeDictionnaire();
+    atelier.ignorer(fautif.id, 'orthographe');
+    expect(orthographe(atelier.remarquesFiche)).toEqual([]);
+    expect(atelier.aVerifier(fautif)).toBe(false);
+    atelier.brouillon!.definition = `${fautif.definition} EX: Un xyzzyq.`;
+    void atelier.remarquesFiche;
+    await attendreLeDictionnaire();
+    expect(orthographe(atelier.remarquesFiche)).toEqual(['Mot inconnu du dictionnaire\u202F: xyzzyq.']);
+    expect(JSON.parse(localStorage.getItem('jolismots.verification.ignorees.v1')!)).toEqual(['faut01:orthographe:fautte']);
+  });
+
+  it('un dictionnaire en panne ne signale rien et n’est plus sollicité', async () => {
+    const faux = new FauxPont(ecrireFichier(avecFautif));
+    faux.inconnusDuDico = new Set(['fautte']);
+    faux.dicoEnPanne = true;
+    const { atelier } = await demarrerSur(faux);
+    atelier.remarques(fautif);
+    await attendreLeDictionnaire();
+    const lots = faux.lotsOrthographe.length;
+    expect(lots).toBeGreaterThan(0);
+    expect(orthographe(atelier.remarques(fautif))).toEqual([]);
+    atelier.remarques({ ...fautif, id: 'autre2', definition: 'Encore un mot neuf.' });
+    await attendreLeDictionnaire();
+    expect(faux.lotsOrthographe.length).toBe(lots);
+  });
+});
+
+describe('l’historique lu dans le dépôt', () => {
+  const entree: EntreeHistorique = { publie: '2026-11-24T14:50:52Z', debut: true, total: 3, ajoutes: [], modifies: [], supprimes: [] };
+
+  it('rend l’historique du dépôt', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    faux.historiqueDuDepot = [entree, entree];
+    const { atelier } = await demarrerSur(faux);
+    expect(await atelier.historiqueDuDepot()).toEqual([entree]);
+  });
+
+  it('sans copie, ou si le pont échoue : null', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    expect(await atelier.historiqueDuDepot()).toBeNull();
+    // Une histoire sans liste lisible ne remplace pas celle de l'ordinateur.
+    faux.historiqueDuDepot = [];
+    expect(await atelier.historiqueDuDepot()).toBeNull();
+    faux.historiqueDuDepot = 'rejet';
+    expect(await atelier.historiqueDuDepot()).toBeNull();
   });
 });

@@ -14,7 +14,7 @@ import { createServer, type AddressInfo, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { classer, enregistrer, envoyer, ouvrir, reprendre, synchroniser, type Depot } from './depot';
+import { classer, enregistrer, envoyer, historique, ouvrir, reprendre, synchroniser, type Depot } from './depot';
 
 // Tout se passe dans un dossier temporaire : un dépôt nu `origine.git` tient lieu de GitHub.
 // Aucun test ne contacte le réseau ni ne touche au dépôt du projet.
@@ -379,5 +379,40 @@ describe('dépôt : cas à part', () => {
     expect(classer(' ! [remote rejected] donnees -> donnees (pre-receive hook declined)')).toBe('refus');
     expect(classer("fatal: could not read Username for 'https://github.com': terminal prompts disabled")).toBe('refus');
     expect(classer('fatal: quelque chose')).toBe('erreur');
+  });
+});
+
+describe('dépôt : l’histoire de la liste', () => {
+  it('sans copie : null', { timeout: DELAI }, async () => {
+    expect(await historique(preparer().d)).toBeNull();
+  });
+
+  it('les versions envoyées de mots.json, de la plus ancienne à la plus récente, sans réseau', { timeout: DELAI }, async () => {
+    const f = preparer();
+    const { d } = f;
+    // Une version illisible au milieu, une version qui ne touche pas mots.json, puis deux listes.
+    f.pousserDepuisUnAutreClone('{ pas du json');
+    f.pousserDepuisUnAutreClone(T5);
+    f.pousserDepuisUnAutreClone(T6);
+    await synchroniser(d);
+    const autre = join(f.racine, 'autre-4');
+    git(f.racine, 'clone', '-c', 'core.autocrlf=false', '--branch', 'donnees', f.origine, autre);
+    writeFileSync(join(autre, 'LISEZMOI'), 'rien', 'utf8');
+    git(autre, 'add', 'LISEZMOI');
+    git(autre, 'commit', '-m', 'Autre fichier');
+    git(autre, 'push', 'origin', 'donnees');
+    git(d.dossier, 'fetch', 'origin', 'donnees');
+    // Une version locale pas encore envoyée ne compte pas : seule la liste envoyée fait l'histoire.
+    await enregistrer(d, T6.replace('2026-11-26', '2026-11-27'));
+    git(d.dossier, 'commit', '-am', 'Pas envoyée');
+    // L'adresse en ligne disparaît : la lecture n'en a pas besoin.
+    renommer(f.origine, f.origine + '.absent');
+    try {
+      const listes = await historique(d);
+      expect(listes?.map((l) => l.publie)).toEqual(['2026-11-24', '2026-11-25', '2026-11-26']);
+      expect(listes?.[2]?.mots[0]?.tri).toBe('abscons ');
+    } finally {
+      renommer(f.origine + '.absent', f.origine);
+    }
   });
 });

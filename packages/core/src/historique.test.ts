@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   HISTORIQUE_MAX,
+  historiqueDeListes,
   noterListe,
   referenceDe,
   validerHistorique,
@@ -145,5 +146,26 @@ describe('validerHistorique et validerReference', () => {
     expect(validerHistorique([...r.historique, ...r.historique])).toEqual(r.historique);
     expect(validerReference({ publie: 'x', mots: { a1: 'faux' } })).toBeNull();
     expect(validerReference(null)).toBeNull();
+  });
+});
+
+describe('historiqueDeListes', () => {
+  it('note une suite de listes, de la plus ancienne à la plus récente ; une liste invalide est sautée', () => {
+    const L2 = liste('2026-11-26T08:00:00Z', [a, b, c, { ...d, aCompleter: false }]);
+    const invalide = { format: 1, publie: 'pas une date', mots: [a] } as FichierMots;
+    const malformee = { format: 2, publie: '2026-11-27T08:00:00Z' } as unknown as FichierMots;
+    const L3 = liste('2026-11-28T08:00:00Z', [a, b, { ...d, aCompleter: false }]);
+    const h = historiqueDeListes([L1, L2, invalide, malformee, L3]);
+    expect(h).toEqual([
+      { publie: L1.publie, debut: true, total: 3, ajoutes: [], modifies: [], supprimes: [] },
+      { publie: L2.publie, debut: false, total: 4, ajoutes: [{ id: 'd1', mot: 'Débonder' }], modifies: [], supprimes: [] },
+      { publie: L3.publie, debut: false, total: 3, ajoutes: [], modifies: [], supprimes: [{ id: 'c1', mot: 'Cave' }] },
+    ]);
+  });
+
+  it('aucune liste : aucun historique ; une liste invalide en tête ne l’ouvre pas', () => {
+    expect(historiqueDeListes([])).toEqual([]);
+    const invalide = { format: 1, publie: 'x', mots: [] } as FichierMots;
+    expect(historiqueDeListes([invalide, L1])[0]).toMatchObject({ publie: L1.publie, debut: true });
   });
 });

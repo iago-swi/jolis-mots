@@ -1,5 +1,7 @@
 // Le contrat entre l'application web et Electron (types seulement).
 
+import type { EntreeHistorique } from './historique';
+
 /** Ce qu'a donné la dernière opération sur la copie locale des mots. */
 export type RaisonDepot = 'pret' | 'sans-git' | 'sans-reseau' | 'refus' | 'divergence' | 'erreur';
 
@@ -28,4 +30,14 @@ export interface PontBureau {
   reprendre(): Promise<EtatDepot>;
   ouvrirCnrtl(adresse: string): Promise<void>;
   signalerFicheModifiee(modifiee: boolean): void;
+  /**
+   * Les mots de `mots` inconnus du dictionnaire français, celui du correcteur de la fenêtre.
+   * Sans dictionnaire, aucun.
+   */
+  motsInconnus(mots: string[]): Promise<string[]>;
+  /**
+   * L'historique de la liste tiré de l'histoire de la branche `donnees` dans la copie locale,
+   * sans réseau ; null sans copie ou si la lecture échoue.
+   */
+  historique(): Promise<EntreeHistorique[] | null>;
 }

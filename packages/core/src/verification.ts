@@ -13,13 +13,16 @@ export type CodeRemarque =
   | 'genre-vide'
   | 'genre-inconnu'
   | 'espaces'
-  | 'point-final';
+  | 'point-final'
+  | 'orthographe';
 
 /** Une remarque du vérificateur ; `correction` est la définition corrigée, ou null si rien n'est mécanique. */
 export interface Remarque {
   code: CodeRemarque;
   texte: string;
   correction: string | null;
+  /** Pour `orthographe` : les mots inconnus du dictionnaire, que « C'est voulu » tait un à un. */
+  mots?: string[];
 }
 
 const FINE = ' ';

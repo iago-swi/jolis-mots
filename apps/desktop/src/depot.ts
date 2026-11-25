@@ -6,7 +6,7 @@ import { execFile } from 'node:child_process';
 import { constants, existsSync } from 'node:fs';
 import { copyFile, mkdir, open, readFile, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { EtatDepot, RaisonDepot } from '@jolis-mots/core';
+import { HISTORIQUE_MAX, validerFichier, type EtatDepot, type FichierMots, type RaisonDepot } from '@jolis-mots/core';
 
 export const ADRESSE_DEPOT = 'https://github.com/iago-swi/jolis-mots.git';
 export const BRANCHE = 'donnees';
@@ -367,4 +367,93 @@ export function reprendre(d: Depot, maintenant: Date): Promise<EtatDepot> {
     }
     return etat(d, 'pret', '', sauvegarde);
   });
+}
+
+/** Le délai de lecture de l'histoire, tout en local. */
+const DELAI_HISTOIRE = 60_000;
+
+/**
+ * Lit des objets de la copie en une seule fois (`git cat-file --batch`) : le contenu de chacun,
+ * ou null s'il manque. Rejette si git échoue ou dépasse le délai.
+ */
+function lireObjets(d: Depot, noms: string[]): Promise<(Buffer | null)[]> {
+  return new Promise((resoudre, rejeter) => {
+    const enfant = execFile(
+      d.git ?? 'git',
+      ['cat-file', '--batch'],
+      {
+        cwd: d.dossier,
+        windowsHide: true,
+        encoding: 'buffer',
+        maxBuffer: 1024 * 1024 * 1024,
+        timeout: DELAI_HISTOIRE,
+        env: { ...process.env, LC_ALL: 'C', GIT_TERMINAL_PROMPT: '0' },
+      },
+      (erreur, stdout) => {
+        if (erreur) {
+          rejeter(erreur);
+          return;
+        }
+        // Chaque objet : une ligne « <nom> <type> <taille> », le contenu, un saut de ligne ;
+        // ou la seule ligne « <demande> missing ».
+        const objets: (Buffer | null)[] = [];
+        let pos = 0;
+        for (let i = 0; i < noms.length; i++) {
+          const fin = stdout.indexOf(0x0a, pos);
+          if (fin === -1) {
+            rejeter(new Error('git cat-file: réponse incomplète'));
+            return;
+          }
+          const tete = stdout.subarray(pos, fin).toString('utf8').split(' ');
+          pos = fin + 1;
+          if (tete.length !== 3 || tete[1] !== 'blob') {
+            objets.push(null);
+            continue;
+          }
+          const taille = Number(tete[2]);
+          objets.push(stdout.subarray(pos, pos + taille));
+          pos += taille + 1;
+        }
+        resoudre(objets);
+      },
+    );
+    enfant.stdin?.on('error', () => undefined);
+    enfant.stdin?.end(noms.map((n) => `${n}\n`).join(''));
+  });
+}
+
+/**
+ * Les versions envoyées de mots.json (la branche `donnees` telle que la copie l'a reçue),
+ * de la plus ancienne à la plus récente, sans réseau ; une version illisible ou invalide est
+ * sautée. Seules les HISTORIQUE_MAX + 1 dernières sont lues : l'historique n'en garde pas plus.
+ * null sans copie ou si git échoue. Hors de la file des opérations : la lecture n'attend pas
+ * une synchronisation lente, et ne touche à rien.
+ */
+export async function historique(d: Depot): Promise<FichierMots[] | null> {
+  try {
+    if (!(await aUneCopie(d))) return null;
+    const s = await lancer(
+      d,
+      d.dossier,
+      ['log', '--format=%H', '--reverse', '-n', String(HISTORIQUE_MAX + 1), DISTANTE, '--', FICHIER],
+      DELAI_HISTOIRE,
+    );
+    if (s.code !== 0) return null;
+    const versions = s.stdout.split('\n').filter((h) => /^[0-9a-f]{40,64}$/.test(h));
+    if (versions.length === 0) return [];
+    const contenus = await lireObjets(d, versions.map((h) => `${h}:${FICHIER}`));
+    const listes: FichierMots[] = [];
+    for (const c of contenus) {
+      if (c === null) continue;
+      try {
+        const f = validerFichier(JSON.parse(c.toString('utf8')));
+        if (f !== null) listes.push(f);
+      } catch {
+        // Une version qui ne se lit pas est sautée.
+      }
+    }
+    return listes;
+  } catch {
+    return null;
+  }
 }

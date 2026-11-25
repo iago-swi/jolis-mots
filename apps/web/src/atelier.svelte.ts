@@ -6,19 +6,25 @@ import {
   creerIdUnique,
   dater,
   ecrireFichier,
+  estComplet,
   indicationsConnues,
   lireProposition,
   lirePropositions,
   messageDEnvoi,
+  motsAVerifier,
+  motsInconnus,
   nettoyerFiche,
   nouvelleFiche,
   poserFiche,
   proposerTri,
+  remarqueOrthographe,
   retirerFiche,
   validerFichier,
+  validerHistorique,
   validerPourEnvoi,
   verifierMot,
   type CodeRemarque,
+  type EntreeHistorique,
   type EtatDepot,
   type FichierMots,
   type FiltreAtelier,
@@ -37,6 +43,11 @@ import { ecrire, lire } from './stockage';
 const CLE_IGNOREES = 'jolismots.verification.ignorees.v1';
 /** Les propositions de correction chargées, chacune avec son sort. */
 const CLE_PROPOSITIONS = 'jolismots.propositions.v1';
+
+/** Le nombre de mots demandés au dictionnaire en une fois. */
+const LOT_ORTHOGRAPHE = 400;
+/** L'attente avant de demander des mots : une frappe qui suit la repousse. */
+const ATTENTE_ORTHOGRAPHE = 300;
 
 /** Le sort d'une proposition : en attente, appliquée (et enregistrée), ou refusée. */
 export type SortProposition = 'attente' | 'appliquee' | 'refusee';
@@ -242,15 +253,35 @@ export class Atelier {
   /** Les clés des propositions appliquées au brouillon : elles deviennent « appliquées » quand il est enregistré. */
   private appliqueesAuBrouillon = new Set<string>();
 
-  /** Les mots de la liste qui ont une remarque non tue ou une proposition en attente, calculés une fois par liste. */
-  private readonly idsAVerifier: ReadonlySet<string> = $derived(
-    new Set(etat.liste.mots.filter((m) => this.remarques(m).length > 0 || this.propositionsDe(m).length > 0).map((m) => m.id)),
+  /**
+   * Ce que le dictionnaire a dit de chaque mot demandé : vrai pour un mot inconnu. Un mot absent
+   * n'a pas encore de réponse. Les réponses arrivent par lots, en arrière-plan.
+   */
+  private dictionnaire = $state.raw<ReadonlyMap<string, boolean>>(new Map());
+  /** Les mots à demander, dans l'ordre (ceux de la fiche en tête), et ceux qui sont partis. */
+  private aDemander = new Set<string>();
+  private enDemande = new Set<string>();
+  private minuterieOrthographe: ReturnType<typeof setTimeout> | null = null;
+  private orthographeEnCours = false;
+  /** Le dictionnaire a échoué : il n'est plus sollicité, et rien n'est signalé. */
+  private dictionnaireEnPanne = false;
+
+  /** Les mots de la liste qui ont une remarque du vérificateur non tue ou une proposition en attente, une fois par liste. */
+  private readonly idsVerifies: ReadonlySet<string> = $derived(
+    new Set(
+      etat.liste.mots.filter((m) => this.remarquesDuVerificateur(m).length > 0 || this.propositionsDe(m).length > 0).map((m) => m.id),
+    ),
   );
+  /** Les mots de la liste qui ont un mot inconnu non tu ; refait à chaque lot de réponses. */
+  private readonly idsOrthographe: ReadonlySet<string> = $derived(
+    new Set(etat.liste.mots.filter((m) => this.inconnusDe(m, false).length > 0).map((m) => m.id)),
+  );
+  private readonly idsAVerifier: ReadonlySet<string> = $derived(new Set([...this.idsVerifies, ...this.idsOrthographe]));
   /** Pour le filtre « À vérifier » : le mot de la liste a une remarque ou une proposition à traiter. */
   readonly aVerifier = (m: Mot): boolean => this.idsAVerifier.has(m.id);
 
   /** Les remarques du brouillon, refaites à chaque frappe. */
-  readonly remarquesFiche: Remarque[] = $derived(this.brouillon === null ? [] : this.remarques(this.brouillon));
+  readonly remarquesFiche: Remarque[] = $derived(this.brouillon === null ? [] : this.remarquesDe(this.brouillon, true));
   /** Les propositions en attente qui valent pour le brouillon tel qu'il est. */
   readonly propositionsFiche: Proposition[] = $derived(this.brouillon === null ? [] : this.propositionsDe(this.brouillon));
 
@@ -558,15 +589,106 @@ export class Atelier {
     return true;
   }
 
-  /** Les remarques du vérificateur sur ce mot, sans celles qui sont tues. */
+  /** Les remarques du vérificateur sur ce mot, sans celles qui sont tues ; les mots inconnus du dictionnaire en dernier. */
   remarques(m: Mot): Remarque[] {
+    return this.remarquesDe(m, false);
+  }
+
+  private remarquesDe(m: Mot, prioritaire: boolean): Remarque[] {
+    const orthographe = remarqueOrthographe(this.inconnusDe(m, prioritaire));
+    return orthographe === null ? this.remarquesDuVerificateur(m) : [...this.remarquesDuVerificateur(m), orthographe];
+  }
+
+  private remarquesDuVerificateur(m: Mot): Remarque[] {
     return verifierMot(m, this.connues).filter((r) => !this.ignorees.has(`${m.id}:${r.code}`));
   }
 
-  /** « C'est voulu » : la remarque se tait pour ce mot, sur cet ordinateur. */
+  /**
+   * Les mots inconnus du dictionnaire dans la définition d'un mot complet, sans ceux qui sont tus.
+   * Les mots sans réponse encore sont demandés en arrière-plan (en tête de file pour la fiche) :
+   * la remarque viendra avec la réponse. Rien n'attend ici.
+   */
+  private inconnusDe(m: Mot, prioritaire: boolean): string[] {
+    if (!estComplet(m) || this.dictionnaireEnPanne) return [];
+    const dico = this.dictionnaire;
+    const manquants = motsAVerifier(m.definition).filter((w) => !dico.has(w) && !this.enDemande.has(w));
+    if (manquants.length > 0) this.demanderMots(manquants, prioritaire);
+    return motsInconnus(m.definition, (w) => dico.get(w), m.mot).filter((w) => !this.ignorees.has(`${m.id}:orthographe:${w}`));
+  }
+
+  /**
+   * Met des mots dans la file du dictionnaire. Peut être appelée pendant un calcul de l'écran :
+   * elle ne touche à aucun état ; les réponses arrivent plus tard.
+   */
+  private demanderMots(mots: string[], enTete: boolean): void {
+    if (enTete) this.aDemander = new Set([...mots, ...this.aDemander]);
+    else for (const w of mots) this.aDemander.add(w);
+    if (this.orthographeEnCours) return;
+    if (this.minuterieOrthographe !== null) clearTimeout(this.minuterieOrthographe);
+    this.minuterieOrthographe = setTimeout(() => {
+      this.minuterieOrthographe = null;
+      void this.demanderAuDictionnaire();
+    }, ATTENTE_ORTHOGRAPHE);
+  }
+
+  /** Vide la file, lot après lot ; chaque lot de réponses met les remarques à jour. */
+  private async demanderAuDictionnaire(): Promise<void> {
+    if (this.orthographeEnCours) return;
+    this.orthographeEnCours = true;
+    try {
+      while (this.aDemander.size > 0 && !this.dictionnaireEnPanne) {
+        const lot = [...this.aDemander].slice(0, LOT_ORTHOGRAPHE);
+        for (const w of lot) {
+          this.aDemander.delete(w);
+          this.enDemande.add(w);
+        }
+        let inconnus: Set<string>;
+        try {
+          inconnus = new Set(await this.pont.motsInconnus(lot));
+        } catch {
+          this.dictionnaireEnPanne = true;
+          this.aDemander.clear();
+          this.enDemande.clear();
+          return;
+        }
+        const dico = new Map(this.dictionnaire);
+        for (const w of lot) {
+          dico.set(w, inconnus.has(w));
+          this.enDemande.delete(w);
+        }
+        this.dictionnaire = dico;
+      }
+    } finally {
+      this.orthographeEnCours = false;
+    }
+  }
+
+  /**
+   * « C'est voulu » : la remarque se tait pour ce mot, sur cet ordinateur. Pour l'orthographe,
+   * seuls les mots signalés à ce moment se taisent : un mot inconnu ajouté plus tard le sera.
+   */
   ignorer(id: string, code: CodeRemarque): void {
-    this.ignorees = new Set([...this.ignorees, `${id}:${code}`]);
+    let cles = [`${id}:${code}`];
+    if (code === 'orthographe') {
+      const m = this.brouillon?.id === id ? this.brouillon : etat.liste.mots.find((x) => x.id === id);
+      cles = m === undefined ? [] : this.inconnusDe(m, false).map((w) => `${id}:orthographe:${w}`);
+    }
+    this.ignorees = new Set([...this.ignorees, ...cles]);
     ecrire(CLE_IGNOREES, [...this.ignorees]);
+  }
+
+  /**
+   * L'historique lu dans l'histoire de la branche `donnees` de la copie (conception, section 15.5) ;
+   * null sans copie, si la lecture échoue ou ne trouve aucune liste : l'écran montre alors l'historique de l'ordinateur.
+   */
+  async historiqueDuDepot(): Promise<EntreeHistorique[] | null> {
+    try {
+      const h: unknown = await this.pont.historique();
+      const valide = Array.isArray(h) ? validerHistorique(h) : [];
+      return valide.length > 0 ? valide : null;
+    } catch {
+      return null;
+    }
   }
 
   /**

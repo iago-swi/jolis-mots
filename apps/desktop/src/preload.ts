@@ -1,9 +1,10 @@
 // Le pont vers l'atelier, posé dans la page sous `window.jolisMots`. Le preload tourne
-// isolé (sandbox) : il ne connaît que `contextBridge` et `ipcRenderer`, et ne fait que
-// passer chaque demande au processus principal.
+// isolé (sandbox) : il ne fait que passer chaque demande au processus principal. Les mots
+// inconnus aussi : `webFrame.isWordMisspelled`, permis ici, rend toujours faux sous Windows,
+// où le correcteur du système souligne (voir `orthographe.ts`).
 
 import { contextBridge, ipcRenderer } from 'electron';
-import type { EtatDepot, PontBureau } from '@jolis-mots/core';
+import type { EntreeHistorique, EtatDepot, PontBureau } from '@jolis-mots/core';
 
 const pont: PontBureau = {
   ouvrir: (): Promise<EtatDepot> => ipcRenderer.invoke('depot:ouvrir'),
@@ -15,6 +16,8 @@ const pont: PontBureau = {
     await ipcRenderer.invoke('cnrtl:ouvrir', adresse);
   },
   signalerFicheModifiee: (modifiee: boolean): void => ipcRenderer.send('fiche:modifiee', modifiee),
+  motsInconnus: (mots: string[]): Promise<string[]> => ipcRenderer.invoke('orthographe:inconnus', mots),
+  historique: (): Promise<EntreeHistorique[] | null> => ipcRenderer.invoke('depot:historique'),
 };
 
 contextBridge.exposeInMainWorld('jolisMots', pont);
