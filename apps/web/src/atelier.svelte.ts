@@ -127,6 +127,8 @@ export class Atelier {
   divergence = $state(false);
   /** Un envoi est demandé et n'a pas encore sa réponse. */
   envoi = $state(false);
+  /** Un enregistrement de la fiche attend son tour ou tourne. */
+  enregistrement = $state(false);
   /** L'ouverture de la copie a échoué : son absence ne tient peut-être pas au réseau. */
   private ouvertureRatee = false;
   /** La liste locale lue dans `depot.locale`, null si elle manque ou ne se lit pas. */
@@ -139,6 +141,14 @@ export class Atelier {
   /** Une copie existe mais son fichier des mots manque ou ne se lit pas : rien ne doit l'écraser. */
   readonly illisible: boolean = $derived(
     !this.disponible && this.depot !== null && (this.depot.locale !== null || this.depot.envoyee !== null),
+  );
+  /**
+   * Le message de git, en anglais, quand la dernière opération a échoué. Il ne se montre que
+   * sous un avis d'alerte, qui dit en français ce qui s'est passé : une panne que l'atelier
+   * tait (pas de réseau, avec une copie) ne laisse pas de ligne anglaise orpheline.
+   */
+  readonly detail: string = $derived(
+    this.avis?.ton === 'alerte' && this.depot !== null && this.depot.raison !== 'pret' ? this.depot.detail.trim() : '',
   );
   /** Entre la liste envoyée et `etat.liste`. */
   readonly modifications: Modifications = $derived(
@@ -395,7 +405,15 @@ export class Atelier {
     if (!this.modifiee) return true;
     const envoye = ranger(this.brouillon);
     const fiche = envoye.tri.trim() === '' ? { ...envoye, tri: proposerTri(envoye.mot) } : envoye;
-    if (!(await this.enregistrer(fiche))) return false;
+    // Derrière une synchronisation lente, l'enregistrement peut attendre : l'écran le dit.
+    this.enregistrement = true;
+    let fait: boolean;
+    try {
+      fait = await this.enregistrer(fiche);
+    } finally {
+      this.enregistrement = false;
+    }
+    if (!fait) return false;
     const enregistree = etat.liste.mots.find((m) => m.id === fiche.id);
     if (enregistree === undefined || this.brouillon?.id !== fiche.id) return true;
     if (memesFiches(this.brouillon, envoye)) this.ouvrir(enregistree, enregistree);

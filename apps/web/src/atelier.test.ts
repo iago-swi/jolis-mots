@@ -217,6 +217,19 @@ describe('le démarrage', () => {
     const { atelier } = await demarrerSur(faux);
     expect(atelier.disponible).toBe(true);
     expect(atelier.avis).toBeNull();
+    // Le message de git ne se montre que sous un avis d'alerte : pas de ligne orpheline.
+    expect(atelier.depot?.detail).toBe('git : sans-reseau');
+    expect(atelier.detail).toBe('');
+  });
+
+  it('le message de git accompagne l’avis d’alerte d’un envoi échoué', async () => {
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { atelier } = await demarrerSur(faux);
+    await atelier.enregistrer({ ...fiche, definition: 'Autre définition.' });
+    faux.pannes.envoyer = 'sans-reseau';
+    await atelier.envoyer();
+    expect(atelier.avis?.ton).toBe('alerte');
+    expect(atelier.detail).toBe('git : sans-reseau');
   });
 
   it('la liste en ligne a changé ailleurs : avis de divergence', async () => {
@@ -836,6 +849,32 @@ describe('la fiche en cours de saisie', () => {
     atelier.nouveau();
     atelier.saisirMot('  ');
     expect(await atelier.enregistrerBrouillon()).toBe(false);
+    expect(faux.enregistre).toHaveLength(1);
+  });
+
+  it('enregistrement est vrai tant que l’enregistrement attend ou tourne ; la fiche reste modifiable', async () => {
+    let lacher!: () => void;
+    const faux = new FauxPont(ecrireFichier(locale));
+    const { Atelier } = await lancer();
+    const atelier = new Atelier(faux);
+    await atelier.demarrer();
+    // La synchronisation du lancement cale : l'enregistrement attend derrière elle.
+    faux.retenue = new Promise((r) => (lacher = r));
+    const synchro = atelier.reessayer();
+    atelier.choisir(fiche.id);
+    atelier.brouillon!.note = 'XX';
+    expect(atelier.enregistrement).toBe(false);
+    const enCours = atelier.enregistrerBrouillon();
+    expect(atelier.enregistrement).toBe(true);
+    await laisserFinir();
+    expect(atelier.enregistrement).toBe(true);
+    expect(faux.enregistre).toHaveLength(0);
+    atelier.brouillon!.note = 'XXY';
+    expect(atelier.brouillon!.note).toBe('XXY');
+    lacher();
+    await synchro;
+    expect(await enCours).toBe(true);
+    expect(atelier.enregistrement).toBe(false);
     expect(faux.enregistre).toHaveLength(1);
   });
 

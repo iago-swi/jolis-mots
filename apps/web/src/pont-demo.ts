@@ -20,7 +20,8 @@ const DETAIL_LONG = [
  * « &copie=aucune » part sans copie (la première synchronisation échoue faute de réseau, la suivante
  * la reçoit) ; « &copie=illisible » part d'une copie dont le fichier des mots ne se lit pas.
  * « &detail=long » donne aux pannes un message de git de sept lignes ; « &reprise=echec » fait
- * échouer la reprise, faute de réseau.
+ * échouer la reprise, faute de réseau ; « &sync=sans-reseau » fait échouer toute synchronisation
+ * faute de réseau, la copie étant là (l'atelier travaille alors sans rien dire).
  */
 export function creerPontDemo(depart: FichierMots, params: URLSearchParams): PontBureau {
   const copie = params.get('copie');
@@ -41,6 +42,7 @@ export function creerPontDemo(depart: FichierMots, params: URLSearchParams): Pon
   return {
     ouvrir: async () => etat(),
     synchroniser: async () => {
+      if (params.get('sync') === 'sans-reseau' && locale !== null) return etat('sans-reseau');
       if (envoyee === null) {
         if (synchronisations++ === 0) return etat('sans-reseau');
         locale = envoyee = ecrireFichier(depart);

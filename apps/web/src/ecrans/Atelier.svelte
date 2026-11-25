@@ -20,8 +20,6 @@
   // Quitter l'écran abandonne la fiche ; l'effet ne repasse pas après le retrait de l'écran.
   onDestroy(() => pont?.signalerFicheModifiee(atelier.modifiee));
 
-  /** Le message de git, en anglais, quand la dernière opération a échoué. */
-  const detail = $derived(atelier.depot !== null && atelier.depot.raison !== 'pret' ? atelier.depot.detail.trim() : '');
   /** La divergence reste dite tant qu'elle n'est pas réglée, même quand un autre avis a pris la place. */
   const divergenceADire = $derived(atelier.divergence && atelier.avis?.texte !== TEXTE_DIVERGENCE);
 
@@ -65,8 +63,9 @@
       <p class="brut">{atelier.avis.chemin}</p>
     {/if}
   {/if}
-  {#if detail !== ''}
-    <p class="git" lang="en">{detail}</p>
+  <!-- Le message de git n'est jamais seul : `atelier.detail` est vide sans avis d'alerte. -->
+  {#if atelier.detail !== ''}
+    <p class="git" lang="en">{atelier.detail}</p>
   {/if}
 {/snippet}
 

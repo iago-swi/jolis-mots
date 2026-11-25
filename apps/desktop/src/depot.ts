@@ -12,13 +12,32 @@ export const ADRESSE_DEPOT = 'https://github.com/iago-swi/jolis-mots.git';
 export const BRANCHE = 'donnees';
 export const FICHIER = 'mots.json';
 
+/**
+ * Les délais au-delà desquels une opération réseau est arrêtée, en millisecondes.
+ * Par défaut : 30 s pour aller voir la liste en ligne, 120 s pour télécharger la copie.
+ */
+export interface Delais {
+  reseau: number;
+  telechargement: number;
+}
+
 /** Où vit la copie locale. `git` : nom du programme, 'git' par défaut. */
 export interface Depot {
   dossier: string;
   sauvegardes: string;
   adresse: string;
   git?: string;
+  delais?: Delais;
 }
+
+const DELAIS: Delais = { reseau: 30_000, telechargement: 120_000 };
+/**
+ * L'envoi peut attendre une fenêtre de connexion du gestionnaire d'identifiants :
+ * il n'est arrêté qu'au bout de cinq minutes.
+ */
+const DELAI_ENVOI = 5 * 60_000;
+/** Un transfert qui reste sous 1000 octets par seconde pendant 30 s est abandonné par git lui-même. */
+const DEBIT_MINIMAL = ['-c', 'http.lowSpeedLimit=1000', '-c', 'http.lowSpeedTime=30'];
 
 const DISTANTE = `origin/${BRANCHE}`;
 
@@ -29,10 +48,15 @@ interface Sortie {
   code: number;
   stdout: string;
   stderr: string;
+  /** Vrai si git a été arrêté faute de réponse dans le délai. */
+  expire?: boolean;
 }
 
-/** Lance git sans passer par un shell ; ne rejette que si le programme est introuvable. */
-function lancer(d: Depot, cwd: string, args: string[]): Promise<Sortie> {
+/**
+ * Lance git sans passer par un shell ; ne rejette que si le programme est introuvable.
+ * Avec un `delai`, git est arrêté s'il n'a pas fini à temps : la sortie porte alors `expire`.
+ */
+function lancer(d: Depot, cwd: string, args: string[], delai = 0): Promise<Sortie> {
   return new Promise((resoudre, rejeter) => {
     execFile(
       d.git ?? 'git',
@@ -41,11 +65,16 @@ function lancer(d: Depot, cwd: string, args: string[]): Promise<Sortie> {
         cwd,
         windowsHide: true,
         maxBuffer: 64 * 1024 * 1024,
+        timeout: delai,
         env: { ...process.env, LC_ALL: 'C', GIT_TERMINAL_PROMPT: '0' },
       },
       (erreur, stdout, stderr) => {
         if (erreur && (erreur as NodeJS.ErrnoException).code === 'ENOENT') {
           rejeter(new SansGit(erreur.message));
+          return;
+        }
+        if (erreur && delai > 0 && erreur.killed) {
+          resoudre({ code: -1, stdout, stderr, expire: true });
           return;
         }
         if (erreur && typeof erreur.code !== 'number') {
@@ -56,6 +85,11 @@ function lancer(d: Depot, cwd: string, args: string[]): Promise<Sortie> {
       },
     );
   });
+}
+
+/** La raison d'une sortie en échec : un git arrêté faute de réponse, c'est un réseau absent. */
+function raisonDe(s: Sortie): RaisonDepot {
+  return s.expire ? 'sans-reseau' : classer(s.stderr);
 }
 
 /** Une opération qui échoue : sa raison, son message. */
@@ -73,6 +107,18 @@ async function git(d: Depot, ...args: string[]): Promise<string> {
   const s = await lancer(d, d.dossier, args);
   if (s.code !== 0) throw new Panne(classer(s.stderr), s.stderr.trim());
   return s.stdout;
+}
+
+/** Va voir la liste en ligne ; arrêté au bout du délai réseau. */
+async function allerChercher(d: Depot): Promise<void> {
+  const s = await lancer(d, d.dossier, [...DEBIT_MINIMAL, 'fetch', 'origin', BRANCHE], (d.delais ?? DELAIS).reseau);
+  if (s.code !== 0) throw new Panne(raisonDe(s), s.stderr.trim());
+}
+
+/** Envoie la branche ; arrêté au bout de cinq minutes. */
+async function pousser(d: Depot): Promise<void> {
+  const s = await lancer(d, d.dossier, [...DEBIT_MINIMAL, 'push', 'origin', BRANCHE], DELAI_ENVOI);
+  if (s.code !== 0) throw new Panne(raisonDe(s), s.stderr.trim());
 }
 
 /** Vrai si `ancetre` est un ancêtre de `rev` (ou le même commit). */
@@ -199,17 +245,13 @@ async function telecharger(d: Depot): Promise<EtatDepot> {
   }
   const parent = dirname(d.dossier);
   await mkdir(parent, { recursive: true });
-  const s = await lancer(d, parent, [
-    'clone',
-    '-c',
-    'core.autocrlf=false',
-    '--single-branch',
-    '--branch',
-    BRANCHE,
-    d.adresse,
-    d.dossier,
-  ]);
-  if (s.code !== 0) return etat(d, classer(s.stderr), s.stderr.trim());
+  const s = await lancer(
+    d,
+    parent,
+    [...DEBIT_MINIMAL, 'clone', '-c', 'core.autocrlf=false', '--single-branch', '--branch', BRANCHE, d.adresse, d.dossier],
+    (d.delais ?? DELAIS).telechargement,
+  );
+  if (s.code !== 0) return etat(d, raisonDe(s), s.stderr.trim());
   return etat(d, 'pret');
 }
 
@@ -222,7 +264,7 @@ export function ouvrir(d: Depot): Promise<EtatDepot> {
 export function synchroniser(d: Depot): Promise<EtatDepot> {
   return enFile(d, async () => {
     if (!(await aUneCopie(d))) return telecharger(d);
-    await git(d, 'fetch', 'origin', BRANCHE);
+    await allerChercher(d);
     // La liste en ligne n'a pas bougé, ou la copie a seulement une version pas encore envoyée.
     if (await estAncetre(d, DISTANTE, 'HEAD')) return etat(d, 'pret');
     // La liste en ligne a avancé : avance rapide si rien n'attend ici.
@@ -249,7 +291,7 @@ export function envoyer(d: Depot, texte: string, message: string): Promise<EtatD
   return enFile(d, async () => {
     if (!(await aUneCopie(d))) return sansCopie(d);
     await ecrire(d, texte);
-    await git(d, 'fetch', 'origin', BRANCHE);
+    await allerChercher(d);
     if (!(await estAncetre(d, DISTANTE, 'HEAD'))) return etat(d, 'divergence');
     // Une version restée ici après un envoi manqué est refaite avec le texte et le message
     // de cet envoi : une seule version de plus en ligne. La liste en ligne étant un ancêtre
@@ -258,7 +300,7 @@ export function envoyer(d: Depot, texte: string, message: string): Promise<EtatD
     await git(d, 'add', FICHIER);
     const aValider = (await lancer(d, d.dossier, ['diff', '--cached', '--quiet'])).code !== 0;
     if (aValider) await git(d, 'commit', '-m', message);
-    await git(d, 'push', 'origin', BRANCHE);
+    await pousser(d);
     return etat(d, 'pret');
   });
 }
@@ -290,7 +332,7 @@ export function reprendre(d: Depot, maintenant: Date): Promise<EtatDepot> {
     if (!(await aUneCopie(d))) return sansCopie(d);
     const sauvegarde = await mettreDeCote(d, maintenant);
     try {
-      await git(d, 'fetch', 'origin', BRANCHE);
+      await allerChercher(d);
       await git(d, 'reset', '--hard', DISTANTE);
     } catch (e) {
       if (e instanceof Panne) return etat(d, e.raison, e.detail, sauvegarde);

@@ -10,6 +10,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { createServer, type AddressInfo, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -111,6 +112,32 @@ function preparer() {
       git(autre, 'commit', '-am', 'Ailleurs');
       git(autre, 'push', 'origin', 'donnees');
     },
+  };
+}
+
+/**
+ * Un faux GitHub qui accepte la connexion et ne répond jamais : un réseau qui cale.
+ * `fermer` coupe les connexions restées ouvertes.
+ */
+async function serveurMuet(): Promise<{ adresse: string; connexions: () => number; fermer: () => Promise<void> }> {
+  const prises = new Set<Socket>();
+  let total = 0;
+  const serveur = createServer((prise) => {
+    total++;
+    prises.add(prise);
+    prise.on('error', () => undefined);
+    prise.on('close', () => prises.delete(prise));
+  });
+  await new Promise<void>((r) => serveur.listen(0, '127.0.0.1', r));
+  const { port } = serveur.address() as AddressInfo;
+  return {
+    adresse: `http://127.0.0.1:${port}/jolis-mots.git`,
+    connexions: () => total,
+    fermer: () =>
+      new Promise((r) => {
+        for (const p of prises) p.destroy();
+        serveur.close(() => r());
+      }),
   };
 }
 
@@ -268,6 +295,40 @@ describe('dépôt : cas à part', () => {
     expect(e1).toMatchObject({ raison: 'pret', locale: T2 });
     expect(e2).toMatchObject({ raison: 'pret', locale: T3 });
     expect(readFileSync(join(d.dossier, 'mots.json'), 'utf8')).toBe(T3);
+  });
+
+  it('10. un fetch sans réponse est arrêté au bout du délai : sans-reseau, et la suite marche', { timeout: DELAI }, async () => {
+    const f = preparer();
+    const { d } = f;
+    await synchroniser(d);
+    const muet = await serveurMuet();
+    try {
+      git(d.dossier, 'remote', 'set-url', 'origin', muet.adresse);
+      const debut = Date.now();
+      const e = await synchroniser({ ...d, delais: { reseau: 1500, telechargement: 1500 } });
+      expect(Date.now() - debut).toBeLessThan(8000);
+      expect(e).toMatchObject({ raison: 'sans-reseau', locale: TEXTE_ORIGINE, envoyee: TEXTE_ORIGINE });
+      expect(muet.connexions()).toBeGreaterThan(0);
+    } finally {
+      await muet.fermer();
+    }
+    git(d.dossier, 'remote', 'set-url', 'origin', f.origine);
+    expect(await enregistrer(d, T2)).toMatchObject({ raison: 'pret', locale: T2 });
+    expect(await envoyer(d, T2, 'après le délai')).toMatchObject({ raison: 'pret', envoyee: T2 });
+  });
+
+  it('11. un téléchargement sans réponse est arrêté au bout du délai ; le suivant marche', { timeout: DELAI }, async () => {
+    const { d } = preparer();
+    const muet = await serveurMuet();
+    try {
+      const debut = Date.now();
+      const e = await synchroniser({ ...d, adresse: muet.adresse, delais: { reseau: 1500, telechargement: 1500 } });
+      expect(Date.now() - debut).toBeLessThan(8000);
+      expect(e).toMatchObject({ raison: 'sans-reseau', locale: null, envoyee: null });
+    } finally {
+      await muet.fermer();
+    }
+    expect(await synchroniser(d)).toMatchObject({ raison: 'pret', locale: TEXTE_ORIGINE, envoyee: TEXTE_ORIGINE });
   });
 
   it('9. classer les messages de git', () => {

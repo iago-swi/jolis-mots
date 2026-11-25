@@ -44,7 +44,7 @@
   }
 
   function enregistrer(): void {
-    if (atelier.brouillon === null || atelier.brouillon.mot.trim() === '' || atelier.demande !== null) return;
+    if (atelier.brouillon === null || atelier.brouillon.mot.trim() === '' || atelier.demande !== null || atelier.enregistrement) return;
     atelier.enregistrerBrouillon().catch(() => undefined);
   }
 
@@ -132,7 +132,9 @@
           <input type="checkbox" checked={b.aCompleter} onchange={(e) => poser('aCompleter', e.currentTarget.checked)} />
           <span>À compléter</span>
         </label>
-        <button class="enregistrer" disabled={b.mot.trim() === '' || !atelier.modifiee} onclick={enregistrer}>Enregistrer</button>
+        <button class="enregistrer" disabled={b.mot.trim() === '' || !atelier.modifiee || atelier.enregistrement} onclick={enregistrer}>
+          {atelier.enregistrement ? 'Enregistrement…' : 'Enregistrer'}
+        </button>
       </div>
       <div class="ligne secondaires">
         <button class="cnrtl" disabled={b.tri.trim() === ''} onclick={ouvrirCnrtl}>
