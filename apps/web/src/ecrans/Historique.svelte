@@ -4,6 +4,7 @@
   import { embellir, normaliser, type EntreeHistorique } from '@jolis-mots/core';
   import Fiche from '../composants/Fiche.svelte';
   import { etat } from '../etat.svelte';
+  import { verifierMaintenant, type ResultatVerification } from '../miseAJour';
   import { volet } from '../volet';
 
   type Sorte = 'ajoute' | 'modifie' | 'supprime';
@@ -85,6 +86,26 @@
     });
   }
 
+  /** « Vérifier maintenant », sur le téléphone seulement : sous Windows, l'atelier reçoit la liste par git. */
+  let verification = $state<'en-cours' | ResultatVerification | null>(null);
+  const RESULTATS: Record<ResultatVerification, string> = {
+    nouvelle: 'Nouvelle liste reçue.',
+    'a-jour': 'La liste est à jour.',
+    'hors-ligne': 'Pas de connexion. Réessaie plus tard.',
+  };
+
+  async function verifier(): Promise<void> {
+    if (verification === 'en-cours') return;
+    verification = 'en-cours';
+    const r = await verifierMaintenant();
+    // Écran quitté entre-temps : l'annonce, elle, dira la nouvelle liste sur l'écran Mot.
+    if (!affiche) return;
+    // L'historique, ouvert, montre déjà la nouvelle entrée : pas d'annonce en plus.
+    etat.fermerAnnonce();
+    verification = r;
+    if (r === 'nouvelle') deplie = etat.historique[etat.historique.length - 1]?.publie ?? null;
+  }
+
   function basculer(publie: string): void {
     deplie = deplie === publie ? null : publie;
   }
@@ -100,6 +121,15 @@
       </button>
       <h1>Historique de la liste</h1>
     </header>
+
+    {#if atelier === null}
+      <div class="verifier">
+        <button class="secondaire" disabled={verification === 'en-cours'} onclick={verifier}>
+          {verification === 'en-cours' ? 'Vérification…' : 'Vérifier maintenant'}
+        </button>
+        <p class="resultat" role="status">{verification !== null && verification !== 'en-cours' ? RESULTATS[verification] : ''}</p>
+      </div>
+    {/if}
 
     <ol class="entrees">
       {#each entrees as e (e.publie)}
@@ -196,6 +226,39 @@
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  .verifier {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 16px;
+  }
+
+  .secondaire {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 18px;
+    border: 1px solid var(--encre);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--encre);
+    font: inherit;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .secondaire:disabled {
+    color: var(--second);
+    border-color: var(--filet);
+    cursor: default;
+  }
+
+  .resultat {
+    margin: 0;
+    font-size: 15px;
+    font-style: italic;
+    color: var(--second);
   }
 
   .entrees {

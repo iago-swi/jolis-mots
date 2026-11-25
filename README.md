@@ -79,6 +79,7 @@ Tous les mots qui ont une définition, par ordre alphabétique. On peut chercher
 - La version de l'application, et la date et l'heure de la liste des mots.
 - **Historique de la liste** : chaque liste reçue, de la plus récente à la plus ancienne, avec sa date, ce qui a changé (« +3 · ~1 · −1 ») et le nombre de mots. Une entrée se déplie : « + » pour un mot ajouté, « ~ » pour un mot modifié, « − » pour un mot supprimé. Toucher un mot ajouté ou modifié ouvre sa fiche. Sur le téléphone, l'historique commence quand la version 1.0.2 s'installe ; une réinstallation le remet à zéro. Sous Windows, il est tiré de la liste en ligne (voir l'atelier, plus bas).
 - **Annonce d'une nouvelle liste** : sur le téléphone, quand une nouvelle liste change des mots, une petite annonce le dit quelques secondes en haut de l'écran (« Liste mise à jour · +2 · ~1 → 1 139 mots »). La toucher ouvre l'historique, sur cette entrée dépliée.
+- **Vérifier maintenant** : en haut de l'historique, sur le téléphone, ce bouton va chercher tout de suite la dernière liste et la prend sans attendre le mot suivant.
 - **Effacer mes progrès** : efface les mots vus, les révisions et les favoris, après confirmation.
 
 ### Atelier (Windows)
@@ -154,7 +155,7 @@ Les progrès, les favoris et les réglages restent sur l'appareil. Ils ne sont p
 
 ### La liste en ligne
 
-La liste des mots est dans l'application : elle fonctionne sans réseau. Quand le téléphone est connecté, l'application regarde au démarrage si une liste plus récente est publiée ici même, sur la branche `donnees`. Si oui, elle la garde et l'adopte au prochain mot qu'elle tire. Sans réseau, rien ne change et rien n'est signalé. Sous Windows, c'est l'atelier qui reçoit la liste en ligne, avec `git`.
+La liste des mots est dans l'application : elle fonctionne sans réseau. Quand le téléphone est connecté, l'application regarde au démarrage, et chaque fois qu'on y revient, si une liste plus récente est publiée ici même, sur la branche `donnees`. Si oui, elle la garde et l'adopte au prochain mot qu'elle tire. Sans réseau, rien ne change et rien n'est signalé. GitHub peut mettre jusqu'à cinq minutes à servir une liste qui vient d'être envoyée ; « Vérifier maintenant », dans l'historique, la demande par un autre chemin, plus rapide (une minute au plus), et la prend tout de suite. Sous Windows, c'est l'atelier qui reçoit la liste en ligne, avec `git`.
 
 ## D'où viennent les mots
 

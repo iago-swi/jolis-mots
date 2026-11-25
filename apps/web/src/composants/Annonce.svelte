@@ -71,10 +71,11 @@
     max-width: 100%;
     min-height: 36px;
     padding: 6px 16px;
-    border: 1px solid var(--filet);
+    border: none;
     border-radius: 18px;
-    background: var(--papier);
-    color: var(--second);
+    /* Comme « Mot suivant » : bien visible, sans couleur de plus. */
+    background: var(--encre);
+    color: var(--papier);
     font: inherit;
     font-size: 15px;
     cursor: pointer;
