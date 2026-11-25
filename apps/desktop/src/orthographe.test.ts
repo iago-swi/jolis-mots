@@ -64,7 +64,7 @@ describe('le correcteur hors service', () => {
   it('le dit dans le journal, avec la cause', { timeout: DELAI }, async () => {
     const journal = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
-      const c = creerCorrecteur({ powershell: 'C:\introuvable\powershell.exe' });
+      const c = creerCorrecteur({ powershell: 'C:\\introuvable\\powershell.exe' });
       expect(await c.inconnus(['fautte'])).toEqual([]);
       expect(await c.inconnus(['fautte'])).toEqual([]);
       expect(journal).toHaveBeenCalledTimes(1);
