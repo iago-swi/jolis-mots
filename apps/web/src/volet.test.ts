@@ -49,6 +49,28 @@ describe('volet', () => {
     action.destroy();
   });
 
+  it('Échap ferme même quand le curseur est tombé sur la page, une seule fois ; plus après le retrait', () => {
+    const { noeud } = page(true);
+    const fermer = vi.fn();
+    const action = volet(noeud, { fermer });
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(fermer).toHaveBeenCalledTimes(1);
+    noeud.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(fermer).toHaveBeenCalledTimes(2);
+    action.destroy();
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(fermer).toHaveBeenCalledTimes(2);
+  });
+
+  it('le volet reçoit toujours tabindex="-1", même avec un départ', () => {
+    const { noeud } = page(true);
+    const action = volet(noeud, { fermer: vi.fn() });
+    expect(noeud.getAttribute('tabindex')).toBe('-1');
+    action.destroy();
+  });
+
   it('sans data-depart, place le curseur sur le volet lui-même', () => {
     const { noeud } = page(false);
     const action = volet(noeud, { fermer: vi.fn() });
