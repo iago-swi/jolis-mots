@@ -2,6 +2,17 @@
 
 Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les règles sont dans [VERSIONING.md](VERSIONING.md).
 
+## [1.0.5] - 2026-11-25
+
+### Ajouté
+
+- Dans l'historique de la liste, sur le téléphone, un bouton « Vérifier maintenant » : il va chercher tout de suite la dernière liste et la prend sans attendre le mot suivant. Une ligne dit le résultat : « Nouvelle liste reçue. », avec l'entrée dépliée en tête, « La liste est à jour. » ou « Pas de connexion. Réessaie plus tard. ».
+
+### Modifié
+
+- Le téléphone cherche une nouvelle liste aussi quand on revient dans l'application, et plus seulement quand elle démarre. Avant, Android gardait souvent l'application en pause et rien n'était cherché. La liste trouvée est prise au mot suivant, comme avant.
+- L'annonce d'une nouvelle liste a maintenant les couleurs du bouton « Mot suivant » : elle se voit bien, dans tous les thèmes.
+
 ## [1.0.4] - 2026-11-25
 
 ### Ajouté

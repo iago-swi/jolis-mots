@@ -482,3 +482,24 @@ Demandé par Philippe le 25 novembre 2026 : sur le téléphone, une petite annon
 - **Quand.** Au moment où la liste est adoptée : à l'ouverture de l'application, ou au mot suivant. Pas d'annonce pour la première liste (« Début de l'historique »), ni pour une liste qui ne change aucun mot visible. Pas d'annonce sous Windows : l'atelier sait ce qu'il vient d'envoyer.
 - **Texte.** « Liste mise à jour · +2 · ~1 → 1 139 mots », avec les seules sortes présentes, comme dans l'historique. Les lecteurs d'écran entendent la phrase en toutes lettres.
 - **Allure.** Une pastille sobre en haut de l'écran, sous l'en-tête (en bas, elle cacherait « Mot suivant »), en encre secondaire sur le papier, avec un filet. Elle s'efface après six secondes. La toucher ouvre l'historique, avec cette entrée dépliée.
+
+## 17. Version 1.0.5 : vérifier la liste maintenant
+
+Demandé par Philippe le 25 novembre 2026 : dix minutes après un envoi de l'atelier, le téléphone n'avait encore rien reçu.
+
+### 17.1 Constaté
+
+- Le téléphone ne demandait la liste en ligne qu'au démarrage de l'application. Revenir dans l'application, que Android avait seulement mise en pause, ne demandait rien.
+- La liste reçue n'est adoptée qu'au mot suivant (section 5.5) ; l'historique et l'annonce attendent avec elle.
+- L'adresse de la liste (`raw.githubusercontent.com`) est gardée en cache par GitHub jusqu'à cinq minutes après un envoi.
+
+### 17.2 Décidé par Philippe
+
+- Un bouton « Vérifier maintenant » dans l'historique de la liste.
+- Une vérification quand on revient dans l'application, en plus de celle du démarrage.
+- L'annonce de la section 16 était trop pâle (encre secondaire sur le papier, à peine visible en Céruléen) : elle prend les couleurs du bouton « Mot suivant », l'encre en fond et le papier pour le texte, dans chaque palette.
+
+### 17.3 Choix de Claude
+
+- **Le bouton** est en haut de l'historique, sur le téléphone seulement (sous Windows, l'atelier reçoit la liste par git). Il demande la liste à l'API de GitHub (`api.github.com`, cache d'une minute, au lieu de cinq), et, si elle ne répond pas, à l'adresse habituelle. La liste trouvée est adoptée tout de suite : c'est une demande expresse. Une ligne sous le bouton dit le résultat : la nouvelle entrée apparaît en tête, dépliée ; sinon « La liste est à jour » ou « Pas de connexion ».
+- **Au retour dans l'application**, la liste est demandée à l'adresse habituelle, comme au démarrage, et garde la règle du mot suivant : rien ne change sous les yeux pendant la lecture. L'API de GitHub n'est pas employée là : elle n'accepte que soixante demandes par heure.

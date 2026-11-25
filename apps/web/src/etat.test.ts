@@ -66,8 +66,8 @@ function poserStockage(depart: Record<string, string> = {}): Map<string, string>
 async function lancer() {
   vi.resetModules();
   const { etat } = await import('./etat.svelte');
-  const { rafraichir } = await import('./miseAJour');
-  return { etat, rafraichir };
+  const { rafraichir, verifierMaintenant, rafraichirAuRetour } = await import('./miseAJour');
+  return { etat, rafraichir, verifierMaintenant, rafraichirAuRetour };
 }
 
 function repondreAvec(corps: string, init?: ResponseInit): void {
@@ -146,6 +146,104 @@ describe('la liste en ligne', () => {
     await rafraichir();
     expect(etat.liste.publie).toBe(listePlusRecente.publie);
     expect(etat.motCourant).not.toBeNull();
+  });
+});
+
+describe('« Vérifier maintenant »', () => {
+  const API = 'https://api.github.com/repos/iago-swi/jolis-mots/contents/mots.json?ref=donnees';
+
+  it('demande la liste à l’API de GitHub, l’adopte tout de suite et la note dans l’historique', async () => {
+    poserStockage();
+    const { etat, verifierMaintenant } = await lancer();
+    const appels: [string, RequestInit | undefined][] = [];
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      appels.push([url, init]);
+      return new Response(JSON.stringify(listePlusRecente));
+    });
+    etat.demarrer({ search: '', hash: '' });
+    await expect(verifierMaintenant()).resolves.toBe('nouvelle');
+    expect(appels[0]?.[0]).toBe(API);
+    expect(new Headers(appels[0]?.[1]?.headers).get('Accept')).toBe('application/vnd.github.raw');
+    expect(appels[0]?.[1]?.cache).toBe('no-store');
+    expect(etat.liste.publie).toBe(listePlusRecente.publie);
+    expect(etat.historique).toHaveLength(2);
+  });
+
+  it('adopte aussi une liste déjà reçue qui attendait le mot suivant', async () => {
+    poserStockage();
+    const { etat, rafraichir, verifierMaintenant } = await lancer();
+    repondreAvec(JSON.stringify(listePlusRecente));
+    etat.demarrer({ search: '', hash: '' });
+    await rafraichir();
+    expect(etat.liste.publie).toBe(embarquee.publie);
+    await expect(verifierMaintenant()).resolves.toBe('nouvelle');
+    expect(etat.liste.publie).toBe(listePlusRecente.publie);
+  });
+
+  it('rend « a-jour » quand rien de nouveau n’est en ligne', async () => {
+    poserStockage();
+    const { etat, verifierMaintenant } = await lancer();
+    repondreAvec(JSON.stringify(embarquee));
+    etat.demarrer({ search: '', hash: '' });
+    await expect(verifierMaintenant()).resolves.toBe('a-jour');
+    expect(etat.historique).toHaveLength(1);
+  });
+
+  it('si l’API refuse (limite atteinte), demande l’adresse habituelle', async () => {
+    poserStockage();
+    const { etat, verifierMaintenant } = await lancer();
+    const adresses: string[] = [];
+    vi.stubGlobal('fetch', async (url: string) => {
+      adresses.push(url);
+      return url === API ? new Response('{"message":"API rate limit exceeded"}', { status: 403 }) : new Response(JSON.stringify(listePlusRecente));
+    });
+    etat.demarrer({ search: '', hash: '' });
+    await expect(verifierMaintenant()).resolves.toBe('nouvelle');
+    expect(adresses).toEqual([API, 'https://raw.githubusercontent.com/iago-swi/jolis-mots/donnees/mots.json']);
+  });
+
+  it('sans réseau, rend « hors-ligne » et ne change rien', async () => {
+    poserStockage();
+    const { etat, verifierMaintenant } = await lancer();
+    vi.stubGlobal('fetch', async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    etat.demarrer({ search: '', hash: '' });
+    await expect(verifierMaintenant()).resolves.toBe('hors-ligne');
+    expect(etat.liste.publie).toBe(embarquee.publie);
+  });
+
+  it('une réponse illisible des deux côtés compte comme « hors-ligne »', async () => {
+    poserStockage();
+    const { etat, verifierMaintenant } = await lancer();
+    repondreAvec('<!doctype html>', { status: 500 });
+    etat.demarrer({ search: '', hash: '' });
+    await expect(verifierMaintenant()).resolves.toBe('hors-ligne');
+  });
+});
+
+describe('le retour dans l’application', () => {
+  it('redemande la liste quand l’application redevient visible, sans l’adopter avant le mot suivant', async () => {
+    poserStockage();
+    const { etat, rafraichirAuRetour } = await lancer();
+    const demandes: string[] = [];
+    vi.stubGlobal('fetch', async (url: string) => {
+      demandes.push(url);
+      return new Response(JSON.stringify(listePlusRecente));
+    });
+    etat.demarrer({ search: '', hash: '' });
+    const page = new EventTarget() as EventTarget & { visibilityState: DocumentVisibilityState };
+    page.visibilityState = 'hidden';
+    rafraichirAuRetour(page);
+    page.dispatchEvent(new Event('visibilitychange'));
+    expect(demandes).toHaveLength(0);
+    page.visibilityState = 'visible';
+    page.dispatchEvent(new Event('visibilitychange'));
+    await vi.waitFor(() => expect(JSON.parse(localStorage.getItem(CLE_LISTE) ?? 'null')?.publie).toBe(listePlusRecente.publie));
+    expect(demandes).toEqual(['https://raw.githubusercontent.com/iago-swi/jolis-mots/donnees/mots.json']);
+    expect(etat.liste.publie).toBe(embarquee.publie);
+    etat.suivant();
+    expect(etat.liste.publie).toBe(listePlusRecente.publie);
   });
 });
 

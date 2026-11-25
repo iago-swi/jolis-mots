@@ -170,7 +170,8 @@ class Etat {
     if (this.complets.length === 0) this.adopterListeEnAttente();
   }
 
-  private adopterListeEnAttente(): void {
+  /** Adopte tout de suite la liste reçue qui attendait le mot suivant, s'il y en a une. */
+  adopterListeEnAttente(): void {
     if (this.listeEnAttente === null) return;
     this.remplacerListe(this.listeEnAttente);
   }
