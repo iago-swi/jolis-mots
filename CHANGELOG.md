@@ -2,6 +2,26 @@
 
 Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les règles sont dans [VERSIONING.md](VERSIONING.md).
 
+## [1.0.3] - 2026-11-25
+
+### Ajouté
+
+- Dans l'atelier, une barre de balises au-dessus de la définition : `1.`, `[Litt.]`, `[Fig.]`, `[Par ext.]`, `[Vieux]`, `[Fam.]`, `EX:`, `SYN:`, `US:`, et « ⋯ » pour les autres (`[Par anal.]`, `[Par méton.]`, `[Par métaph.]`, `[Vieilli]`, `[Péj.]`, `[Pop.]`, `[Rare]`, `ANTON:`). Un clic insère la balise là où se trouve le curseur ; `1.` passe à la ligne et donne le numéro du sens suivant.
+- Des abréviations à taper dans la définition, suivies de la touche Tab : `fig` devient `[Fig.] `, `ex` devient `EX: `, `n` passe à la ligne avec le numéro du sens suivant… Le survol d'un bouton de la barre montre son abréviation. Ctrl+Z annule une insertion comme une frappe.
+- Un vérificateur des mots complets. Au-dessus de la définition, la fiche montre ce qui cloche : balise mal écrite (`EX :`, `Syn:`), indication écrite autrement que d'habitude (`[littér.]` pour `[Litt.]`) ou placée hors des crochets, numérotation des sens qui saute, crochet, parenthèse ou guillemet non fermé, `EX:` sans exemple, genre vide ou inconnu, espace double ou avant un point, point final manquant à la fin d'un sens, mot inconnu du dictionnaire français.
+- « Corriger » répare d'un clic une balise mal écrite, des espaces en trop ou un point final manquant. Rien ne change sans ce clic, et Ctrl+Z rend le texte d'avant. « C'est voulu » fait taire une remarque pour ce mot, sur cet ordinateur.
+- Au-delà de trois remarques, « et N autres » montre le reste.
+- Un cinquième filtre dans la liste de l'atelier, « À vérifier », avec son nombre : les mots complets qui ont au moins une remarque ou une proposition de correction.
+- « Charger des propositions… », sous la liste, lit un fichier de propositions de correction. Chaque proposition apparaît dans la fiche de son mot, « avant → après » avec sa raison : « Corriger » l'applique à la fiche, « Non » l'écarte pour de bon. Un « ? » signale une proposition incertaine.
+
+### Modifié
+
+- Sous Windows, le correcteur souligne les fautes en français, et non plus en anglais. Il se sert du français installé dans Windows.
+- Sous Windows, l'historique de la liste est tiré de la liste en ligne : il montre les listes envoyées depuis le premier import (les 200 dernières au plus), et non plus seulement depuis l'installation de la version 1.0.2. Le téléphone garde son propre historique.
+- Dans la fiche de l'atelier, Note et « Utilisé dans mes livres » deviennent deux petits champs sur la première ligne, après Genre, sous les noms courts « Note » et « Util. ». La place gagnée va à la définition.
+- Dans la fiche de l'atelier, le pied tient sur une ligne : la case « À compléter », les liens « Ouvrir dans le CNRTL » et « Supprimer ce mot », puis « Enregistrer ». Dans une fenêtre étroite, les liens se disent « CNRTL » et « Supprimer ».
+- Le rappel des balises habituelles apparaît au survol du titre « Définition ».
+
 ## [1.0.2] - 2026-11-25
 
 ### Ajouté
@@ -86,6 +106,7 @@ Première version : l'application Android. La version Windows et l'atelier pour 
 - La mise à jour de la liste en ligne : quand le téléphone a du réseau, l'application récupère au démarrage la dernière liste des mots et l'adopte au prochain mot qu'elle tire. Sans réseau, elle fonctionne avec la liste qu'elle a.
 - Un fichier à installer sur Android (`Jolis-Mots-0.1.0.apk`), avec une icône et un écran de lancement.
 
+[1.0.3]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.3
 [1.0.2]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.2
 [1.0.1]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.1
 [1.0.0]: https://github.com/iago-swi/jolis-mots/releases/tag/v1.0.0
