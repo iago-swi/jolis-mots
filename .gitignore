@@ -22,3 +22,7 @@ apps/android/android/
 
 # Dossier laissé par un outil de test
 .playwright-mcp/
+
+# Clé de signature Android : jamais dans le dépôt
+*.jks
+*.keystore
