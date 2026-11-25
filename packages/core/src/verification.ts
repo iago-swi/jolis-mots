@@ -44,6 +44,27 @@ export function corrigerEspaces(texte: string): string {
   return texte.replace(/(?<=\S) +(?=,|\.(?!\.))/gu, '').replace(/(?<=\S) {2,}(?=\S)/gu, ' ');
 }
 
+/** Les espaces que `corrigerEspaces` retire ou réduit : avant une virgule ou un point, ou doubles. */
+const ESPACES_FAUTIVES = /(?<=\S) +(?=,|\.(?!\.))|(?<=\S) {2,}(?=\S)/gu;
+
+/** Les passages où `corrigerEspaces` change quelque chose : le mot d'avant, les espaces, le mot d'après, tels qu'écrits. */
+function passagesEspaces(texte: string): string[] {
+  return [...texte.matchAll(ESPACES_FAUTIVES)].map((m) => {
+    const debut = m.index ?? 0;
+    const fin = debut + m[0].length;
+    const avant = /\S+$/u.exec(texte.slice(0, debut))?.[0] ?? '';
+    const apres = /^\S*/u.exec(texte.slice(fin))?.[0] ?? '';
+    return `${avant}${m[0]}${apres}`;
+  });
+}
+
+/** Les passages cités entre guillemets, chacun une fois : au plus trois, puis « … » ; sinon un point final. */
+function citer(passages: string[]): string {
+  const uniques = [...new Set(passages)];
+  const cites = uniques.slice(0, 3).map((p) => `« ${p} »`).join(', ');
+  return uniques.length > 3 ? `${cites}…` : `${cites}.`;
+}
+
 /** Au-delà de cette longueur, un terme entre crochets est une note descriptive, non une étiquette. */
 const TERME_LONG = 20;
 
@@ -206,8 +227,6 @@ function aUnExempleVide(texte: string): boolean {
   });
 }
 
-/** Une balise comme la lit `lireDefinition` : `EX:`, `SYN:`, `US:`, `ANTON:`, `ANT:`, une espace permise avant « : ». */
-const BALISE_LUE = /(?<![\p{L}\p{N}])(?:EX|SYN|US|ANTON|ANT)[ \t]?:/u;
 /** Une fin de phrase : « . », « ! », « ? » ou « … », suivis peut-être de « ) », « » », « ] » ou d'un guillemet droit ou anglais. */
 const FIN_DE_PHRASE = /[.!?…](?:\s*[)»\]"”])*$/u;
 
@@ -242,7 +261,9 @@ function finsDeSens(def: string): { numero: string | null; fin: number | null }[
       corps = corps.slice(apres);
       decalage += apres;
     }
-    let texte = corps.slice(0, BALISE_LUE.exec(corps)?.index ?? corps.length).trimEnd();
+    // Toute balise, même mal écrite (« SYN.: », « Ex : »), clôt le texte propre du sens : le point se juge avant elle.
+    const balise = corps.search(BALISE_LARGE);
+    let texte = corps.slice(0, balise === -1 ? corps.length : balise).trimEnd();
     // Une dernière ligne faite d'une note entre crochets (« [Note: …] ») ne termine pas la phrase : on juge ce qui la précède.
     const derniere = texte.lastIndexOf('\n');
     if (derniere !== -1 && /^\[[^\]]*\]$/u.test(texte.slice(derniere + 1).trim())) texte = texte.slice(0, derniere).trimEnd();
@@ -270,8 +291,8 @@ export function verifierMot(m: Mot, connues: Set<string>): Remarque[] {
 
   const balises = corrigerBalises(def);
   if (balises !== def) {
-    const fautes = [...new Set([...def.matchAll(BALISE_LARGE)].filter((b) => b[0] !== `${(b[1] ?? b[2] ?? '').toUpperCase()}:`).map((b) => b[0]))];
-    ajouter('balise', `Balise mal écrite${FINE}: ${fautes.map((f) => `« ${f} »`).join(', ')}.`, balises);
+    const fautes = [...def.matchAll(BALISE_LARGE)].filter((b) => b[0] !== `${(b[1] ?? b[2] ?? '').toUpperCase()}:`).map((b) => b[0]);
+    ajouter('balise', `Balise mal écrite${FINE}: ${citer(fautes)}`, balises);
   }
 
   const sens = lireDefinition(def);
@@ -314,7 +335,7 @@ export function verifierMot(m: Mot, connues: Set<string>): Remarque[] {
   else if (!genreEstConnu(m.genre)) ajouter('genre-inconnu', `Genre inconnu${FINE}: « ${m.genre.trim()} ».`);
 
   const espaces = corrigerEspaces(def);
-  if (espaces !== def) ajouter('espaces', 'Espace double, ou espace avant un point ou une virgule.', espaces);
+  if (espaces !== def) ajouter('espaces', `Espace double, ou espace avant un point ou une virgule${FINE}: ${citer(passagesEspaces(def))}`, espaces);
 
   const points = pointsFinaux(def);
   if (points !== null) {

@@ -174,9 +174,28 @@ describe('verifierMot', () => {
 
   it('espaces : avant un point (Guéer), doubles (Sérendipité)', () => {
     expect(verifierMot(guéer, connues)).toEqual([
-      { code: 'espaces', texte: 'Espace double, ou espace avant un point ou une virgule.', correction: "Passer à gué (un cours d'eau)." },
+      { code: 'espaces', texte: `Espace double, ou espace avant un point ou une virgule${FINE}: « d'eau) . ».`, correction: "Passer à gué (un cours d'eau)." },
     ]);
-    expect(verifierMot(serendipite, connues).find((x) => x.code === 'espaces')?.correction).toBe("[Néolog.] Fait de trouver autre chose que ce que l'on cherchait. SYN: fortuité.");
+    const r = verifierMot(serendipite, connues).find((x) => x.code === 'espaces');
+    expect(r?.texte).toBe(`Espace double, ou espace avant un point ou une virgule${FINE}: « [Néolog.]  Fait ».`);
+    expect(r?.correction).toBe("[Néolog.] Fait de trouver autre chose que ce que l'on cherchait. SYN: fortuité.");
+  });
+
+  it('espaces : au plus trois passages cités, puis « … »', () => {
+    expect(verifierMot(mot({ definition: 'Un  deux , trois.' }), connues)[0]?.texte).toBe(
+      `Espace double, ou espace avant un point ou une virgule${FINE}: « Un  deux », « deux , ».`,
+    );
+    expect(verifierMot(mot({ definition: '1. Un  deux , trois   quatre ,cinq  six.\n2. Sept  huit.' }), connues)[0]?.texte).toBe(
+      `Espace double, ou espace avant un point ou une virgule${FINE}: « Un  deux », « deux , », « trois   quatre »…`,
+    );
+    // Un même passage n'est cité qu'une fois.
+    expect(verifierMot(mot({ definition: 'Un , deux. Un , trois.' }), connues)[0]?.texte).toBe(
+      `Espace double, ou espace avant un point ou une virgule${FINE}: « Un , ».`,
+    );
+  });
+
+  it('balise : au plus trois citées, puis « … »', () => {
+    expect(verifierMot(mot({ definition: 'Un. Ex: a. Syn : b. us: c. ant : d.' }), connues)[0]?.texte).toBe(`Balise mal écrite${FINE}: « Ex: », « Syn : », « us: »…`);
   });
 
   it('remarques de Béjaune, dans l’ordre des codes', () => {
@@ -218,17 +237,35 @@ describe('SYN.: et ses pareils (Billevesée)', () => {
     expect(corrigerBalises('Niaiserie. SYN.: baliverne. US. : rien. ANTON.: sens. ANT.:x')).toBe('Niaiserie. SYN: baliverne. US: rien. ANTON: sens. ANT:x');
     expect(corrigerBalises('Voir par ex. : la suite. Ex.: un.')).toBe('Voir par ex. : la suite. Ex.: un.');
     const r = verifierMot(mot({ definition: '1. Propos frivole. SYN.: baliverne, faribole, sornette\n2. Sottise.' }), connues);
-    expect(r.map((x) => x.code)).toEqual(['balise', 'point-final']);
+    expect(r.map((x) => x.code)).toEqual(['balise']);
     expect(r[0]).toEqual({ code: 'balise', texte: `Balise mal écrite${FINE}: « SYN.: ».`, correction: '1. Propos frivole. SYN: baliverne, faribole, sornette\n2. Sottise.' });
+  });
+  it('le point final se juge avant SYN.: : jamais après la liste des synonymes', () => {
+    // Billevesée, telle qu'elle est dans la vraie liste : chaque sens finit par un point avant « SYN.: ».
+    const billevesee = mot({
+      id: 't2ttg7',
+      mot: 'Billevesée',
+      genre: 'subst. fém.',
+      definition:
+        '1. [Gén. au plur., litt. ou fam.] Propos, écrit vide de sens et souvent erroné. SYN.: baliverne, faribole, sornette\n2. [Par ext.] Idée, comportement, occupation ou préoccupation frivole, sans fondement réel. SYN.: chimère, futilité, niaiserie.',
+    });
+    expect(verifierMot(billevesee, connues).map((x) => x.code)).toEqual(['balise']);
+    // Sans point avant « SYN.: », le point se met là, et nulle part ailleurs.
+    const r = verifierMot(mot({ definition: '1. Propos frivole SYN.: baliverne, faribole, sornette\n2. Sottise. ANTON. : sens' }), connues);
+    expect(r.find((x) => x.code === 'point-final')).toEqual({
+      code: 'point-final',
+      texte: 'Point final manquant (sens 1).',
+      correction: '1. Propos frivole. SYN.: baliverne, faribole, sornette\n2. Sottise. ANTON. : sens',
+    });
   });
 });
 
 describe('textes des remarques', () => {
-  it('finissent tous par un point', () => {
+  it('finissent tous par un point, ou par « … » après trois passages cités', () => {
     const def = '1. fauconnerie Oiseau  jeune EX : \n3. [Litt] (Sot';
     const r = verifierMot(mot({ genre: 'adj + subst.', definition: def }), connues);
     expect(r.length).toBeGreaterThanOrEqual(8);
-    for (const x of r) expect(x.texte.endsWith('.'), x.texte).toBe(true);
+    for (const x of r) expect(/[.…]$/u.test(x.texte), x.texte).toBe(true);
   });
 });
 

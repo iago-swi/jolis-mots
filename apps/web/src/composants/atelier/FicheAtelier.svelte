@@ -394,11 +394,12 @@
     color: var(--second);
   }
 
+  /* `pre` : une espace double citée (« Un  deux ») reste visible ; la remarque tient sur une ligne. */
   .remarques .texte {
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    white-space: nowrap;
+    white-space: pre;
     text-overflow: ellipsis;
   }
 
