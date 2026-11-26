@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "publie": "2026-11-26T06:55:24Z",
+  "publie": "2026-11-26T06:59:31Z",
   "mots": [
     {"id":"r1p4yz","mot":"Abalourdir","tri":"abalourdir","genre":"verbe trans.","definition":"Rendre balourd, gauche, stupide. SYN: abêtir.","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
     {"id":"oku6ct","mot":"aberration","tri":"aberration","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
@@ -248,7 +248,7 @@
     {"id":"zbet3f","mot":"Bedon","tri":"bedon","genre":"subst. masc.","definition":"1. [Très fam., s'appliquant à une pers. et princ. à un homme] Ventre rebondi et gras. Un gros, un petit bedon; bedon arrondi. SYN: bedaine.\n2. [Par méton.] Petit homme ventru et replet; personne faisant volontiers bonne chère. EX: Surtout, mes petits bedons, n'allez pas vous jeter gloutonnement sur les mets. Mastiquez avec lenteur et componction.","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
     {"id":"n1805i","mot":"Bégueule","tri":"bégueule","genre":"adj. + subst. fém.","definition":"[En parlant d'une pers., plus spéc. d'une femme] Qui est d'une excessive pruderie.","sources":["François Rollin: Les grands mots du professeur Rollin"],"note":"","util":"","aCompleter":false},
     {"id":"jnrd32","mot":"Béguinage","tri":"béguinage","genre":"subst. masc.","definition":"[Fam. et péj.] Dévotion outrée et affectée. EX: Elle donne dans le béguinage.","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
-    {"id":"c4frkh","mot":"Béjaune","tri":"béjaune","genre":"","definition":"","sources":[],"note":"","util":"","aCompleter":true},
+    {"id":"c4frkh","mot":"Béjaune","tri":"béjaune","genre":"subst. masc.","definition":"[Fig.] (Masculin ou féminin) Jeune personne sotte et niaise.","sources":[],"note":"","util":"","aCompleter":false},
     {"id":"qn2r25","mot":"Bélître","tri":"bélître","genre":"subst. masc.","definition":"1. [Vieux] Mendiant. US: On disait autrefois les quatre ordres de bélîtres pour dire les quatre ordres des mendiants.\n2. [Par ext.] Homme de rien, sot, importun. SYN: coquin, cuistre, faquin, gueux, maraud, maroufle.","sources":["Didier Méral: Petit dictionnaire des mots rares et anciens de la Langue Française"],"note":"","util":"","aCompleter":false},
     {"id":"qvyfod","mot":"Bellâtre","tri":"bellâtre","genre":"subst. masc.","definition":"[Péj.] Homme à la beauté fade et superficielle.","sources":["François Rollin: Les grands mots du professeur Rollin"],"note":"","util":"","aCompleter":false},
     {"id":"jrkb0e","mot":"Béni-oui-oui","tri":"béni","genre":"","definition":"","sources":["Dictionnaire des mots savants (employés à tort et à travers)"],"note":"","util":"","aCompleter":true},
