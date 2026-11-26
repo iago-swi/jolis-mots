@@ -2,7 +2,9 @@
   import { onDestroy, onMount } from 'svelte';
   import { atelier } from '../atelier.svelte';
   import { embellir, normaliser, type EntreeHistorique } from '@jolis-mots/core';
+  import { annonce, annonceDite, bilan, nombre } from '../bilan';
   import Fiche from '../composants/Fiche.svelte';
+  import Pastille from '../composants/Pastille.svelte';
   import { etat } from '../etat.svelte';
   import { verifierMaintenant, type ResultatVerification } from '../miseAJour';
   import { volet } from '../volet';
@@ -49,20 +51,6 @@
     return Number.isNaN(t) ? publie : format.format(t);
   }
 
-  /** « 1 135 mots », avec une espace fine insécable entre les milliers. */
-  function nombre(n: number, unite = 'mot'): string {
-    return `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} ${n > 1 ? unite + 's' : unite}`;
-  }
-
-  /** « +1 · ~2 · −1 » ; les sortes absentes ne sont pas dites. */
-  function bilan(e: EntreeHistorique): string {
-    const parties: string[] = [];
-    if (e.ajoutes.length > 0) parties.push(`+${e.ajoutes.length}`);
-    if (e.modifies.length > 0) parties.push(`~${e.modifies.length}`);
-    if (e.supprimes.length > 0) parties.push(`−${e.supprimes.length}`);
-    return parties.join(' · ');
-  }
-
   /** Le bilan dit en toutes lettres, pour les lecteurs d'écran. */
   function bilanDit(e: EntreeHistorique): string {
     const parties: string[] = [];
@@ -88,11 +76,21 @@
 
   /** « Vérifier maintenant », sur le téléphone seulement : sous Windows, l'atelier reçoit la liste par git. */
   let verification = $state<'en-cours' | ResultatVerification | null>(null);
-  const RESULTATS: Record<ResultatVerification, string> = {
-    nouvelle: 'Nouvelle liste reçue.',
-    'a-jour': 'La liste est à jour.',
-    'hors-ligne': 'Pas de connexion. Réessaie plus tard.',
+  /** L'entrée ajoutée par la vérification : son bilan est dit comme dans l'annonce de l'écran Mot. */
+  let recue = $state.raw<EntreeHistorique | null>(null);
+  const RESULTATS: Record<Exclude<ResultatVerification, 'nouvelle'>, string> = {
+    'a-jour': 'La liste est à jour',
+    'hors-ligne': 'Pas de connexion. Réessaie plus tard',
   };
+  const resultat = $derived(
+    verification === null || verification === 'en-cours'
+      ? null
+      : verification === 'nouvelle'
+        ? recue === null
+          ? null
+          : { texte: annonce(recue), dit: annonceDite(recue) }
+        : { texte: RESULTATS[verification], dit: `${RESULTATS[verification]}.` }
+  );
 
   async function verifier(): Promise<void> {
     if (verification === 'en-cours') return;
@@ -100,10 +98,11 @@
     const r = await verifierMaintenant();
     // Écran quitté entre-temps : l'annonce, elle, dira la nouvelle liste sur l'écran Mot.
     if (!affiche) return;
-    // L'historique, ouvert, montre déjà la nouvelle entrée : pas d'annonce en plus.
+    // L'historique, ouvert, montre déjà la nouvelle entrée et son bilan : pas d'annonce en plus.
     etat.fermerAnnonce();
+    recue = r === 'nouvelle' ? (etat.historique[etat.historique.length - 1] ?? null) : null;
     verification = r;
-    if (r === 'nouvelle') deplie = etat.historique[etat.historique.length - 1]?.publie ?? null;
+    if (recue !== null) deplie = recue.publie;
   }
 
   function basculer(publie: string): void {
@@ -127,7 +126,11 @@
         <button class="secondaire" disabled={verification === 'en-cours'} onclick={verifier}>
           {verification === 'en-cours' ? 'Vérification…' : 'Vérifier maintenant'}
         </button>
-        <p class="resultat" role="status">{verification !== null && verification !== 'en-cours' ? RESULTATS[verification] : ''}</p>
+        <!-- Même aspect que l'annonce de l'écran Mot ; la phrase en toutes lettres est dite par la zone d'état. -->
+        <span class="visuel-cache" role="status">{resultat?.dit ?? ''}</span>
+        {#if resultat !== null}
+          <span aria-hidden="true"><Pastille>{resultat.texte}</Pastille></span>
+        {/if}
       </div>
     {/if}
 
@@ -228,10 +231,12 @@
     list-style: none;
   }
 
+  /* La pastille sous le bouton : le bilan d'une nouvelle liste ne tiendrait pas à côté sur un téléphone. */
   .verifier {
     display: flex;
-    align-items: center;
-    gap: 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
     margin-top: 16px;
   }
 
@@ -252,13 +257,6 @@
     color: var(--second);
     border-color: var(--filet);
     cursor: default;
-  }
-
-  .resultat {
-    margin: 0;
-    font-size: 15px;
-    font-style: italic;
-    color: var(--second);
   }
 
   .entrees {
