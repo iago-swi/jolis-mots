@@ -79,7 +79,7 @@ Tous les mots qui ont une définition, par ordre alphabétique. On peut chercher
 - La version de l'application, et la date et l'heure de la liste des mots.
 - **Historique de la liste** : chaque liste reçue, de la plus récente à la plus ancienne, avec sa date, ce qui a changé (« +3 · ~1 · −1 ») et le nombre de mots. Une entrée se déplie : « + » pour un mot ajouté, « ~ » pour un mot modifié, « − » pour un mot supprimé. Toucher un mot ajouté ou modifié ouvre sa fiche. Sur le téléphone, l'historique commence quand la version 1.0.2 s'installe ; une réinstallation le remet à zéro. Sous Windows, il est tiré de la liste en ligne (voir l'atelier, plus bas).
 - **Annonce d'une nouvelle liste** : sur le téléphone, quand une nouvelle liste change des mots, une petite annonce le dit quelques secondes en haut de l'écran (« Liste mise à jour · +2 · ~1 → 1 139 mots »). La toucher ouvre l'historique, sur cette entrée dépliée.
-- **Vérifier maintenant** : en haut de l'historique, sur le téléphone, ce bouton va chercher tout de suite la dernière liste et la prend sans attendre le mot suivant.
+- **Vérifier maintenant** : en haut de l'historique, sur le téléphone, ce bouton va chercher tout de suite la dernière liste et la prend sans attendre le mot suivant. Le résultat a le même aspect que l'annonce d'une nouvelle liste : le même bilan, ou « La liste est à jour ».
 - **Effacer mes progrès** : efface les mots vus, les révisions et les favoris, après confirmation.
 
 ### Atelier (Windows)

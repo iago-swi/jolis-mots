@@ -503,3 +503,16 @@ Demandé par Philippe le 25 novembre 2026 : dix minutes après un envoi de l'ate
 
 - **Le bouton** est en haut de l'historique, sur le téléphone seulement (sous Windows, l'atelier reçoit la liste par git). Il demande la liste à l'API de GitHub (`api.github.com`, cache d'une minute, au lieu de cinq), et, si elle ne répond pas, à l'adresse habituelle. La liste trouvée est adoptée tout de suite : c'est une demande expresse. Une ligne sous le bouton dit le résultat : la nouvelle entrée apparaît en tête, dépliée ; sinon « La liste est à jour » ou « Pas de connexion ».
 - **Au retour dans l'application**, la liste est demandée à l'adresse habituelle, comme au démarrage, et garde la règle du mot suivant : rien ne change sous les yeux pendant la lecture. L'API de GitHub n'est pas employée là : elle n'accepte que soixante demandes par heure.
+
+## 18. Le résultat de « Vérifier maintenant » (1.0.6)
+
+### 18.1 Décidé par Philippe
+
+- Après « Vérifier maintenant », une nouvelle liste est dite avec le même bilan que l'annonce de l'écran Mot, plutôt que par « Nouvelle liste reçue ».
+- Ce résultat a le même aspect que l'annonce, sur tous les écrans.
+
+### 18.2 Choix de Claude
+
+- **Une seule pastille.** L'annonce et le résultat passent par le même composant : leur aspect ne peut pas diverger. Les trois résultats prennent cet aspect : « Liste mise à jour · +2 · ~1 → 1 139 mots », « La liste est à jour », « Pas de connexion. Réessaie plus tard ».
+- **Sous le bouton**, et non à côté : le bilan ne tiendrait pas sur la largeur d'un téléphone. Le résultat reste affiché ; il n'a pas de minuterie, comme avant.
+- **Pas d'annonce en plus** sur l'écran Mot : la vérification la remplace, comme en 1.0.5.

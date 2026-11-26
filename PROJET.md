@@ -1,6 +1,6 @@
 # Jolis Mots : notes techniques
 
-Ce document décrit le dépôt tel qu'il est à la version 1.0.5. La [conception](docs/superpowers/specs/2026-11-24-jolis-mots-design.md) dit pourquoi ; ici, on dit comment. Pour utiliser l'application, voir le [README](README.md).
+Ce document décrit le dépôt tel qu'il est à la version 1.0.6. La [conception](docs/superpowers/specs/2026-11-24-jolis-mots-design.md) dit pourquoi ; ici, on dit comment. Pour utiliser l'application, voir le [README](README.md).
 
 ## Vue d'ensemble
 
@@ -97,6 +97,8 @@ Sur la fiche, le mot a une seule grande taille, 54 px ; une expression passe à 
 - `ecrans/Reglages.svelte` : questions par quiz, palette, version, date et heure de la liste (« 25 novembre 2026 à 03:44 », heure de l'appareil), la ligne « Historique de la liste », « Effacer mes progrès » ; ce lien reste visible au-dessus de sa confirmation.
 - `ecrans/Atelier.svelte` : l'atelier, sur bureau seulement ; voir plus bas.
 - `composants/Annonce.svelte` (depuis la 1.0.4) : sur le téléphone, la pastille qui annonce une nouvelle liste, en haut de l'écran, six secondes. Elle montre `etat.annonce`, l'entrée que l'historique vient de gagner (posée par `etat.noterListe`, jamais pour « Début de l'historique » ni sur bureau) ; la toucher appelle `etat.ouvrirAnnonce`, qui ouvre l'historique avec cette entrée dépliée (`etat.entreeADeplier`).
+- `composants/Pastille.svelte` (depuis la 1.0.6) : l'aspect commun de l'annonce et du résultat de « Vérifier maintenant », aux couleurs de « Mot suivant » (`--encre` en fond, `--papier` pour le texte). Avec `onclick`, un bouton ; sans, un simple texte.
+- `bilan.ts` (depuis la 1.0.6) : les textes du bilan d'une entrée, partagés par l'annonce et l'historique (`nombre`, `bilan`, `annonce`, `annonceDite`).
 - `composants/Entete.svelte`, `composants/Onglets.svelte` : l'en-tête (la marque et le bouton des réglages) et les onglets, trois sur le téléphone, quatre sur bureau.
 - `volet.ts` : l'action Svelte des volets et des confirmations. À l'ouverture, le curseur va sur l'élément marqué `data-depart`, sinon sur le volet (qui reçoit toujours `tabindex="-1"`) ; Échap ferme, où que soit le curseur ; à la fermeture, le curseur revient à l'élément qui l'avait.
 
@@ -170,7 +172,7 @@ La liste des mots est publiée sur la branche `donnees` du dépôt, fichier `mot
 
 - Une copie de la liste est **embarquée** dans l'application à la fabrication (`liste-embarquee.ts` importe `donnees/mots.json` ; elle pèse plus de 700 ko). L'application montre donc ses mots sans réseau.
 - Sur le téléphone, au démarrage, `miseAJour.ts` demande `https://raw.githubusercontent.com/iago-swi/jolis-mots/donnees/mots.json` (`ADRESSE_LISTE` ; sans cache, abandon au bout de 8 secondes). Sans réseau, sur une erreur ou une réponse inutilisable, il ne fait rien et ne dit rien. Depuis la 1.0.5, il la redemande chaque fois que l'application redevient visible (`rafraichirAuRetour`, sur l'événement `visibilitychange`) : Android met l'application en pause plutôt que de la fermer. Cette adresse est gardée en cache par GitHub jusqu'à cinq minutes.
-- « Vérifier maintenant » (`verifierMaintenant`, dans l'historique, téléphone seulement) demande d'abord l'API de GitHub (`ADRESSE_LISTE_API`, avec `Accept: application/vnd.github.raw` ; cache d'une minute, soixante demandes par heure), puis l'adresse habituelle si l'API ne répond pas. La liste reçue est adoptée tout de suite (`etat.adopterListeEnAttente`). Le résultat : `nouvelle` (l'historique a gagné une entrée), `a-jour` ou `hors-ligne`.
+- « Vérifier maintenant » (`verifierMaintenant`, dans l'historique, téléphone seulement) demande d'abord l'API de GitHub (`ADRESSE_LISTE_API`, avec `Accept: application/vnd.github.raw` ; cache d'une minute, soixante demandes par heure), puis l'adresse habituelle si l'API ne répond pas. La liste reçue est adoptée tout de suite (`etat.adopterListeEnAttente`). Le résultat : `nouvelle` (l'historique a gagné une entrée), `a-jour` ou `hors-ligne`. Depuis la 1.0.6, l'historique le montre sous le bouton dans la même pastille que l'annonce (`composants/Pastille.svelte`) ; pour `nouvelle`, avec le texte de l'annonce (`bilan.ts`).
 - `choisirListe` ne retient la liste reçue que si elle a la bonne forme, au moins un mot, une date `publie` lisible et plus récente que celle en place. Elle est alors gardée sur l'appareil (`jolismots.liste.v1`) et adoptée au prochain mot tiré, jamais au milieu d'un mot affiché ; tout de suite si la liste en place n'a aucun mot complet.
 - Au lancement suivant, la liste gardée est préférée à l'embarquée si elle est valide et plus récente.
 - Sur bureau, l'application ne demande pas cette adresse : c'est l'atelier qui reçoit la liste en ligne, par `git` (voir plus bas).

@@ -2,6 +2,12 @@
 
 Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les règles sont dans [VERSIONING.md](VERSIONING.md).
 
+## [1.0.6] - 2026-11-26
+
+### Modifié
+
+- Le résultat de « Vérifier maintenant » a le même aspect que l'annonce de l'écran Mot. Pour une nouvelle liste, il donne aussi le même bilan : « Liste mise à jour · +2 · ~1 → 1 139 mots ». Sinon, il dit « La liste est à jour » ou « Pas de connexion. Réessaie plus tard ».
+
 ## [1.0.5] - 2026-11-25
 
 ### Ajouté
