@@ -2,11 +2,10 @@
   import { onDestroy, onMount } from 'svelte';
   import { atelier } from '../atelier.svelte';
   import { embellir, normaliser, type EntreeHistorique } from '@jolis-mots/core';
-  import { annonce, annonceDite, bilan, nombre } from '../bilan';
+  import { bilan, nombre } from '../bilan';
   import Fiche from '../composants/Fiche.svelte';
-  import Pastille from '../composants/Pastille.svelte';
   import { etat } from '../etat.svelte';
-  import { verifierMaintenant, type ResultatVerification } from '../miseAJour';
+  import { verifier } from '../miseAJour';
   import { volet } from '../volet';
 
   type Sorte = 'ajoute' | 'modifie' | 'supprime';
@@ -74,35 +73,19 @@
     });
   }
 
-  /** « Vérifier maintenant », sur le téléphone seulement : sous Windows, l'atelier reçoit la liste par git. */
-  let verification = $state<'en-cours' | ResultatVerification | null>(null);
-  /** L'entrée ajoutée par la vérification : son bilan est dit comme dans l'annonce de l'écran Mot. */
-  let recue = $state.raw<EntreeHistorique | null>(null);
-  const RESULTATS: Record<Exclude<ResultatVerification, 'nouvelle'>, string> = {
-    'a-jour': 'La liste est à jour',
-    'hors-ligne': 'Pas de connexion. Réessaie plus tard',
-  };
-  const resultat = $derived(
-    verification === null || verification === 'en-cours'
-      ? null
-      : verification === 'nouvelle'
-        ? recue === null
-          ? null
-          : { texte: annonce(recue), dit: annonceDite(recue) }
-        : { texte: RESULTATS[verification], dit: `${RESULTATS[verification]}.` }
-  );
+  /**
+   * « Vérifier maintenant », sur le téléphone seulement : sous Windows, l'atelier reçoit la liste par git.
+   * Le résultat est dit par la bulle, comme au lancement (conception, section 19).
+   */
+  let enCours = $state(false);
 
-  async function verifier(): Promise<void> {
-    if (verification === 'en-cours') return;
-    verification = 'en-cours';
-    const r = await verifierMaintenant();
-    // Écran quitté entre-temps : l'annonce, elle, dira la nouvelle liste sur l'écran Mot.
+  async function verifierMaintenant(): Promise<void> {
+    if (enCours) return;
+    enCours = true;
+    const r = await verifier();
     if (!affiche) return;
-    // L'historique, ouvert, montre déjà la nouvelle entrée et son bilan : pas d'annonce en plus.
-    etat.fermerAnnonce();
-    recue = r === 'nouvelle' ? (etat.historique[etat.historique.length - 1] ?? null) : null;
-    verification = r;
-    if (recue !== null) deplie = recue.publie;
+    enCours = false;
+    if (r === 'nouvelle') deplie = etat.historique[etat.historique.length - 1]?.publie ?? null;
   }
 
   function basculer(publie: string): void {
@@ -123,14 +106,9 @@
 
     {#if atelier === null}
       <div class="verifier">
-        <button class="secondaire" disabled={verification === 'en-cours'} onclick={verifier}>
-          {verification === 'en-cours' ? 'Vérification…' : 'Vérifier maintenant'}
+        <button class="secondaire" disabled={enCours} onclick={verifierMaintenant}>
+          {enCours ? 'Vérification…' : 'Vérifier maintenant'}
         </button>
-        <!-- Même aspect que l'annonce de l'écran Mot ; la phrase en toutes lettres est dite par la zone d'état. -->
-        <span class="visuel-cache" role="status">{resultat?.dit ?? ''}</span>
-        {#if resultat !== null}
-          <span aria-hidden="true"><Pastille>{resultat.texte}</Pastille></span>
-        {/if}
       </div>
     {/if}
 
@@ -231,12 +209,7 @@
     list-style: none;
   }
 
-  /* La pastille sous le bouton : le bilan d'une nouvelle liste ne tiendrait pas à côté sur un téléphone. */
   .verifier {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
     margin-top: 16px;
   }
 

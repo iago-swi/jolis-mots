@@ -17,6 +17,7 @@ import {
   type Portee,
   type Progres,
 } from '@jolis-mots/core';
+import type { Annonce } from './bilan';
 import { listeEmbarquee } from './liste-embarquee';
 import { pont } from './pont';
 import { CLES, ecrire, lire } from './stockage';
@@ -76,10 +77,10 @@ class Etat {
   /** L'historique de la liste, du plus ancien au plus récent (conception, section 14). */
   historique = $state.raw<EntreeHistorique[]>(validerHistorique(lire<unknown>(CLES.historique, [])));
   /**
-   * Sur le téléphone, l'entrée que l'historique vient de gagner, montrée quelques secondes
-   * par une annonce (conception, section 16) ; null quand il n'y a rien à annoncer.
+   * Sur le téléphone, ce que la bulle dit dix secondes : l'entrée que l'historique vient de gagner,
+   * ou le résultat d'une vérification (conception, section 19) ; null quand il n'y a rien à dire.
    */
-  annonce = $state.raw<EntreeHistorique | null>(null);
+  annonce = $state.raw<Annonce | null>(null);
   /** L'entrée que l'écran Historique déplie en s'ouvrant (posée en touchant l'annonce). */
   entreeADeplier: string | null = null;
   /** La dernière liste notée dans l'historique, réduite à ce qui sert à comparer. */
@@ -96,8 +97,6 @@ class Etat {
   ficheOuverte = $state<string | null>(null);
   /** Volet « Autres auteurs » du recueil, ici pour que le bouton retour d'Android puisse le fermer. */
   panneauAuteurs = $state(false);
-  /** Liste téléchargée, gardée de côté jusqu'au prochain mot tiré. */
-  private listeEnAttente: FichierMots | null = null;
   /** Vrai après `demarrer` : avant, aucun mot n'est montré, c'est `demarrer` qui tire le premier. */
   private demarre = false;
   /** Palette imposée par l'adresse (« ?palette=nuit »), jamais enregistrée. */
@@ -152,37 +151,28 @@ class Etat {
       this.position += 1;
       return;
     }
-    this.adopterListeEnAttente();
     const m = this.tirer();
     if (m !== null) this.montrer(m);
   }
 
   /**
-   * Retient `recue` si elle est valide et plus récente que la liste en place : gardée sur l'appareil,
-   * adoptée au prochain mot tiré, ou tout de suite si la liste en place n'a aucun mot complet.
+   * Adopte tout de suite `recue` si elle est valide et plus récente que la liste en place, et la garde
+   * sur l'appareil (conception, section 19). Rend vrai si elle a été adoptée.
    */
-  proposerListe(recue: unknown): void {
-    const enPlace = this.listeEnAttente ?? this.liste;
-    const choisie = choisirListe(enPlace, recue);
-    if (choisie === enPlace) return;
-    this.listeEnAttente = choisie;
+  recevoirListe(recue: unknown): boolean {
+    const choisie = choisirListe(this.liste, recue);
+    if (choisie === this.liste) return false;
     ecrire(CLES.liste, choisie);
-    if (this.complets.length === 0) this.adopterListeEnAttente();
-  }
-
-  /** Adopte tout de suite la liste reçue qui attendait le mot suivant, s'il y en a une. */
-  adopterListeEnAttente(): void {
-    if (this.listeEnAttente === null) return;
-    this.remplacerListe(this.listeEnAttente);
+    this.remplacerListe(choisie);
+    return true;
   }
 
   /**
    * Adopte `l` tout de suite et remet l'état d'aplomb : les mots qui ne sont plus complets quittent `lus`,
    * le mot affiché reste s'il le peut, un mot est tiré s'il n'en reste aucun de lu (après `demarrer` seulement), la fiche ouverte se
-   * ferme si son mot n'est plus complet. Une liste en attente qui n'est pas plus récente que `l` est oubliée.
+   * ferme si son mot n'est plus complet.
    */
   remplacerListe(l: FichierMots): void {
-    if (this.listeEnAttente !== null && choisirListe(l, this.listeEnAttente) === l) this.listeEnAttente = null;
     const affiche = this.lus[this.position];
     this.liste = l;
     const complets = new Set(this.complets.map((m) => m.id));
@@ -212,20 +202,33 @@ class Etat {
       ecrire(CLES.historique, r.historique);
       // Sur bureau, l'atelier sait ce qu'il vient d'envoyer : pas d'annonce.
       const nouvelle = r.historique[r.historique.length - 1];
-      if (pont === null && nouvelle !== undefined && !nouvelle.debut) this.annonce = nouvelle;
+      if (pont === null && nouvelle !== undefined && !nouvelle.debut) this.annonce = { sorte: 'nouvelle', entree: nouvelle };
     }
+  }
+
+  /**
+   * Pose le résultat d'une vérification. Au lancement, « à jour » ne remplace pas une annonce de nouvelle
+   * liste encore affichée : une liste gardée par une version précédente a pu être adoptée juste avant.
+   */
+  annoncer(a: Annonce, auLancement = false): void {
+    if (auLancement && a.sorte === 'a-jour' && this.annonce?.sorte === 'nouvelle') return;
+    this.annonce = a;
   }
 
   fermerAnnonce(): void {
     this.annonce = null;
   }
 
-  /** L'annonce touchée : l'historique s'ouvre, son entrée dépliée ; le retour ramène à l'écran d'avant. */
+  /**
+   * L'annonce touchée : pour une nouvelle liste, l'historique s'ouvre, son entrée dépliée, et le retour
+   * ramène à l'écran d'avant. Sinon, ou si l'historique est déjà ouvert, elle se ferme seulement.
+   */
   ouvrirAnnonce(): void {
-    if (this.annonce === null) return;
-    this.entreeADeplier = this.annonce.publie;
+    const a = this.annonce;
     this.annonce = null;
-    if (this.ecran !== 'reglages' && this.ecran !== 'historique') this.ecranAvantReglages = this.ecran;
+    if (a?.sorte !== 'nouvelle' || this.ecran === 'historique') return;
+    this.entreeADeplier = a.entree.publie;
+    if (this.ecran !== 'reglages') this.ecranAvantReglages = this.ecran;
     this.allerA('historique');
   }
 

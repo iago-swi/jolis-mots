@@ -2,6 +2,14 @@
 
 Toutes les versions de Jolis Mots, de la plus récente à la plus ancienne. Les règles sont dans [VERSIONING.md](VERSIONING.md).
 
+## [1.0.7] - 2026-11-26
+
+### Modifié
+
+- Sur le téléphone, la liste en ligne est vérifiée au lancement de l'application et par « Vérifier maintenant », et seulement là. La vérification au retour dans l'application est supprimée.
+- La liste trouvée au lancement est prise tout de suite, sans attendre « Mot suivant ». Le mot affiché reste, sauf s'il n'est plus dans la liste.
+- Au lancement comme après « Vérifier maintenant », le résultat est dit par la même bulle, en haut de l'écran, qui disparaît après dix secondes : « Liste mise à jour · +2 · ~1 → 1 139 mots » ou « La liste est à jour ». Après le bouton seulement, sans réseau : « Pas de connexion. Réessaie plus tard ». La bulle s'affiche sur tous les écrans ; plus rien ne reste sous le bouton.
+
 ## [1.0.6] - 2026-11-26
 
 ### Modifié

@@ -66,8 +66,8 @@ function poserStockage(depart: Record<string, string> = {}): Map<string, string>
 async function lancer() {
   vi.resetModules();
   const { etat } = await import('./etat.svelte');
-  const { rafraichir, verifierMaintenant, rafraichirAuRetour } = await import('./miseAJour');
-  return { etat, rafraichir, verifierMaintenant, rafraichirAuRetour };
+  const { verifier } = await import('./miseAJour');
+  return { etat, verifier };
 }
 
 function repondreAvec(corps: string, init?: ResponseInit): void {
@@ -84,16 +84,17 @@ afterEach(() => {
 });
 
 describe('la liste en ligne', () => {
-  it('de bout en bout : gardée sur l’appareil, puis adoptée au mot suivant', async () => {
+  it('au lancement : adoptée tout de suite et gardée sur l’appareil', async () => {
     poserStockage();
-    const { etat, rafraichir } = await lancer();
+    const { etat, verifier } = await lancer();
     repondreAvec(JSON.stringify(listePlusRecente));
     etat.demarrer({ search: '', hash: '' });
-    await rafraichir();
-    expect(etat.liste.publie).toBe(embarquee.publie);
-    expect(JSON.parse(localStorage.getItem(CLE_LISTE)!).publie).toBe(listePlusRecente.publie);
-    etat.suivant();
+    const affiche = etat.motCourant!.id;
+    await verifier(true);
     expect(etat.liste.publie).toBe(listePlusRecente.publie);
+    expect(JSON.parse(localStorage.getItem(CLE_LISTE)!).publie).toBe(listePlusRecente.publie);
+    // Le mot affiché est toujours dans la liste : il reste.
+    expect(etat.motCourant!.id).toBe(affiche);
   });
 
   it('au lancement suivant, la liste gardée est préférée à l’embarquée', async () => {
@@ -101,7 +102,7 @@ describe('la liste en ligne', () => {
     const premier = await lancer();
     repondreAvec(JSON.stringify(listePlusRecente));
     premier.etat.demarrer({ search: '', hash: '' });
-    await premier.rafraichir();
+    await premier.verifier(true);
 
     const { etat } = await lancer();
     etat.demarrer({ search: '', hash: '' });
@@ -126,11 +127,10 @@ describe('la liste en ligne', () => {
   for (const [nom, poserReponse] of inutilisables) {
     it(`réponse inutilisable (${nom}) : rien ne change, rien n'est levé`, async () => {
       const stockage = poserStockage();
-      const { etat, rafraichir } = await lancer();
+      const { etat, verifier } = await lancer();
       poserReponse();
       etat.demarrer({ search: '', hash: '' });
-      await expect(rafraichir()).resolves.toBeUndefined();
-      etat.suivant();
+      await expect(verifier(true)).resolves.not.toBe('nouvelle');
       expect(etat.liste.publie).toBe(embarquee.publie);
       expect(stockage.has(CLE_LISTE)).toBe(false);
     });
@@ -139,11 +139,11 @@ describe('la liste en ligne', () => {
   it('sans mot complet en place, la liste reçue est adoptée tout de suite', async () => {
     liste.embarquee = sansMotComplet;
     poserStockage();
-    const { etat, rafraichir } = await lancer();
+    const { etat, verifier } = await lancer();
     repondreAvec(JSON.stringify(listePlusRecente));
     etat.demarrer({ search: '', hash: '' });
     expect(etat.motCourant).toBeNull();
-    await rafraichir();
+    await verifier(true);
     expect(etat.liste.publie).toBe(listePlusRecente.publie);
     expect(etat.motCourant).not.toBeNull();
   });
@@ -154,14 +154,14 @@ describe('« Vérifier maintenant »', () => {
 
   it('demande la liste à l’API de GitHub, l’adopte tout de suite et la note dans l’historique', async () => {
     poserStockage();
-    const { etat, verifierMaintenant } = await lancer();
+    const { etat, verifier } = await lancer();
     const appels: [string, RequestInit | undefined][] = [];
     vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
       appels.push([url, init]);
       return new Response(JSON.stringify(listePlusRecente));
     });
     etat.demarrer({ search: '', hash: '' });
-    await expect(verifierMaintenant()).resolves.toBe('nouvelle');
+    await expect(verifier()).resolves.toBe('nouvelle');
     expect(appels[0]?.[0]).toBe(API);
     expect(new Headers(appels[0]?.[1]?.headers).get('Accept')).toBe('application/vnd.github.raw');
     expect(appels[0]?.[1]?.cache).toBe('no-store');
@@ -169,81 +169,137 @@ describe('« Vérifier maintenant »', () => {
     expect(etat.historique).toHaveLength(2);
   });
 
-  it('adopte aussi une liste déjà reçue qui attendait le mot suivant', async () => {
-    poserStockage();
-    const { etat, rafraichir, verifierMaintenant } = await lancer();
-    repondreAvec(JSON.stringify(listePlusRecente));
-    etat.demarrer({ search: '', hash: '' });
-    await rafraichir();
-    expect(etat.liste.publie).toBe(embarquee.publie);
-    await expect(verifierMaintenant()).resolves.toBe('nouvelle');
-    expect(etat.liste.publie).toBe(listePlusRecente.publie);
-  });
-
   it('rend « a-jour » quand rien de nouveau n’est en ligne', async () => {
     poserStockage();
-    const { etat, verifierMaintenant } = await lancer();
+    const { etat, verifier } = await lancer();
     repondreAvec(JSON.stringify(embarquee));
     etat.demarrer({ search: '', hash: '' });
-    await expect(verifierMaintenant()).resolves.toBe('a-jour');
+    await expect(verifier()).resolves.toBe('a-jour');
     expect(etat.historique).toHaveLength(1);
   });
 
   it('si l’API refuse (limite atteinte), demande l’adresse habituelle', async () => {
     poserStockage();
-    const { etat, verifierMaintenant } = await lancer();
+    const { etat, verifier } = await lancer();
     const adresses: string[] = [];
     vi.stubGlobal('fetch', async (url: string) => {
       adresses.push(url);
       return url === API ? new Response('{"message":"API rate limit exceeded"}', { status: 403 }) : new Response(JSON.stringify(listePlusRecente));
     });
     etat.demarrer({ search: '', hash: '' });
-    await expect(verifierMaintenant()).resolves.toBe('nouvelle');
+    await expect(verifier()).resolves.toBe('nouvelle');
     expect(adresses).toEqual([API, 'https://raw.githubusercontent.com/iago-swi/jolis-mots/donnees/mots.json']);
   });
 
   it('sans réseau, rend « hors-ligne » et ne change rien', async () => {
     poserStockage();
-    const { etat, verifierMaintenant } = await lancer();
+    const { etat, verifier } = await lancer();
     vi.stubGlobal('fetch', async () => {
       throw new TypeError('Failed to fetch');
     });
     etat.demarrer({ search: '', hash: '' });
-    await expect(verifierMaintenant()).resolves.toBe('hors-ligne');
+    await expect(verifier()).resolves.toBe('hors-ligne');
     expect(etat.liste.publie).toBe(embarquee.publie);
   });
 
   it('une réponse illisible des deux côtés compte comme « hors-ligne »', async () => {
     poserStockage();
-    const { etat, verifierMaintenant } = await lancer();
+    const { etat, verifier } = await lancer();
     repondreAvec('<!doctype html>', { status: 500 });
     etat.demarrer({ search: '', hash: '' });
-    await expect(verifierMaintenant()).resolves.toBe('hors-ligne');
+    await expect(verifier()).resolves.toBe('hors-ligne');
   });
 });
 
-describe('le retour dans l’application', () => {
-  it('redemande la liste quand l’application redevient visible, sans l’adopter avant le mot suivant', async () => {
+describe('la bulle de la vérification', () => {
+  it('une nouvelle liste : la bulle dit son bilan', async () => {
     poserStockage();
-    const { etat, rafraichirAuRetour } = await lancer();
-    const demandes: string[] = [];
-    vi.stubGlobal('fetch', async (url: string) => {
-      demandes.push(url);
-      return new Response(JSON.stringify(listePlusRecente));
+    const { etat, verifier } = await lancer();
+    repondreAvec(JSON.stringify(listePlusRecente));
+    etat.demarrer({ search: '', hash: '' });
+    await verifier(true);
+    expect(etat.annonce).toEqual({ sorte: 'nouvelle', entree: etat.historique[1] });
+  });
+
+  it('rien de nouveau : « à jour », au lancement comme au bouton', async () => {
+    poserStockage();
+    const { etat, verifier } = await lancer();
+    repondreAvec(JSON.stringify(embarquee));
+    etat.demarrer({ search: '', hash: '' });
+    await verifier(true);
+    expect(etat.annonce).toEqual({ sorte: 'a-jour' });
+    etat.fermerAnnonce();
+    await verifier();
+    expect(etat.annonce).toEqual({ sorte: 'a-jour' });
+  });
+
+  it('sans réseau : rien au lancement, « hors-ligne » au bouton', async () => {
+    poserStockage();
+    const { etat, verifier } = await lancer();
+    vi.stubGlobal('fetch', async () => {
+      throw new TypeError('Failed to fetch');
     });
     etat.demarrer({ search: '', hash: '' });
-    const page = new EventTarget() as EventTarget & { visibilityState: DocumentVisibilityState };
-    page.visibilityState = 'hidden';
-    rafraichirAuRetour(page);
-    page.dispatchEvent(new Event('visibilitychange'));
-    expect(demandes).toHaveLength(0);
-    page.visibilityState = 'visible';
-    page.dispatchEvent(new Event('visibilitychange'));
-    await vi.waitFor(() => expect(JSON.parse(localStorage.getItem(CLE_LISTE) ?? 'null')?.publie).toBe(listePlusRecente.publie));
-    expect(demandes).toEqual(['https://raw.githubusercontent.com/iago-swi/jolis-mots/donnees/mots.json']);
-    expect(etat.liste.publie).toBe(embarquee.publie);
+    await verifier(true);
+    expect(etat.annonce).toBeNull();
+    await verifier();
+    expect(etat.annonce).toEqual({ sorte: 'hors-ligne' });
+  });
+
+  it('le bouton touché pendant la vérification du lancement : une seule demande, chacun a son résultat', async () => {
+    poserStockage();
+    const { etat, verifier } = await lancer();
+    let appels = 0;
+    vi.stubGlobal('fetch', async () => {
+      appels += 1;
+      throw new TypeError('Failed to fetch');
+    });
+    etat.demarrer({ search: '', hash: '' });
+    const [auLancement, auBouton] = await Promise.all([verifier(true), verifier()]);
+    expect([auLancement, auBouton]).toEqual(['hors-ligne', 'hors-ligne']);
+    // L'API, puis l'adresse habituelle : une seule vérification.
+    expect(appels).toBe(2);
+    expect(etat.annonce).toEqual({ sorte: 'hors-ligne' });
+  });
+
+  it('une liste gardée par une version précédente, adoptée à l’ouverture : « à jour » ne remplace pas sa bulle', async () => {
+    const stockage = poserStockage();
+    const premier = await lancer();
+    premier.etat.demarrer({ search: '', hash: '' });
+    stockage.set(CLE_LISTE, JSON.stringify(listePlusRecente));
+    const { etat, verifier } = await lancer();
+    repondreAvec(JSON.stringify(listePlusRecente));
+    etat.demarrer({ search: '', hash: '' });
+    await verifier(true);
+    expect(etat.annonce).toMatchObject({ sorte: 'nouvelle', entree: { publie: listePlusRecente.publie } });
+  });
+
+  it('au bouton, « à jour » remplace une bulle de nouvelle liste encore affichée', async () => {
+    poserStockage();
+    const { etat, verifier } = await lancer();
+    repondreAvec(JSON.stringify(listePlusRecente));
+    etat.demarrer({ search: '', hash: '' });
+    await verifier(true);
+    expect(etat.annonce?.sorte).toBe('nouvelle');
+    await verifier();
+    expect(etat.annonce).toEqual({ sorte: 'a-jour' });
+  });
+
+  it('une réponse lisible mais qui n’est pas une liste, des deux côtés : « hors-ligne », pas « à jour »', async () => {
+    poserStockage();
+    const { etat, verifier } = await lancer();
+    repondreAvec('{"message":"Not Found"}');
+    etat.demarrer({ search: '', hash: '' });
+    await expect(verifier()).resolves.toBe('hors-ligne');
+    expect(etat.annonce).toEqual({ sorte: 'hors-ligne' });
+  });
+
+  it('« Mot suivant » n’adopte plus aucune liste', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '' });
     etat.suivant();
-    expect(etat.liste.publie).toBe(listePlusRecente.publie);
+    expect(etat.liste.publie).toBe(embarquee.publie);
   });
 });
 
@@ -313,28 +369,6 @@ describe('remplacerListe', () => {
     expect(Object.keys(etat.progres)).toEqual(['b1']);
   });
 
-  it('une liste encore plus récente posée pendant qu’une liste téléchargée attend : elle reste', async () => {
-    poserStockage();
-    const { etat } = await lancer();
-    etat.demarrer({ search: '', hash: '' });
-    const encorePlusRecente = { ...listePlusRecente, publie: '2026-11-22T08:00:00.000Z' };
-    etat.proposerListe(listePlusRecente);
-    etat.remplacerListe(encorePlusRecente);
-    etat.suivant();
-    expect(etat.liste.publie).toBe(encorePlusRecente.publie);
-  });
-
-  it('une liste plus ancienne posée pendant qu’une liste téléchargée attend : l’attente est adoptée au mot suivant', async () => {
-    poserStockage();
-    const { etat } = await lancer();
-    etat.demarrer({ search: '', hash: '' });
-    etat.proposerListe(listePlusRecente);
-    etat.remplacerListe({ ...embarquee, mots: embarquee.mots.filter((m) => m.id !== 'a3') });
-    expect(etat.liste.publie).toBe(embarquee.publie);
-    etat.suivant();
-    expect(etat.liste.publie).toBe(listePlusRecente.publie);
-  });
-
   it('ferme la fiche ouverte quand son mot disparaît, la garde sinon', async () => {
     poserStockage();
     const { etat } = await lancer();
@@ -395,16 +429,13 @@ describe('l’adresse', () => {
 describe('l’historique de la liste', () => {
   it('s’ouvre au premier démarrage, puis note la liste reçue avec ses mots nouveaux', async () => {
     poserStockage();
-    const { etat, rafraichir } = await lancer();
+    const { etat, verifier } = await lancer();
     repondreAvec(JSON.stringify(listePlusRecente));
     etat.demarrer({ search: '', hash: '' });
     expect(etat.historique).toEqual([
       { publie: embarquee.publie, debut: true, total: 3, ajoutes: [], modifies: [], supprimes: [] },
     ]);
-    await rafraichir();
-    // La liste reçue n'est adoptée qu'au mot suivant : l'historique aussi attend.
-    expect(etat.historique).toHaveLength(1);
-    etat.suivant();
+    await verifier(true);
     expect(etat.historique).toHaveLength(2);
     expect(etat.historique[1]).toMatchObject({
       publie: listePlusRecente.publie,
@@ -454,8 +485,8 @@ describe('l’annonce d’une nouvelle liste', () => {
     etat.demarrer({ search: '', hash: '' });
     expect(etat.annonce).toBeNull();
     etat.remplacerListe(listePlusRecente);
-    expect(etat.annonce).toBe(etat.historique[1]);
-    expect(etat.annonce).toMatchObject({ debut: false, total: 4, ajoutes: [{ id: 'b1', mot: 'mot b1' }] });
+    expect(etat.annonce).toEqual({ sorte: 'nouvelle', entree: etat.historique[1] });
+    expect(etat.annonce).toMatchObject({ entree: { debut: false, total: 4, ajoutes: [{ id: 'b1', mot: 'mot b1' }] } });
   });
 
   it('se pose aussi à l’ouverture, quand la liste gardée est plus récente que la dernière notée', async () => {
@@ -466,7 +497,7 @@ describe('l’annonce d’une nouvelle liste', () => {
     stockage.set(CLE_LISTE, JSON.stringify(listePlusRecente));
     const second = await lancer();
     second.etat.demarrer({ search: '', hash: '' });
-    expect(second.etat.annonce).toMatchObject({ publie: listePlusRecente.publie, ajoutes: [{ id: 'b1' }] });
+    expect(second.etat.annonce).toMatchObject({ sorte: 'nouvelle', entree: { publie: listePlusRecente.publie, ajoutes: [{ id: 'b1' }] } });
   });
 
   it('ne se pose pas pour une liste qui ne change aucun mot visible', async () => {
@@ -490,6 +521,22 @@ describe('l’annonce d’une nouvelle liste', () => {
     expect(etat.ecran).toBe('reglages');
     expect(etat.retour()).toBe(true);
     expect(etat.ecran).toBe('recueil');
+  });
+
+  it('touchée dans l’historique déjà ouvert, ou pour « à jour » : elle se ferme seulement', async () => {
+    poserStockage();
+    const { etat } = await lancer();
+    etat.demarrer({ search: '', hash: '#historique' });
+    etat.remplacerListe(listePlusRecente);
+    etat.ouvrirAnnonce();
+    expect(etat.annonce).toBeNull();
+    expect(etat.entreeADeplier).toBeNull();
+    expect(etat.ecran).toBe('historique');
+    etat.allerA('mot');
+    etat.annoncer({ sorte: 'a-jour' });
+    etat.ouvrirAnnonce();
+    expect(etat.annonce).toBeNull();
+    expect(etat.ecran).toBe('mot');
   });
 
   it('fermerAnnonce l’efface', async () => {

@@ -11,7 +11,7 @@ import App from './App.svelte';
 import { atelier } from './atelier.svelte';
 import { webViewBordABord } from './barres';
 import { etat } from './etat.svelte';
-import { rafraichir, rafraichirAuRetour } from './miseAJour';
+import { verifier } from './miseAJour';
 
 /** Sur bureau, l'attente de la liste locale avant le premier mot ; au-delà, la lecture part sur la liste embarquée. */
 const DELAI_LISTE_LOCALE_MS = 3000;
@@ -20,11 +20,8 @@ function lancer(): void {
   etat.demarrer(location);
   // La palette avant le premier affichage : App.svelte ne la pose qu'une fois monté.
   document.documentElement.dataset.palette = etat.paletteAffichee;
-  // Sur le téléphone : la liste en ligne. Sur bureau, c'est l'atelier qui la reçoit, par git.
-  if (atelier === null) {
-    void rafraichir();
-    rafraichirAuRetour(document);
-  }
+  // Sur le téléphone : la liste en ligne, vérifiée au lancement. Sur bureau, c'est l'atelier qui la reçoit, par git.
+  if (atelier === null) void verifier(true);
 
   // Dans l'application Android seulement : le bouton retour ferme ce qui est ouvert, puis quitte depuis l'écran Mot.
   if (Capacitor.isNativePlatform()) {
