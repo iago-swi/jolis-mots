@@ -516,3 +516,25 @@ Demandé par Philippe le 25 novembre 2026 : dix minutes après un envoi de l'ate
 - **Une seule pastille.** L'annonce et le résultat passent par le même composant : leur aspect ne peut pas diverger. Les trois résultats prennent cet aspect : « Liste mise à jour · +2 · ~1 → 1 139 mots », « La liste est à jour », « Pas de connexion. Réessaie plus tard ».
 - **Sous le bouton**, et non à côté : le bilan ne tiendrait pas sur la largeur d'un téléphone. Le résultat reste affiché ; il n'a pas de minuterie, comme avant.
 - **Pas d'annonce en plus** sur l'écran Mot : la vérification la remplace, comme en 1.0.5.
+
+## 19. Une seule vérification, une seule bulle (1.0.7)
+
+### 19.1 Décidé par Philippe
+
+- La liste en ligne est vérifiée à deux moments seulement : au lancement de l'application et par le bouton « Vérifier maintenant ». La vérification au retour dans l'application (section 17) est supprimée.
+- Dans les deux cas, le résultat est dit par la même bulle, par-dessus l'écran, qui disparaît après dix secondes. Elle dit le bilan des mots récupérés, comme l'annonce de la section 16, ou que la liste est à jour.
+- Plus rien ne reste affiché sous le bouton de l'historique (section 18).
+
+### 19.2 Choix de Claude, approuvés par Philippe
+
+- **Une seule vérification :** au lancement comme au bouton, l'API de GitHub d'abord, puis l'adresse habituelle (section 17.3). La liste trouvée est adoptée tout de suite ; l'attente du mot suivant disparaît. Le mot affiché reste, sauf s'il n'est plus dans la liste.
+- **Une seule bulle,** en haut de l'écran, sur tous les écrans. Trois textes : « Liste mise à jour · +2 · ~1 → 1 139 mots », « La liste est à jour », « Pas de connexion. Réessaie plus tard ». Le dernier seulement après le bouton : au lancement sans réseau, rien n'est dit.
+- **La toucher :** quand des mots sont arrivés, elle ouvre l'historique sur l'entrée dépliée (section 16) ; sinon, ou si l'historique est déjà ouvert, elle se ferme.
+- **Dans l'historique,** le bouton dit « Vérification… » pendant la demande ; une nouvelle entrée apparaît dépliée en tête.
+- **Sous Windows,** rien ne change : l'atelier reçoit la liste par git, sans bulle.
+
+### 19.3 Choix laissés à Claude
+
+- Si le lancement et le bouton se suivent de près, une seule demande part ; chacun dit son résultat.
+- Une liste gardée par une version précédente, pas encore adoptée, l'est au lancement et sa bulle n'est pas remplacée par « La liste est à jour ». Au bouton, en revanche, « La liste est à jour » remplace toujours la bulle affichée : on a demandé, on a une réponse.
+- Une réponse qui n'est pas une liste, des deux côtés, compte comme une absence de connexion, jamais comme « La liste est à jour ».

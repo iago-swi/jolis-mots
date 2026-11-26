@@ -14,13 +14,24 @@ export function bilan(e: EntreeHistorique): string {
   return parties.join(' · ');
 }
 
-/** « Liste mise à jour · +2 · ~1 → 1 139 mots » : le texte de l'annonce, à l'écran Mot comme à l'historique. */
-export function annonce(e: EntreeHistorique): string {
-  return `Liste mise à jour · ${bilan(e)} → ${nombre(e.total)}`;
+/** Ce que dit la bulle (conception, section 19) : une nouvelle liste et son bilan, ou le résultat d'une vérification. */
+export type Annonce = { sorte: 'nouvelle'; entree: EntreeHistorique } | { sorte: 'a-jour' } | { sorte: 'hors-ligne' };
+
+const TEXTES = {
+  'a-jour': 'La liste est à jour',
+  'hors-ligne': 'Pas de connexion. Réessaie plus tard',
+} as const;
+
+/** « Liste mise à jour · +2 · ~1 → 1 139 mots », « La liste est à jour » ou « Pas de connexion. Réessaie plus tard ». */
+export function texteAnnonce(a: Annonce): string {
+  if (a.sorte !== 'nouvelle') return TEXTES[a.sorte];
+  return `Liste mise à jour · ${bilan(a.entree)} → ${nombre(a.entree.total)}`;
 }
 
-/** La même annonce en toutes lettres, pour les lecteurs d'écran. */
-export function annonceDite(e: EntreeHistorique): string {
+/** La même chose en toutes lettres, pour les lecteurs d'écran. */
+export function annonceDite(a: Annonce): string {
+  if (a.sorte !== 'nouvelle') return `${TEXTES[a.sorte]}.`;
+  const e = a.entree;
   const parties: string[] = [];
   const dire = (n: number, s: string, p: string) => {
     if (n > 0) parties.push(`${n} ${n > 1 ? p : s}`);
